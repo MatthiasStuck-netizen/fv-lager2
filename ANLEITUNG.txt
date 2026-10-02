@@ -1,0 +1,130 @@
+FEHNVERLEIH LAGER – EIGENE PROGRAMME FÜR PC UND ANDROID
+=======================================================
+
+Was ist neu?
+  Statt der Web-App im Browser gibt es jetzt zwei echte Programme zum Installieren:
+  • FV Lager für Windows (auch Linux/Mac) – eigenes Fenster, kein Browser, kein HTML
+  • FV Lager für Android – echte App mit eingebautem Kamera-Scanner, kein Browser, kein HTML
+  Beide sprechen wie bisher mit dem Server (warenwirtschaft.php, Adresse …/?lagerapp).
+  Die Daten bleiben also auf dem Server. Was auf dem Handy gebucht wird, sieht man sofort am PC
+  und in der Verwaltung – genau wie vorher.
+
+Was muss am Server geändert werden?
+  NICHTS. Die warenwirtschaft.php aus dem letzten Paket (mit „?lagerapp“) bleibt, wie sie ist.
+  Test im Browser:  https://www.fehnverleih.de/?lagerapp  →  „Lager-App-Schnittstelle bereit.“
+  Der Ordner „lager-app“ (die alte Web-App) wird von den neuen Programmen nicht gebraucht
+  und kann gelöscht werden, sobald alle umgestiegen sind.
+
+
+INHALT DIESES PAKETS
+--------------------
+  fertig/FV-Lager.jar        Das PC-Programm, sofort lauffähig, wenn Java 17 oder neuer installiert ist
+  kern/                      Gemeinsamer Programmteil (Server-Verbindung) für PC und Android
+  pc/                        Quelltext des PC-Programms + Bau-Skripte
+    bauen-windows.bat        Doppelklick auf einem Windows-PC → baut den Installer FV-Lager-1.0.0.exe
+    bauen.sh                 dasselbe für Linux/Mac
+  android/                   Quelltext der Android-App (Projekt für Android Studio)
+  .github/workflows/         Automatischer Bau auf GitHub (Windows-Installer + Android-APK)
+
+
+1) WINDOWS-PROGRAMM BEKOMMEN – drei Wege
+-----------------------------------------
+  Weg A – automatisch über GitHub (am einfachsten, kostenlos):
+    1. Auf github.com ein (privates) Repository anlegen und den Inhalt dieses Pakets hochladen.
+    2. Reiter „Actions“ öffnen → der Lauf „Programme bauen“ startet von selbst (ca. 10 Minuten).
+    3. Beim fertigen Lauf unten unter „Artifacts“ herunterladen:
+         FV-Lager-Windows  →  FV-Lager-1.0.0.exe (Installer) und eine portable ZIP-Version
+         FV-Lager-Android  →  FV-Lager-1.0.0.apk
+    Tipp: Ein Tag „v1.0.0“ hochladen → GitHub legt automatisch ein „Release“ mit allen Dateien an.
+
+  Weg B – auf einem Windows-PC selbst bauen:
+    1. JDK 21 installieren: https://adoptium.net → „Temurin 21“ (bei der Installation
+       „Set JAVA_HOME“ ankreuzen).
+    2. Für einen richtigen Installer zusätzlich „WiX Toolset 3.14“ installieren (https://wixtoolset.org).
+       Ohne WiX entsteht ein Ordner mit FV-Lager.exe, den man einfach kopieren kann.
+    3. Doppelklick auf  pc\bauen-windows.bat  → Ergebnis im Ordner build\paket
+
+  Weg C – sofort ausprobieren:
+    Java 17+ installieren (siehe oben), dann Doppelklick auf fertig\FV-Lager.jar.
+
+  Installieren: FV-Lager-1.0.0.exe starten → „Weiter“ → fertig. Das Programm erscheint im Startmenü
+  unter „Fehnverleih“ und als Symbol auf dem Desktop. Java muss dafür NICHT installiert sein –
+  der Installer bringt alles mit (ca. 40 MB). Updates: neue .exe einfach drüber installieren.
+
+
+2) ANDROID-APP BEKOMMEN
+-----------------------
+  Weg A – GitHub (siehe oben, Datei FV-Lager-1.0.0.apk).
+  Weg B – Android Studio (kostenlos, https://developer.android.com/studio):
+    „Open“ → Ordner android wählen → warten → Menü Build → Build App Bundle(s)/APK(s) → Build APK(s).
+
+  Auf dem Handy installieren:
+    • Die .apk aufs Handy bringen (E-Mail, USB, Google Drive) und antippen.
+    • Android fragt nach „Installation aus unbekannten Quellen“ → für diese App erlauben.
+    • Die App „FV Lager“ erscheint mit dem bekannten Symbol. Beim ersten Scannen die Kamera erlauben.
+  Updates: neue .apk drüber installieren – Anmeldung bleibt erhalten. Wichtig: immer mit demselben
+  Schlüssel signiert bauen (siehe unten „Eigener App-Schlüssel“), sonst muss die alte App erst
+  deinstalliert werden.
+
+
+3) BEDIENUNG (PC und Android gleich)
+------------------------------------
+  Anmelden
+    Mitarbeiter: Ausweis scannen (Android: Kamera; PC: Hand-Scanner oder Code eintippen)
+                 + Lager-Passwort (LAGER_PASSWORT in der warenwirtschaft.php).
+    Admin:       Reiter „Admin“ → Admin-Passwort (LAGERAPP_ADMIN_PASSWORT).
+
+  Stempel-Sperre (wie bisher, wird bei JEDER Aktion vom Server geprüft)
+    • Nicht eingestempelt → „Gesperrt“. Nach dem Einstempeln entsperrt sich das Programm von selbst
+      (Prüfung alle 8 Sekunden, oder „Jetzt prüfen“).
+    • Ausstempeln → sofort gesperrt, angezeigte Lagerdaten werden verworfen.
+    • Admin kann in der Übersicht jemanden ausstempeln → dessen Programm ist sofort gesperrt.
+
+  Funktionen
+    Mitarbeiter: Lagerhalle (Packen & Rückgabe), Scannen, „Wo liegt …?“-Suche, Wareneingang,
+                 Ausbuchen mit Grund, Inventur zählen, letzten Scan rückgängig.
+    Admin:       zusätzlich Übersicht, wer eingestempelt ist, Ausstempeln, Inventur abschließen,
+                 angemeldete Geräte abmelden, Stempel-Terminal, Link zur Verwaltung im Browser.
+
+  Hand-Scanner am PC (USB oder Bluetooth)
+    Der Scanner muss im „Tastatur-Modus“ arbeiten und nach jedem Code ENTER senden (Standard bei
+    fast allen Geräten). Auf den Scan-Seiten landet jeder Scan automatisch im Scan-Feld – auch wenn
+    man vorher woanders hingeklickt hat. Auch Android-Scanner-Handys (Zebra, Honeywell …) gehen so.
+
+  PC als Stempeluhr
+    Als Admin anmelden → „Mehr“ → „Stempel-Terminal“. Hand-Scanner anschließen, fertig.
+    1. Scan = Kommen, nächster Scan = Gehen.
+
+
+4) EINSTELLUNGEN (Zahnrad)
+--------------------------
+  • Server-Adresse: normalerweise  www.fehnverleih.de  („?lagerapp“ wird automatisch angehängt).
+    Mit „Verbindung testen“ prüfen.
+  • Töne beim Scannen an/aus.
+  • Name des Geräts (erscheint in der Geräte-Liste, z. B. „PC Lagerhalle“).
+  Gespeichert wird nur die Anmeldung und diese Einstellungen – keine Lagerdaten:
+    Windows: %APPDATA%\FV-Lager\einstellungen.txt     Android: in der App selbst.
+
+
+5) EIGENER APP-SCHLÜSSEL FÜR ANDROID (empfohlen, einmalig)
+---------------------------------------------------------
+  Ohne eigenen Schlüssel wird die APK mit einem Test-Schlüssel signiert. Das funktioniert, aber
+  Updates sind nur mit demselben Schlüssel möglich. Einmal anlegen (JDK nötig):
+    keytool -genkeypair -v -keystore fv-lager.jks -alias fvlager -keyalg RSA -keysize 2048 -validity 10000
+  Die Datei fv-lager.jks und das Passwort GUT AUFHEBEN.
+  Bei GitHub unter Settings → Secrets → Actions eintragen:
+    FV_KEYSTORE_BASE64   = Inhalt der Datei als Base64   (Windows: certutil -encode fv-lager.jks x.txt)
+    FV_KEYSTORE_PASSWORT = das Passwort
+    FV_KEY_ALIAS         = fvlager
+  In Android Studio: Build → Generate Signed App Bundle / APK → diese Datei wählen.
+
+
+6) FALLS ETWAS NICHT GEHT
+-------------------------
+  „Der Server antwortet nicht wie erwartet“
+     → Server-Adresse in den Einstellungen prüfen, „Verbindung testen“.
+     → Ist die warenwirtschaft.php mit der Lager-Schnittstelle hochgeladen? (Test oben)
+  „Keine Verbindung zum Server“  → Internet/WLAN prüfen.
+  „Zu viele falsche Versuche“    → 15 Minuten warten (Schutz vor Durchprobieren).
+  Android: Kamera geht nicht      → Android-Einstellungen → Apps → FV Lager → Berechtigungen → Kamera.
+  Die Server-Adresse muss mit https erreichbar sein (unverschlüsselt http lässt Android nicht zu).

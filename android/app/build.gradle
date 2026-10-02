@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'de.fehnverleih.lager.app'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'de.fehnverleih.lager'
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName '1.0.0'
+    }
+
+    // Gemeinsamer Programmkern (Server-Verbindung) – dieselben Dateien wie im PC-Programm
+    sourceSets {
+        main.java.srcDirs += '../../kern/src'
+    }
+
+    signingConfigs {
+        // Eigener Schlüssel: Datei + Passwörter über Umgebungsvariablen (siehe ANLEITUNG). Ohne = Debug-Schlüssel.
+        release {
+            def ks = System.getenv('FV_KEYSTORE')
+            if (ks != null && file(ks).exists()) {
+                storeFile file(ks)
+                storePassword System.getenv('FV_KEYSTORE_PASSWORT')
+                keyAlias System.getenv('FV_KEY_ALIAS') ?: 'fvlager'
+                keyPassword System.getenv('FV_KEY_PASSWORT') ?: System.getenv('FV_KEYSTORE_PASSWORT')
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            def ks = System.getenv('FV_KEYSTORE')
+            signingConfig (ks != null && file(ks).exists()) ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // QR-Scanner mit der Kamera (ZXing, Open Source, ohne Google-Dienste)
+    implementation('com.journeyapps:zxing-android-embedded:4.3.0') { transitive = false }
+    implementation 'com.google.zxing:core:3.5.3'
+}

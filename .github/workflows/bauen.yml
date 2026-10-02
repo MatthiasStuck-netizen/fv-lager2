@@ -1,0 +1,100 @@
+# Baut automatisch auf GitHub (kostenlos): Windows-Installer, Linux-Paket und Android-APK.
+# Ergebnisse: im Reiter "Actions" beim jeweiligen Lauf unter "Artifacts" herunterladen.
+# Wird ein Tag wie v1.0.0 hochgeladen, entsteht zusätzlich ein Release mit allen Dateien.
+name: Programme bauen
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - name: WiX Toolset bereitstellen
+        shell: pwsh
+        run: |
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            $wix = Get-ChildItem "C:\Program Files (x86)" -Filter "WiX Toolset*" -Directory | Select-Object -First 1
+            if ($wix) { "$($wix.FullName)\bin" | Out-File -FilePath $env:GITHUB_PATH -Append }
+            else { dotnet tool install --global wix --version 3.14.1 2>$null; choco install wixtoolset --version 3.14.1 -y --no-progress; "C:\Program Files (x86)\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Append }
+          }
+      - name: Programm übersetzen
+        shell: cmd
+        run: |
+          mkdir build\klassen build\eingabe build\paket
+          javac --release 17 -encoding UTF-8 -d build\klassen kern\src\de\fehnverleih\lager\kern\*.java pc\src\de\fehnverleih\lager\pc\*.java
+          xcopy /e /q /y pc\res build\klassen\
+          echo Main-Class: de.fehnverleih.lager.pc.Start> build\manifest.txt
+          jar cfm build\eingabe\FV-Lager.jar build\manifest.txt -C build\klassen .
+      - name: Installer (.exe) bauen
+        shell: cmd
+        run: >
+          jpackage --type exe --name FV-Lager --app-version 1.0.0 --vendor Fehnverleih
+          --description "Lager-Programm fuer Fehnverleih" --input build\eingabe --main-jar FV-Lager.jar
+          --main-class de.fehnverleih.lager.pc.Start --icon pc\paket\fv-lager.ico --dest build\paket
+          --add-modules java.base,java.desktop,jdk.crypto.ec,jdk.localedata,jdk.charsets
+          --jlink-options "--strip-debug --no-header-files --no-man-pages --strip-native-commands --include-locales=de,en --compress=zip-6"
+          --win-menu --win-menu-group Fehnverleih --win-shortcut --win-dir-chooser --win-per-user-install
+          --win-upgrade-uuid 5d0c3a52-1f7e-4c1b-9a51-6f3e2b8a4c10
+      - name: Portable Version (ohne Installation) bauen
+        shell: pwsh
+        run: |
+          jpackage --type app-image --name FV-Lager --app-version 1.0.0 --vendor Fehnverleih --input build\eingabe --main-jar FV-Lager.jar --main-class de.fehnverleih.lager.pc.Start --icon pc\paket\fv-lager.ico --dest build\portable --add-modules java.base,java.desktop,jdk.crypto.ec,jdk.localedata,jdk.charsets --jlink-options "--strip-debug --no-header-files --no-man-pages --strip-native-commands --include-locales=de,en --compress=zip-6"
+          Compress-Archive -Path build\portable\FV-Lager -DestinationPath build\paket\FV-Lager-1.0.0-Windows-portabel.zip
+      - uses: actions/upload-artifact@v4
+        with: { name: FV-Lager-Windows, path: build/paket/* }
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - run: bash pc/bauen.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FV-Lager-Linux
+          path: |
+            build/paket/*.deb
+            build/FV-Lager.jar
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - name: Schlüssel zum Signieren (optional, aus GitHub-Secrets)
+        if: ${{ env.KS != '' }}
+        env: { KS: "${{ secrets.FV_KEYSTORE_BASE64 }}" }
+        run: echo "$KS" | base64 -d > $RUNNER_TEMP/fv.jks && echo "FV_KEYSTORE=$RUNNER_TEMP/fv.jks" >> $GITHUB_ENV
+      - name: APK bauen
+        working-directory: android
+        env:
+          FV_KEYSTORE_PASSWORT: ${{ secrets.FV_KEYSTORE_PASSWORT }}
+          FV_KEY_ALIAS: ${{ secrets.FV_KEY_ALIAS }}
+          FV_KEY_PASSWORT: ${{ secrets.FV_KEY_PASSWORT }}
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk ../FV-Lager-1.0.0.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: FV-Lager-Android, path: FV-Lager-1.0.0.apk }
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [ windows, linux, android ]
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { path: dateien, merge-multiple: true }
+      - uses: softprops/action-gh-release@v2
+        with: { files: "dateien/*" }
