@@ -19,7 +19,7 @@
   };
   F.stopp = function (leise) {
     if (hoerer) { hoerer(); hoerer = null; }
-    clearTimeout(folgeTimer); clearInterval(simTimer); simTimer = null;
+    clearTimeout(folgeTimer); clearInterval(simTimer); simTimer = null; B.probe = false;
     if (F.aktiv && !leise) B.still();
     F.aktiv = false; K.beiGeste(null); B.wach(false);
   };
@@ -113,7 +113,7 @@
 
   /* ---------- Probefahrt (Vorschau/Test): fährt die Route automatisch ab ---------- */
   F.probefahrt = function (kmh, ab) {
-    clearInterval(simTimer);
+    clearInterval(simTimer); B.probe = true;
     var weg = ab || 0, r = F.route, v = (kmh || 60) / 3.6;
     function tick() {
       if (!F.aktiv) { clearInterval(simTimer); return; }

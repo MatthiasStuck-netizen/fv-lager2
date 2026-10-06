@@ -52,7 +52,16 @@ const versuch = async (name, f) => { try { await f(); } catch (e) { log.schritte
 const karteWarten = LIVE ? 6000 : 500;
 
 await page.goto(basis);
-await versuch('anmeldung', async () => { await bild('anmeldung'); await tipp('[data-a=admin]'); await page.fill('input[name=pw]', 'test'); await tipp('#anm-los'); await page.waitForSelector('.auftrag', { timeout: 15000 }); });
+await versuch('demo', async () => {
+  await bild('anmeldung'); await tipp('[data-tun=demo]'); await page.waitForSelector('.auftrag', { timeout: 15000 });
+  await page.evaluate(() => { FV.B._simOrt({ lat: 53.2245, lon: 7.7560, genau: 8, tempo: 0, kurs: -1, zeit: Date.now() }); FV.app.befehl('demo/fahrt'); });
+  await page.waitForSelector('#abb', { timeout: 60000 }); await page.waitForTimeout(LIVE ? 9000 : 4500);
+  log.demo = await page.evaluate(() => ({ demo: FV.S.demo, restKm: FV.F.stand && Math.round(FV.F.stand.restM / 100) / 10, strecke: Math.round(FV.F.route.laenge / 100) / 10, probe: FV.B.probe }));
+  await bild('demo-probefahrt');
+  await page.evaluate(() => { FV.Tun.abmelden(); }); await page.waitForSelector('#anm-los', { timeout: 10000 });
+  log.demoEnde = await page.evaluate(() => ({ demo: FV.S.demo, angemeldet: FV.S.angemeldet(), probe: !!FV.B.probe, aktiv: FV.F.aktiv }));
+});
+await versuch('anmeldung', async () => { await tipp('[data-a=admin]'); await page.fill('input[name=pw]', 'test'); await tipp('#anm-los'); await page.waitForSelector('.auftrag', { timeout: 15000 }); });
 await page.evaluate(() => FV.B._simOrt({ lat: 53.2245, lon: 7.7560, genau: 8, tempo: 0, kurs: -1, zeit: Date.now() }));
 await versuch('auftraege', async () => { await bild('auftraege'); });
 await versuch('auftrag-einzelheiten', async () => { await tipp('.auftrag .mehr'); await bild('auftrag-einzelheiten'); await tipp('[data-tun=blatt-zu]'); });
@@ -104,6 +113,7 @@ log.pois = await page.evaluate(() => (FV.app.z.nav && FV.app.z.nav.route ? FV.ap
 log.kartenfehler = await page.evaluate(() => (window.FV_TEST.kartenfehler || []).slice(0, 12));
 log.jsfehler = await page.evaluate(() => (window.FV_TEST.fehler || []).slice(0, 12));
 log.karte = await page.evaluate(() => { try { const m = FV.K.map; return { stil: FV.K.stilArt(), ebenen: m.getStyle().layers.length, quellen: Object.keys(m.getStyle().sources) }; } catch (e) { return String(e); } });
+console.log(JSON.stringify({ demo: log.demo, demoEnde: log.demoEnde }));
 console.log(JSON.stringify({ adressen: log.adressen, pois: log.pois }, null, 1));
 console.log(JSON.stringify({ karte: log.karte, dienste: log.dienste, netzfehler: log.netzfehler.slice(0, 10), kartenfehler: log.kartenfehler, wetter: log.wetter }, null, 1));
 console.log(JSON.stringify({ schritte: log.schritte, konsole: log.konsole.slice(0, 15), route: log.route, zusatz: log.zusatz, stand: log.stand, ansagen: log.ansagen, jsfehler: log.jsfehler }, null, 1));

@@ -11,7 +11,7 @@ window.FV = window.FV || {};
 
   /* Android ruft hier zurück */
   FV._nativ = function (typ, id, a, b) {
-    if (typ === 'ort') { ortEmpfangen(a); return; }
+    if (typ === 'ort') { if (!B.probe) ortEmpfangen(a); return; }   // während einer Probefahrt zählt nur die gespielte Position
     if (typ === 'zurueck') { if (FV.app && FV.app.zurueck) FV.app.zurueck(); return; }
     if (typ === 'sichtbar') { if (FV.app && FV.app.sichtbar) FV.app.sichtbar(!!a); return; }
     var o = offen[id]; if (!o) return; delete offen[id];
@@ -65,6 +65,7 @@ window.FV = window.FV || {};
     if (N) { N.ortStart(); return; }
     if (wache != null || !navigator.geolocation) return;
     wache = navigator.geolocation.watchPosition(function (g) {
+      if (B.probe) return;
       ortEmpfangen({ lat: g.coords.latitude, lon: g.coords.longitude, genau: g.coords.accuracy, tempo: g.coords.speed == null ? -1 : g.coords.speed, kurs: g.coords.heading == null || isNaN(g.coords.heading) ? -1 : g.coords.heading, zeit: g.timestamp });
     }, function () {}, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
   };

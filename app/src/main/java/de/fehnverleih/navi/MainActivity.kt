@@ -18,7 +18,10 @@ import android.speech.tts.TextToSpeech
 import android.util.Base64
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.util.Log
+import android.webkit.ConsoleMessage
 import android.webkit.JavascriptInterface
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -67,6 +70,7 @@ class MainActivity : ComponentActivity() {
     private var fotoDatei: File? = null
     private var nachErlaubnis: (() -> Unit)? = null
     private var seiteBereit = false
+    private var befehl = ""
 
     private val scanStarter = registerForActivityResult(ScanContract()) { ergebnis ->
         val id = scanId
@@ -156,8 +160,16 @@ class MainActivity : ComponentActivity() {
             override fun onPageFinished(view: WebView, url: String) {
                 seiteBereit = true
                 autoAuftragUebergeben()
+                befehlUebergeben()
             }
         }
+        web.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(m: ConsoleMessage): Boolean {
+                Log.i("FehnverleihNavi", m.messageLevel().name + " " + m.message() + " (" + m.sourceId().substringAfterLast('/') + ":" + m.lineNumber() + ")")
+                return true
+            }
+        }
+        befehlLesen(intent)
         web.addJavascriptInterface(Bruecke(), "FVNative")
         web.loadUrl(START)
 
@@ -191,6 +203,21 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        befehlLesen(intent)
+        if (seiteBereit) befehlUebergeben()
+    }
+
+    /** Aufruf von aussen, z. B. aus der Lager-App: fehnverleihnavi://start oder fehnverleihnavi://demo */
+    private fun befehlLesen(i: Intent?) {
+        val u = i?.data ?: return
+        if (u.scheme != "fehnverleihnavi") return
+        befehl = ((u.host ?: "") + (u.path ?: "")).replace(Regex("[^a-z/]"), "").trim('/')
+    }
+
+    private fun befehlUebergeben() {
+        val b = befehl
+        befehl = ""
+        if (b.isNotEmpty() && b != "start") js("if(window.FV&&FV.app&&FV.app.befehl)FV.app.befehl(" + q(b) + ")")
     }
 
     override fun onResume() {

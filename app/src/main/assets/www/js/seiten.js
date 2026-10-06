@@ -40,8 +40,10 @@
           '<label class="feld" style="margin-top:12px">Ausweis-Code<input class="eingabe" name="code" placeholder="FVZ-…" autocapitalize="off" autocomplete="off" spellcheck="false" value="' + h(z.ausweis || '') + '"></label>' +
           '<label class="feld">Lager-Passwort<input class="eingabe" type="password" name="pw" autocomplete="current-password"></label>') +
       '<button class="gold knopf breit gross" id="anm-los">Anmelden</button></form>' +
+      '<button class="rand knopf breit" data-tun="demo">' + sym('karte') + 'Demo ansehen (ohne Anmeldung)</button>' +
       '<p class="klein2" style="text-align:center">Fehnverleih Navi ' + h(B.info().version || '') + '</p></div>');
   };
+  Tun.demo = function () { A().demoStart(); A().toast('Demo mit Beispieldaten – es wird nichts gespeichert.', 4500); };
   Tun['anm-art'] = function (e) { A().z.anmArt = e.getAttribute('data-a'); A().z.meldung = ''; A().neu(); };
   Tun.ausweis = function () { B.scan().then(function (c) { if (!c) return; A().z.ausweis = c; var i = $('input[name=code]'); if (i) i.value = c; var p = $('input[name=pw]'); if (p) p.focus(); }).catch(function (e) { A().toast(e.message || 'Scannen nicht möglich'); }); };
   Tun.anmelden = function (f) {
@@ -58,7 +60,10 @@
       '<button class="rand knopf breit" data-tun="abmelden">Abmelden / anderes Konto</button></div>');
   };
   Tun['sperre-pruefen'] = function () { S.ruf('status').then(function () { A().los(); }).catch(function (e) { if (!e.stop) A().toast(e.message); else A().toast('Noch nicht eingestempelt.'); }); };
-  Tun.abmelden = function () { A().frage('Dieses Handy abmelden?', 'Abmelden').then(function (ja) { if (!ja) return; F.stopp(); S.abmelden().then(function () { A().abgemeldet(''); }); }); };
+  Tun.abmelden = function () {
+    if (S.demo) { A().demoEnde(); return; }
+    A().frage('Dieses Handy abmelden?', 'Abmelden').then(function (ja) { if (!ja) return; F.stopp(); S.abmelden().then(function () { A().abgemeldet(''); }); });
+  };
 
   /* ====================== Aufträge ====================== */
   Se.auftraege = function () {
@@ -93,7 +98,8 @@
   Tun['ziel-fest'] = function (e) {
     var k = e.getAttribute('data-z'), x = A().z.ziele[k]; if (!x || !x.adresse) { A().toast('Adresse ist auf dem Server nicht hinterlegt.'); return; }
     A().blattZu();
-    A().zeige('vorschau', { ziel: { name: x.name || (k === 'lagerhalle' ? 'Lagerhalle' : 'Verwaltung'), adresse: x.adresse, auftrag: e.getAttribute('data-id') || A().z.letzterAuftrag || '', phase: 'abfahrt', fest: k, art: 'halle' } });
+    var fo = (B.lesen('festorte', {}) || {})[k] || {};
+    A().zeige('vorschau', { ziel: { name: x.name || (k === 'lagerhalle' ? 'Lagerhalle' : 'Verwaltung'), adresse: x.adresse, lat: fo.lat, lon: fo.lon, auftrag: e.getAttribute('data-id') || A().z.letzterAuftrag || '', phase: 'abfahrt', fest: k, art: 'halle' } });
   };
 
   /* Einzelheiten zu einem Auftrag */
@@ -249,6 +255,7 @@
     A().fahrtZiel(ziel.name + (ziel.adresse ? ', ' + adr1(ziel.adresse) : ''), ziel.phase === 'ankunft' ? ziel.auftrag : '');
     if (ziel.art === 'frei') zielMerken(ziel, n.nach);
     A().zeige('fahrt', {}, 'ersetzen');
+    if (S.demo) { F.probefahrt(70); A().toast('Probefahrt: Die Demo fährt die Strecke von selbst ab.', 5000); }
   };
 
   /* ====================== Zielführung ====================== */
@@ -490,15 +497,24 @@
 
   /* ====================== Einstellungen ====================== */
   Se.einstellungen = function () {
-    var e = A().e, i = B.info();
+    var e = A().e, i = B.info(), fest = B.lesen('festorte', {}) || {};
     function sch(k, s, titel, klein) { return '<button class="schalter' + (e[k] !== false ? ' an' : '') + '" data-tun="schalter" data-k="' + k + '">' + sym(s) + '<span>' + titel + (klein ? '<small>' + klein + '</small>' : '') + '</span><i></i></button>'; }
     seite(kopf('Einstellungen', '', false) + '<div class="rollen"><div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '</div>' +
       '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + '</div>' +
       '<div class="block"><h2>' + sym('haus') + 'Zuhause</h2><label class="feld">Adresse für das Schnellziel „Zuhause“<input class="eingabe" id="zuhause" value="' + h(e.zuhause) + '" placeholder="Straße, PLZ Ort"></label><button class="rand knopf breit" data-tun="zuhause">Speichern</button></div>' +
-      '<div class="block"><h2>' + sym('person') + 'Anmeldung</h2><div class="detailzeile">' + sym('ausweis') + '<div><small>Angemeldet als</small>' + h(S.an.name || '') + (S.admin() ? ' (Admin)' : '') + '</div></div>' +
-      '<div class="detailzeile">' + sym('auto') + '<div><small>Fahrzeug</small>' + h(e.fahrzeugName || 'noch nicht gewählt – siehe „Fahrzeuge“') + '</div></div><div style="height:8px"></div><button class="rand knopf breit" data-tun="abmelden">' + sym('abmelden') + 'Abmelden</button></div>' +
+      '<div class="block"><h2>' + sym('halle') + 'Lagerhalle und Verwaltung</h2><p class="klein2" style="margin:0 0 8px">Findet die Karte die Hausnummer nicht genau? Einmal vor Ort antippen, dann führt die App künftig genau dorthin.</p>' +
+      '<div class="zweier"><button class="rand knopf" data-tun="festort" data-z="lagerhalle">Hier ist die Lagerhalle' + (fest.lagerhalle ? ' ✓' : '') + '</button><button class="rand knopf" data-tun="festort" data-z="verwaltung">Hier ist die Verwaltung' + (fest.verwaltung ? ' ✓' : '') + '</button></div></div>' +
+      '<div class="block"><h2>' + sym('person') + 'Anmeldung</h2><div class="detailzeile">' + sym('ausweis') + '<div><small>Angemeldet als</small>' + (S.demo ? 'Demo (Beispieldaten)' : h(S.an.name || '') + (S.admin() ? ' (Admin)' : '')) + '</div></div>' +
+      '<div class="detailzeile">' + sym('auto') + '<div><small>Fahrzeug</small>' + h(e.fahrzeugName || 'noch nicht gewählt – siehe „Fahrzeuge“') + '</div></div><div style="height:8px"></div><button class="rand knopf breit" data-tun="abmelden">' + sym('abmelden') + (S.demo ? 'Demo beenden' : 'Abmelden') + '</button></div>' +
       '<div class="hinweis">Fehnverleih Navi ' + h(i.version || '') + '<br>Karte und Route: © OpenStreetMap-Mitwirkende (OpenFreeMap, Valhalla/FOSSGIS)<br>Wetter: Deutscher Wetterdienst</div></div>');
   };
   Tun.schalter = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); el.classList.toggle('an', e[k] !== false); };
+  Tun.festort = function (el) {
+    var o = B.ort(), k = el.getAttribute('data-z');
+    if (!o || o.genau > 40 || Date.now() - (o.zeit || 0) > 60000) { A().toast('Der Standort ist gerade nicht genau genug. Bitte kurz im Freien warten und noch einmal antippen.', 5000); return; }
+    A().frage('Den jetzigen Standort als „' + (k === 'lagerhalle' ? 'Lagerhalle' : 'Verwaltung') + '“ speichern?', 'Speichern').then(function (ja) {
+      if (!ja) return; var f = B.lesen('festorte', {}) || {}; f[k] = { lat: o.lat, lon: o.lon }; B.schreiben('festorte', f); A().toast('Gespeichert.'); A().neu();
+    });
+  };
   Tun.zuhause = function () { A().e.zuhause = $('#zuhause').value.trim(); A().speichern(); A().toast('Gespeichert.'); };
 })();

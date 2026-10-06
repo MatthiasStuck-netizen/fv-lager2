@@ -65,7 +65,7 @@
   /* ---------- Anmeldung / Sperre ---------- */
   app.abgemeldet = function (msg) { F.stopp(); app.z.meldung = msg || ''; app.stapel = []; app.zeige('anmeldung'); };
   app.gesperrt = function (msg) { var s = app.stapel[app.stapel.length - 1]; if (s && s.name === 'sperre') return; F.stopp(); app.z.meldung = msg || ''; app.stapel = []; app.zeige('sperre'); };
-  app.los = function () { app.stapel = []; app.zeige('auftraege', {}, 'reiter'); app.ladeAuftraege(); S.nachsenden(); B.ortStart(); fahrtPruefen(); };
+  app.los = function () { app.stapel = []; app.zeige('auftraege', {}, 'reiter'); app.ladeAuftraege(); S.nachsenden(); B.ortStart(); if (!S.demo) fahrtPruefen(); };
 
   /* ---------- Aufträge ---------- */
   app.heute = function () { return G.iso(new Date()); };
@@ -80,10 +80,10 @@
   }
   app.ladeAuftraege = function () {
     var z = app.z; z.laedt = true; z.fehler = '';
-    if (!z.auftraege.length) { var m = B.lesen('auftraege', null); if (m && m.liste) { z.auftraege = m.liste.map(termin); z.ziele = m.ziele || {}; z.stand = m.stand || ''; } }
+    if (!z.auftraege.length && !S.demo) { var m = B.lesen('auftraege', null); if (m && m.liste) { z.auftraege = m.liste.map(termin); z.ziele = m.ziele || {}; z.stand = m.stand || ''; } }
     return S.ruf('navi_liste').then(function (r) {
       z.auftraege = (r.auftraege || []).map(termin); z.ziele = r.ziele || {}; z.stand = r.stand || ''; z.laedt = false;
-      B.schreiben('auftraege', { liste: r.auftraege || [], ziele: z.ziele, stand: z.stand });
+      if (!S.demo) B.schreiben('auftraege', { liste: r.auftraege || [], ziele: z.ziele, stand: z.stand });
       if (app.stapel.length === 1 && app.z.reiter === 'auftraege') zeichnen();
     }).catch(function (e) { z.laedt = false; if (!e.stop) { z.fehler = e.message; if (app.stapel.length === 1 && app.z.reiter === 'auftraege') zeichnen(); } });
   };
@@ -102,9 +102,10 @@
     app.fahrtNeu();
   }
   app.fahrtNeu = function () { B.zaehlerNull(); B.schreiben('fahrt', { start: Date.now(), ziel: '', auftrag: '' }); };
-  app.fahrtZiel = function (ziel, auftrag) { var f = B.lesen('fahrt', null) || { start: Date.now() }; f.ziel = ziel || ''; f.auftrag = auftrag || ''; B.schreiben('fahrt', f); };
+  app.fahrtZiel = function (ziel, auftrag) { if (S.demo) return; var f = B.lesen('fahrt', null) || { start: Date.now() }; f.ziel = ziel || ''; f.auftrag = auftrag || ''; B.schreiben('fahrt', f); };
   /** Schließt die laufende Fahrt ab und schreibt sie ins Fahrtenbuch. Gibt die Kilometer zurück. */
   app.fahrtEnde = function (ersatzZiel) {
+    if (S.demo) { var dk = F.route ? Math.round(F.route.laenge / 100) / 10 : 0; if (dk) S.spaeter('fahrt_speichern', { km: dk, ziel: ersatzZiel || 'Fahrt' }); return dk; }
     var f = B.lesen('fahrt', null) || { start: Date.now() }, m = B.zaehler().meter || 0, km = Math.round(m / 100) / 10;
     if (m >= 200) {
       S.spaeter('fahrt_speichern', { start_ts: Math.round(f.start / 1000), ende_ts: Math.round(Date.now() / 1000), km: km, ziel: f.ziel || ersatzZiel || 'Fahrt', auftrag: f.auftrag || '',
@@ -118,7 +119,7 @@
   var meldeZeit = 0;
   function melden(p) {
     var jetzt = Date.now();
-    if (!S.angemeldet() || jetzt - meldeZeit < 30000 || app.z.meldenAus) return;
+    if (S.demo || !S.angemeldet() || jetzt - meldeZeit < 30000 || app.z.meldenAus) return;
     meldeZeit = jetzt;
     var f = B.lesen('fahrt', null) || {};
     S.ruf('navi_position', { lat: +p.lat.toFixed(5), lon: +p.lon.toFixed(5), tempo: p.tempo > 0 ? Math.round(p.tempo * 3.6) : 0, kurs: p.kurs >= 0 ? Math.round(p.kurs) : -1,
@@ -131,6 +132,25 @@
     if (!S.angemeldet() || F.aktiv) return;
     function los() { var a = app.z.auftraege.filter(function (x) { return x.id === id; })[0]; if (a) { app.blattZu(); FV.Tun.navi({ getAttribute: function () { return id; } }); return true; } return false; }
     if (!los()) app.ladeAuftraege().then(los);
+  };
+
+  /* ---------- Demo-Modus und Aufrufe von außen (fehnverleihnavi://…) ---------- */
+  app.demoStart = function () { S.demo = true; app.z.auftraege = []; app.z.tag = app.heute(); app.z.meldenAus = false; app.los(); };
+  app.demoEnde = function () { F.stopp(); S.abmeldenLokal(); app.z.auftraege = []; app.z.nav = null; app.stapel = []; if (S.angemeldet()) app.los(); else app.zeige('anmeldung'); };
+  app.befehl = function (b) {
+    b = String(b || '');
+    if (b.indexOf('demo') !== 0) return;
+    if (!S.demo) app.demoStart();
+    if (b === 'demo') return;
+    // demo/navi: Route zum ersten Auftrag zeigen · demo/fahrt: zusätzlich die Probefahrt starten
+    var warte = 0, t = setInterval(function () {
+      if (++warte > 60) return clearInterval(t);
+      var a = app.tagesliste(app.heute())[0]; if (!a) return;
+      clearInterval(t);
+      FV.Tun.navi({ getAttribute: function () { return a.id; } });
+      if (b !== 'demo/fahrt') return;
+      var w2 = 0, t2 = setInterval(function () { if (++w2 > 120) return clearInterval(t2); if (app.z.nav && app.z.nav.route) { clearInterval(t2); FV.Tun['route-start'](); } }, 500);
+    }, 500);
   };
 
   /* ---------- Start ---------- */
