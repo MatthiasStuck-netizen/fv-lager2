@@ -80,7 +80,7 @@ jobs:
   geraetetest:
     needs: bauen
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 24
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -94,12 +94,14 @@ jobs:
         continue-on-error: true
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 35
           arch: x86_64
           target: google_apis
           profile: pixel_6
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 4096
           script: bash werkzeug/geraetetest.sh
       - name: Bilder ablegen (Zweig navi-bau)
         if: always()

@@ -363,15 +363,25 @@
     K.setzen($('#kfeld')).then(function () { K.leeren(); });
     if (!liste.length) { $('#kmeld').innerHTML = sym('info') + '<span>An diesem Tag gibt es keine Aufträge.</span>'; return; }
     var punkte = [], kette = Promise.resolve();
-    liste.forEach(function (a, i) { kette = kette.then(function () { return G.finde(a.adresse, B.ort()).then(function (c) { punkte.push({ nr: i + 1, lat: c.lat, lon: c.lon, id: a.id }); }).catch(function () {}); }); });
-    kette.then(function () {
+    function zeigen() {   // jede gefundene Adresse erscheint sofort, die Karte zieht den Ausschnitt nach
       if (meins !== lauf) return;
-      var m = $('#kmeld'); if (m) { if (punkte.length) m.hidden = true; else m.innerHTML = sym('warnung') + '<span>Die Adressen wurden nicht gefunden.</span>'; }
       K.wenn(function () {
+        if (meins !== lauf) return;
         K.nummern(punkte, function (p) { Tun.auftrag({ getAttribute: function () { return p.id; } }); });
         var pts = punkte.map(function (p) { return [p.lon, p.lat]; }), o = B.ort(); if (o) { pts.push([o.lon, o.lat]); K.start(o); }
-        K.rahmen(pts, { top: 60, bottom: 60, left: 50, right: 60 });
+        K.rahmen(pts, { top: 70, bottom: 60, left: 50, right: 60 });
       });
+    }
+    liste.forEach(function (a, i) {
+      kette = kette.then(function () {
+        if (meins !== lauf) return;
+        var m = $('#kmeld'); if (m) m.innerHTML = '<i class="dreh"></i><span>Adresse ' + (i + 1) + ' von ' + liste.length + ' wird gesucht …</span>';
+        return G.finde(a.adresse, B.ort()).then(function (c) { punkte.push({ nr: i + 1, lat: c.lat, lon: c.lon, id: a.id }); zeigen(); }).catch(function () {});
+      });
+    });
+    kette.then(function () {
+      if (meins !== lauf) return;
+      var m = $('#kmeld'); if (m) { if (punkte.length === liste.length) m.hidden = true; else m.innerHTML = sym('warnung') + '<span>' + (punkte.length ? (liste.length - punkte.length) + ' Adresse(n) wurden nicht gefunden.' : 'Die Adressen wurden nicht gefunden.') + '</span>'; }
     });
   };
   Se.uebersicht_weg = function () { lauf++; K.leeren(); };
