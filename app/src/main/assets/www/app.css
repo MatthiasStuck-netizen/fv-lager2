@@ -282,4 +282,4 @@ textarea.eingabe { min-height: 84px; resize: none; }
 /* MapLibre: eigene Marken ohne Standard-Rahmen */
 .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-top-right, .maplibregl-ctrl-top-left { display: none; }
 @media (max-width: 345px) { .auftrag .los { width: 88px; font-size: 13.5px; } .auftrag .zeit { width: 64px; } .auftrag .zeit b { font-size: 20px; } }
-@media (min-width: 400px) { .auftrag { min-height: 96px; } .auftrag .los { width: 108px; font-size: 15.5px; } .auftrag .zeit { width: 76px; } .auftrag .zeit b { font-size: 24px; } .auftrag .wer > b { font-size: 17.5px; } .auftrag .adr { font-size: 14.5px; } .auftrag .rund { width: 44px; height: 44px; } }
+@media (min-width: 400px) { .auftrag { min-height: 94px; } .auftrag .los { width: 100px; font-size: 15px; } .auftrag .zeit { width: 74px; } .auftrag .zeit b { font-size: 24px; } .auftrag .wer > b { font-size: 17.5px; } .auftrag .adr { font-size: 14px; } .auftrag .rund { width: 42px; height: 42px; } }

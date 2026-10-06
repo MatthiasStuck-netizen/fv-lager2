@@ -9,7 +9,7 @@
     osrm: 'https://routing.openstreetmap.de/routed-car',
     nominatim: 'https://nominatim.openstreetmap.org',
     photon: 'https://photon.komoot.io',
-    overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'],
+    overpass: ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.private.coffee/api/interpreter'],
     wetter: 'https://api.brightsky.dev'
   };
 
@@ -100,7 +100,7 @@
   G.uhr = function (d) { d = d || new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
 
   /* ---------- Adresssuche ---------- */
-  var geoMerker = B.lesen('geo', {}) || {};
+  var geoMerker = B.lesen('geo', {}) || {}, nomZeit = 0;
   function adresseAus(a, name) {
     var str = [a.road || a.pedestrian || a.hamlet || '', a.house_number || ''].join(' ').trim();
     var ort = [a.postcode || '', a.city || a.town || a.village || a.municipality || a.suburb || ''].join(' ').trim();
@@ -112,7 +112,8 @@
     var p = { format: 'jsonv2', q: text, countrycodes: 'de,nl', limit: '6', addressdetails: '1', 'accept-language': 'de' };
     if (nahe) { p.viewbox = [nahe.lon - 0.9, nahe.lat + 0.6, nahe.lon + 0.9, nahe.lat - 0.6].join(','); }
     var q = Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&');
-    return B.json({ url: G.DIENST.nominatim + '/search?' + q, zeit: 12000 }).then(function (l) {
+    var warte = Math.max(0, nomZeit + 1100 - Date.now()); nomZeit = Date.now() + warte;   // Nutzungsregel von Nominatim: höchstens eine Anfrage je Sekunde
+    return new Promise(function (ok) { setTimeout(ok, warte); }).then(function () { return B.json({ url: G.DIENST.nominatim + '/search?' + q, zeit: 12000 }); }).then(function (l) {
       if (!Array.isArray(l) || !l.length) throw new Error('leer');
       return l.map(function (x) {
         var a = adresseAus(x.address || {}, x.name);
@@ -130,16 +131,40 @@
     });
   };
   /** Adresse → Koordinate (mit Merker, damit jede Adresse nur einmal gesucht wird) */
+  /** Schreibweisen einer Adresse, von genau bis ungefähr: [Text, ungefähr?] */
+  G.varianten = function (adresse) {
+    var t = String(adresse || '').replace(/\s*\n\s*/g, ', ').replace(/\s+/g, ' ').trim(), v = [[t, false]];
+    function dazu(x, ung) { x = x.replace(/^[,\s]+|[,\s]+$/g, ''); if (x && !v.some(function (y) { return y[0] === x; })) v.push([x, ung]); }
+    var ohneNr = function (s) { return s.replace(/\s+\d+\s*[a-zA-Z]?$/, ''); };
+    var m = t.match(/^(.*?)[,\s]+(\d{5})\s+(.+)$/);
+    if (m) {
+      var str = m[1].replace(/,\s*$/, '').trim(), plz = m[2], ort = m[3].trim(), ort1 = ort.split(/[-\/(,]/)[0].trim();
+      if (ort1 !== ort) dazu(str + ', ' + plz + ' ' + ort1, false);
+      dazu(str + ', ' + plz, false);
+      if (ohneNr(str) !== str) dazu(ohneNr(str) + ', ' + plz + ' ' + ort1, true);
+      dazu(plz + ' ' + ort1, true);
+    } else {
+      var teile = t.split(',');
+      if (teile.length > 1) { var s0 = teile[0].trim(), o0 = teile.slice(1).join(',').trim(); if (ohneNr(s0) !== s0) dazu(ohneNr(s0) + ', ' + o0, true); dazu(o0, true); }
+    }
+    return v;
+  };
+  /** Adresse → Koordinate (mit Merker, damit jede Adresse nur einmal gesucht wird). ungefaehr = nur Straße oder Ort gefunden. */
   G.finde = function (adresse, nahe) {
     var key = String(adresse || '').trim().toLowerCase().replace(/\s+/g, ' ');
     if (!key) return Promise.reject(new Error('Keine Adresse hinterlegt.'));
     if (geoMerker[key]) return Promise.resolve(geoMerker[key]);
-    return G.suche(adresse.replace(/\n/g, ', '), nahe).then(function (l) {
-      if (!l.length) throw new Error('Adresse nicht gefunden: ' + adresse);
-      var k = Object.keys(geoMerker); if (k.length > 300) delete geoMerker[k[0]];
-      geoMerker[key] = { lat: l[0].lat, lon: l[0].lon }; B.schreiben('geo', geoMerker);
-      return geoMerker[key];
-    });
+    var v = G.varianten(adresse);
+    function probier(i) {
+      if (i >= v.length) return Promise.reject(new Error('Adresse nicht gefunden: ' + adresse));
+      return G.suche(v[i][0], nahe).catch(function () { return []; }).then(function (l) {
+        if (!l.length) return probier(i + 1);
+        var k = Object.keys(geoMerker); if (k.length > 300) delete geoMerker[k[0]];
+        var e = { lat: l[0].lat, lon: l[0].lon }; if (v[i][1]) e.ungefaehr = true; else { geoMerker[key] = e; B.schreiben('geo', geoMerker); }
+        return e;
+      });
+    }
+    return probier(0);
   };
 
   /* ---------- Route ---------- */
@@ -246,22 +271,32 @@
   };
 
   /* ---------- Ladesäulen und Parkplätze mit WC entlang der Route ---------- */
-  function linie(r, max) {
-    var schritt = Math.max(250, r.laenge / max), aus = [], w = 0;
-    for (; w < r.laenge; w += schritt) { var p = G.punktBei(r, w); aus.push(p.lat.toFixed(5) + ',' + p.lon.toFixed(5)); }
-    var e = r.punkte[r.punkte.length - 1]; aus.push(e[1].toFixed(5) + ',' + e[0].toFixed(5));
-    return aus.join(',');
+  /** Rechtecke um je 20 km Strecke (mit 600 m Rand) – höchstens 12, also die nächsten 240 km */
+  function kaesten(r) {
+    var aus = [], schritt = 20000;
+    for (var a = 0; a < r.laenge && aus.length < 12; a += schritt) {
+      var s = 90, w = 180, n = -90, o = -180, ende = Math.min(r.laenge, a + schritt);
+      for (var x = a; ; x = Math.min(ende, x + 250)) {
+        var p = G.punktBei(r, x); if (p.lat < s) s = p.lat; if (p.lat > n) n = p.lat; if (p.lon < w) w = p.lon; if (p.lon > o) o = p.lon;
+        if (x >= ende) break;
+      }
+      var dLat = 0.0055, dLon = 0.0055 / Math.cos((s + n) / 2 * RAD);
+      aus.push('(' + [s - dLat, w - dLon, n + dLat, o + dLon].map(function (z) { return z.toFixed(4); }).join(',') + ')');
+    }
+    return aus;
   }
-  G.pois = function (r) {
-    var l = linie(r, 90), u = 450;
+  G.pois = function (r, versuch) {
+    var k = kaesten(r), u = 450;
+    function je(filter) { return k.map(function (b) { return 'nwr' + filter + b + ';'; }).join(''); }
     var q = '[out:json][timeout:25];' +
-      '(nwr["amenity"="toilets"]["access"!~"private|customers|no"](around:' + u + ',' + l + ');)->.t;' +
+      '(' + je('["amenity"="toilets"]["access"!~"private|customers|no"]') + ')->.t;' +
       '(nwr["amenity"="parking"](around.t:120);nwr["highway"~"^(rest_area|services)$"](around.t:200);)->.p;' +
-      '(nwr.t(around.p:200);nwr["highway"="rest_area"]["toilets"="yes"](around:' + u + ',' + l + ');nwr["amenity"="parking"]["toilets"="yes"](around:' + u + ',' + l + ');)->.wc;' +
+      '(nwr.t(around.p:200);' + je('["highway"="rest_area"]["toilets"="yes"]') + je('["amenity"="parking"]["toilets"="yes"]') + ')->.wc;' +
       '.wc out center tags;' +
-      'nwr["amenity"="charging_station"](around:' + u + ',' + l + ');out center tags;';
+      '(' + je('["amenity"="charging_station"]') + ');out center tags;';
     function frag(i) {
       return B.json({ methode: 'POST', url: G.DIENST.overpass[i], kopf: { 'Content-Type': 'application/x-www-form-urlencoded' }, daten: 'data=' + encodeURIComponent(q), zeit: 30000 })
+        .then(function (j) { if (!j || !Array.isArray(j.elements)) throw new Error('leer'); return j; })
         .catch(function (e) { if (i + 1 < G.DIENST.overpass.length) return frag(i + 1); throw e; });
     }
     return frag(0).then(function (j) {
@@ -285,8 +320,12 @@
         aus.push(p);
       });
       aus.sort(function (a, b) { return a.weg - b.weg; });
-      r.pois = aus; return aus;
-    }).catch(function () { return []; });
+      r.pois = aus; r.poisDa = true; return aus;
+    }).catch(function () {
+      // freie Server sind manchmal überlastet: nach 25 Sekunden noch zweimal versuchen
+      if ((versuch || 0) < 2) return new Promise(function (ok) { setTimeout(ok, 25000); }).then(function () { return G.pois(r, (versuch || 0) + 1); });
+      return [];
+    });
   };
 
   /* ---------- Wetter (Deutscher Wetterdienst über Bright Sky) ---------- */

@@ -218,14 +218,15 @@
       K.ziel(nach, '<b>' + h(adr1(ziel.adresse).split(',')[0]) + '</b>' + h((adr1(ziel.adresse).split(',').slice(1).join(',') || '').trim()), zielLinks);
       K.start(von, '<b>' + h(von.name || 'Ihr Standort') + '</b>' + (von.ersatz ? 'Standort nicht gefunden' : ''), !zielLinks);
       K.rahmen(r.punkte, { top: 70, bottom: 50, left: 50, right: 70 });
-      fuss(r); meldung(von.ersatz ? 'Standort noch nicht gefunden – Route ab Lagerhalle.' : '', true); if (von.ersatz) setTimeout(function () { meldung(''); }, 5000);
+      var hinw = von.ersatz ? 'Standort noch nicht gefunden – Route ab Lagerhalle.' : nach.ungefaehr ? 'Die Hausnummer wurde nicht gefunden – das Ziel liegt nur ungefähr richtig.' : '';
+      fuss(r); meldung(hinw, true); if (hinw) setTimeout(function () { meldung(''); }, 7000);
     }
     K.setzen($('#kfeld')).catch(function () { meldung('Die Karte konnte nicht geladen werden.', true); });
     if (gleich) { zeichne(z.nav.route, z.nav.von, z.nav.nach); poisZeigen(z.nav.route); return; }
     K.leeren();
     Promise.all([startpunkt(), ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort())]).then(function (x) {
       if (meins !== lauf) return;
-      var von = x[0], nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name };
+      var von = x[0], nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name, ungefaehr: !!x[1].ungefaehr };
       return G.route(von, nach).then(function (r) {
         if (meins !== lauf) return;
         z.nav.route = r; z.nav.von = von; z.nav.nach = nach;

@@ -75,12 +75,15 @@ await versuch('fahrt', async () => {
   log.ansagen = await page.evaluate(() => FV.B.gesprochen.slice());
   log.stand = await page.evaluate(() => { const s = FV.F.stand; return s && { bis: Math.round(s.bis), text: s.schritt.text, restKm: Math.round(s.restM / 100) / 10, restMin: Math.round(s.restS / 60), kmh: s.kmh, limit: s.limit, wcIn: Math.round(s.wcIn) }; });
   await page.evaluate(() => { const r = FV.F.route; FV.B._simOrt({ lat: r.punkte[r.punkte.length - 1][1], lon: r.punkte[r.punkte.length - 1][0], genau: 6, tempo: 3, kurs: 200, zeit: Date.now() }); });
-  await page.evaluate(() => { for (let i = 0; i < 120; i++) FV.B._simOrt && 0; });
+  
   await bild('ziel-erreicht', 700); await tipp('#blatt [data-tun=blatt-zu]');
 });
 await versuch('neue-route', async () => {
-  await tipp('.kachel[data-tun=ziel-fest]'); await page.waitForSelector('[data-tun=route-start]:not([disabled])', { timeout: 40000 }); await tipp('[data-tun=neueroute]'); await bild('neue-route');
-  await page.fill('#zsuche', 'Bäckerei Rhauderfehn'); await tipp('form[data-form=ziel-suchen] button.gold'); await page.waitForTimeout(LIVE ? 5000 : 600); await bild('neue-route-suche');
+  await page.evaluate(() => { FV.app.stapel = []; FV.app.zeige('auftraege', {}, 'reiter'); FV.app.zeige('neueroute'); }); await bild('neue-route');
+  await page.fill('#zsuche', 'Bäckerei Rhauderfehn'); await tipp('form[data-form=ziel-suchen] button.gold'); await page.waitForTimeout(LIVE ? 6000 : 600); await bild('neue-route-suche');
+  if (await page.locator('#ztreffer .eintrag').count()) await tipp('#ztreffer .eintrag', 0);
+  await page.waitForSelector('[data-tun=route-start]:not([disabled])', { timeout: 60000 }); await page.waitForTimeout(LIVE ? 32000 : 600); await bild('neue-route-vorschau');
+  log.freieRoute = await page.evaluate(() => { const r = FV.app.z.nav.route; return { km: Math.round(r.laenge / 100) / 10, pois: r.pois.length, poisDa: !!r.poisDa }; });
 });
 await versuch('reiter', async () => {
   await page.evaluate(() => { FV.app.stapel = []; FV.app.zeige('auftraege', {}, 'reiter'); });
@@ -96,10 +99,13 @@ await versuch('reiter', async () => {
   await tipp('#leiste [data-r=einstellungen]'); await bild('einstellungen');
   await page.evaluate(() => FV.app.blase('Lager', 'Bitte auf dem Rückweg noch 10 Stehtische bei Schmidt mitnehmen.')); await bild('chat-blase', 200);
 });
+log.adressen = await page.evaluate(async () => { const aus = {}; for (const a of ['Schulze-Flimmenstraße 20, 26689 Apen-Augustfehn', 'Am Deich 6, Ostrhauderfehn']) { try { aus[a] = await FV.G.finde(a); } catch (e) { aus[a] = String(e); } } return aus; });
+log.pois = await page.evaluate(() => (FV.app.z.nav && FV.app.z.nav.route ? FV.app.z.nav.route.pois : []).slice(0, 12).map(p => p.art + ' | ' + p.name + ' | ' + Math.round(p.weg) + ' m | ' + (p.info || '')));
 log.kartenfehler = await page.evaluate(() => (window.FV_TEST.kartenfehler || []).slice(0, 12));
 log.jsfehler = await page.evaluate(() => (window.FV_TEST.fehler || []).slice(0, 12));
-fs.writeFileSync(path.join(AUS, 'pruefung.json'), JSON.stringify(log, null, 1));
 log.karte = await page.evaluate(() => { try { const m = FV.K.map; return { stil: FV.K.stilArt(), ebenen: m.getStyle().layers.length, quellen: Object.keys(m.getStyle().sources) }; } catch (e) { return String(e); } });
+console.log(JSON.stringify({ adressen: log.adressen, pois: log.pois }, null, 1));
 console.log(JSON.stringify({ karte: log.karte, dienste: log.dienste, netzfehler: log.netzfehler.slice(0, 10), kartenfehler: log.kartenfehler, wetter: log.wetter }, null, 1));
 console.log(JSON.stringify({ schritte: log.schritte, konsole: log.konsole.slice(0, 15), route: log.route, zusatz: log.zusatz, stand: log.stand, ansagen: log.ansagen, jsfehler: log.jsfehler }, null, 1));
+fs.writeFileSync(path.join(AUS, 'pruefung.json'), JSON.stringify(log, null, 1));
 await browser.close(); srv.close();
