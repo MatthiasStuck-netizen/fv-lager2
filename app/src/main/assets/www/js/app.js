@@ -45,7 +45,16 @@
   var toastT = null, blaseT = null;
   app.toast = function (t, ms) { var e = $('#toast'); e.textContent = t; e.hidden = false; clearTimeout(toastT); toastT = setTimeout(function () { e.hidden = true; }, ms || 3200); };
   app.blatt = function (html) { var e = $('#blatt'); e.innerHTML = '<div class="innen">' + html + '</div>'; e.hidden = false; };
-  app.blattZu = function () { var e = $('#blatt'); e.hidden = true; e.innerHTML = ''; };
+  app.blattZu = function () { var e = $('#blatt'); e.hidden = true; e.innerHTML = ''; if (frageOk) { var f = frageOk; frageOk = null; f(false); } };
+  /** Rückfrage im eigenen Design. Liefert true/false. */
+  var frageOk = null;
+  app.frage = function (text, ja) {
+    return new Promise(function (ok) {
+      frageOk = ok;
+      app.blatt('<h2>' + FV.sym('info') + FV.esc(text) + '</h2><div class="zweier"><button class="rand knopf" data-tun="frage" data-a="0">Abbrechen</button><button class="gold knopf" data-tun="frage" data-a="1">' + FV.esc(ja || 'Ja') + '</button></div>');
+    });
+  };
+  FV.Tun.frage = function (e) { var f = frageOk; frageOk = null; app.blattZu(); if (f) f(e.getAttribute('data-a') === '1'); };
   /** Chat-Blase: erscheint oben, verschwindet nach 8 Sekunden von selbst */
   app.blase = function (von, text) {
     var e = $('#blase'); e.innerHTML = FV.sym('chat') + '<div><b>' + FV.esc(von) + '</b><span>' + FV.esc(text) + '</span></div>'; e.hidden = false;
@@ -116,6 +125,13 @@
       fahrzeug: app.e.fahrzeug || '', fahrzeug_name: app.e.fahrzeugName || '', ziel: F.aktiv && F.ziel ? (F.ziel.name || '') : '', navi: F.aktiv, km: Math.round((B.zaehler().meter || 0) / 100) / 10 }, 10000)
       .catch(function (e) { if (e.unbekannt) app.z.meldenAus = true; });
   }
+
+  /** Auftrag wurde auf dem Autobildschirm (Android Auto) angetippt: Route auf dem Handy öffnen */
+  app.autoAuftrag = function (id) {
+    if (!S.angemeldet() || F.aktiv) return;
+    function los() { var a = app.z.auftraege.filter(function (x) { return x.id === id; })[0]; if (a) { app.blattZu(); FV.Tun.navi({ getAttribute: function () { return id; } }); return true; } return false; }
+    if (!los()) app.ladeAuftraege().then(los);
+  };
 
   /* ---------- Start ---------- */
   app.sichtbar = function (an) { if (an && S.angemeldet()) { S.nachsenden(); if (app.stapel.length === 1 && app.z.reiter === 'auftraege') app.ladeAuftraege(); } };

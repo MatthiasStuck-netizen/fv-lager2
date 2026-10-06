@@ -1,0 +1,11 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.iml
+.idea/
+node_modules/
+# werden beim Bau eingefuegt:
+app/src/main/assets/www/lib/maplibre-gl.js
+app/src/main/assets/www/lib/maplibre-gl.css
+app/src/main/assets/www/schrift/

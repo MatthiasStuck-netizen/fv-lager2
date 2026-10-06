@@ -96,6 +96,7 @@
     var m = Math.max(1, Math.round(s / 60));
     return m < 60 ? m + ' Min.' : Math.floor(m / 60) + ' Std. ' + (m % 60 ? (m % 60) + ' Min.' : '');
   };
+  G.minutenKurz = function (s) { var m = Math.max(1, Math.round(s / 60)); return m < 60 ? m + ' Min.' : Math.floor(m / 60) + ':' + ('0' + (m % 60)).slice(-2) + ' Std.'; };
   G.uhr = function (d) { d = d || new Date(); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); };
 
   /* ---------- Adresssuche ---------- */

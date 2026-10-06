@@ -121,13 +121,13 @@
     marken[name] = new maplibregl.Marker(o).setLngLat([lon, lat]).addTo(K.map);
     return marken[name];
   }
-  K.ziel = function (z, schild) {
+  K.ziel = function (z, schild, links) {
     marke('ziel', z && z.lon, z && z.lat, el(PIN, 'm-ziel'), { anchor: 'bottom' });
-    marke('zielschild', z && schild ? z.lon : null, z && z.lat, el(schild || '', 'm-schild'), { anchor: 'left', offset: [22, -30] });
+    marke('zielschild', z && schild ? z.lon : null, z && z.lat, el(schild || '', 'm-schild'), { anchor: links ? 'right' : 'left', offset: [links ? -22 : 22, -30] });
   };
-  K.start = function (p, schild) {
+  K.start = function (p, schild, links) {
     marke('start', p && p.lon, p && p.lat, el('', 'm-start'), { anchor: 'center' });
-    marke('startschild', p && schild ? p.lon : null, p && p.lat, el(schild || '', 'm-schild'), { anchor: 'left', offset: [18, 0] });
+    marke('startschild', p && schild ? p.lon : null, p && p.lat, el(schild || '', 'm-schild'), { anchor: links ? 'right' : 'left', offset: [links ? -18 : 18, 0] });
   };
   K.auto = function (p, kurs) {
     if (!p) { marke('auto'); return; }

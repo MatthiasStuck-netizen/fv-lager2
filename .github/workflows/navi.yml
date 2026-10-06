@@ -1,11 +1,74 @@
+# Baut die Fehnverleih-Navi-App und prueft die Oberflaeche.
+# Ergebnis (APK, Bilder aller Seiten, Pruefprotokoll) liegt danach im Zweig "navi-bau".
 name: Fehnverleih Navi bauen
 on:
   push:
     branches: [ navi ]
   workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: navi-bau
+  cancel-in-progress: true
 jobs:
-  test:
+  bauen:
     runs-on: ubuntu-latest
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Zweig navi ist eingerichtet"
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Karten-Bibliothek, Schriften und Test-Browser holen
+        run: |
+          set -e
+          mkdir -p "$RUNNER_TEMP/npm" ergebnis && cd "$RUNNER_TEMP/npm" && npm init -y > /dev/null
+          npm install --no-audit --no-fund maplibre-gl@4.7.1 @fontsource/roboto@5 @fontsource/roboto-condensed@5 playwright@1
+          W="$GITHUB_WORKSPACE/app/src/main/assets/www"
+          mkdir -p "$W/lib" "$W/schrift"
+          cp node_modules/maplibre-gl/dist/maplibre-gl.js node_modules/maplibre-gl/dist/maplibre-gl.css "$W/lib/"
+          : > "$W/schrift.css"
+          for g in 400 500 700; do
+            cp "node_modules/@fontsource/roboto/files/roboto-latin-$g-normal.woff2" "$W/schrift/"
+            cp "node_modules/@fontsource/roboto-condensed/files/roboto-condensed-latin-$g-normal.woff2" "$W/schrift/"
+            echo "@font-face{font-family:\"Roboto\";font-style:normal;font-weight:$g;font-display:block;src:url(schrift/roboto-latin-$g-normal.woff2) format(\"woff2\")}" >> "$W/schrift.css"
+            echo "@font-face{font-family:\"Roboto Condensed\";font-style:normal;font-weight:$g;font-display:block;src:url(schrift/roboto-condensed-latin-$g-normal.woff2) format(\"woff2\")}" >> "$W/schrift.css"
+          done
+          ls -la "$W/lib" "$W/schrift" > "$GITHUB_WORKSPACE/ergebnis/dateien.txt"
+          npx playwright install --with-deps chromium > /dev/null
+      - name: Oberflaeche pruefen und Bilder machen
+        continue-on-error: true
+        run: |
+          cd werkzeug/test
+          LIVE=1 PLAYWRIGHT="$RUNNER_TEMP/npm/node_modules/playwright/index.mjs" timeout 900 node bilder.mjs "$GITHUB_WORKSPACE/app/src/main/assets/www" "$GITHUB_WORKSPACE/ergebnis/bilder" > "$GITHUB_WORKSPACE/ergebnis/pruefung.txt" 2>&1 || echo "PRUEFUNG MIT FEHLER BEENDET" >> "$GITHUB_WORKSPACE/ergebnis/pruefung.txt"
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - name: Android 35 installieren
+        run: sdkmanager "platforms;android-35" "build-tools;34.0.0" > /dev/null
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.9' }
+      - name: APK bauen
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          if gradle :app:assembleRelease --no-daemon --stacktrace > ergebnis/bau-voll.txt 2>&1; then
+            cp app/build/outputs/apk/release/app-release.apk ergebnis/Fehnverleih-Navi.apk
+            echo "BAU OK" > ergebnis/bau.txt
+          else
+            echo "BAU FEHLGESCHLAGEN" > ergebnis/bau.txt
+          fi
+          grep -n -E "^e: |^w: .*(error|Error)|error:|FAILED|What went wrong|Unresolved|AAPT|Manifest merger" -A4 ergebnis/bau-voll.txt | head -200 >> ergebnis/bau.txt || true
+          echo "----- Ende des Protokolls -----" >> ergebnis/bau.txt
+          tail -60 ergebnis/bau-voll.txt >> ergebnis/bau.txt
+          rm -f ergebnis/bau-voll.txt
+      - name: Ergebnisse ablegen (Zweig navi-bau)
+        if: always()
+        run: |
+          cd ergebnis
+          echo "Stand $(date -u +%FT%TZ) · Commit $GITHUB_SHA" > stand.txt
+          git init -q -b navi-bau
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Bau-Ergebnis zu $GITHUB_SHA"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" navi-bau
