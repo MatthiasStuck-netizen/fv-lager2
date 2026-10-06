@@ -313,7 +313,7 @@
         if (laden) {
           var st = [];
           if (t['socket:type2_combo']) st.push('CCS'); if (t['socket:type2']) st.push('Typ 2'); if (t['socket:chademo']) st.push('CHAdeMO'); if (t['socket:schuko']) st.push('Schuko');
-          p.info = [t.capacity ? t.capacity + ' Plätze' : '', st.join(' · '), t.operator && t.operator !== p.name ? t.operator : ''].filter(Boolean).join(' · ');
+          p.info = [t.capacity ? (String(t.capacity) === '1' ? '1 Platz' : t.capacity + ' Plätze') : '', st.join(' · '), t.operator && t.operator !== p.name ? t.operator : ''].filter(Boolean).join(' · ');
         } else {
           p.info = [t.fee === 'yes' ? 'gebührenpflichtig' : (t.fee === 'no' ? 'kostenlos' : ''), t.wheelchair === 'yes' ? 'barrierefrei' : '', t.opening_hours === '24/7' ? 'immer offen' : ''].filter(Boolean).join(' · ');
         }
