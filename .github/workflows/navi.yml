@@ -1,0 +1,11 @@
+name: Fehnverleih Navi bauen
+on:
+  push:
+    branches: [ navi ]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Zweig navi ist eingerichtet"
