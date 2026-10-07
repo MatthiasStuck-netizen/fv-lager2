@@ -21,9 +21,9 @@
   Tun.zurueck = function () { A().zurueck(); };
   Tun.reiter = function (e) {
     var r = e.getAttribute('data-r');
-    function los() { A().zeige(r, {}, 'reiter'); if (r === 'auftraege') A().ladeAuftraege(); }
-    if (F.aktiv && r !== A().z.reiter) { A().frage('Die laufende Navigation beenden?', 'Beenden').then(function (ja) { if (ja) { fahrtBeenden(false); los(); } }); return; }
-    los();
+    if (r === 'karte') { A().zurKarte(); return; }
+    // Eine laufende Zielführung bleibt beim Seitenwechsel bestehen (Ansagen inklusive). Zurück geht es über den Knopf „Karte“.
+    A().zeige(r, {}, 'reiter'); if (r === 'auftraege') A().ladeAuftraege();
   };
   Tun.anrufen = function (e) { B.anrufen(e.getAttribute('data-tel')); };
   Tun['blatt-zu'] = function () { A().blattZu(); };
@@ -62,7 +62,22 @@
   Tun['sperre-pruefen'] = function () { S.ruf('status').then(function () { A().los(); }).catch(function (e) { if (!e.stop) A().toast(e.message); else A().toast('Noch nicht eingestempelt.'); }); };
   Tun.abmelden = function () {
     if (S.demo) { A().demoEnde(); return; }
-    A().frage('Dieses Handy abmelden?', 'Abmelden').then(function (ja) { if (!ja) return; F.stopp(); S.abmelden().then(function () { A().abgemeldet(''); }); });
+    A().frage('Dieses Handy abmelden?', 'Abmelden').then(function (ja) {
+      if (!ja) return;
+      var wer = S.wer();
+      F.stopp(); A().vollbild(false);
+      A().fahrtEnde('ohne Ziel', wer);   // laufende Fahrt abschließen – sie gehört noch diesem Nutzer
+      A().toast('Abmeldung …', 12000);
+      // Fahrten und Belege möglichst noch senden, bevor das Handy an den Nächsten geht
+      Promise.race([S.nachsenden(), new Promise(function (ok) { setTimeout(ok, 12000); })]).catch(function () {}).then(function () {
+        var n = S.wartend(), t = $('#toast'); if (t) t.hidden = true;
+        if (!n) return true;
+        return A().frage((n === 1 ? '1 Eintrag wurde' : n + ' Einträge wurden') + ' noch nicht gesendet.\nFahrten und Belege bleiben auf diesem Handy und werden gesendet, sobald du dich hier wieder anmeldest. Trotzdem abmelden?', 'Abmelden');
+      }).then(function (ok) {
+        if (!ok) { A().toast('Nicht abgemeldet.'); A().neu(); return; }
+        return S.abmelden().then(function () { A().abgemeldet('', wer); A().toast('Abgemeldet.', 1500); });
+      });
+    });
   };
 
   /* ====================== Aufträge ====================== */
@@ -193,10 +208,13 @@
       }, 7000);
     });
   }
+  /* Punkte entlang der Strecke: Symbol und Überschrift je Art (Schalter in der Auswahl auf der Karte und in den Einstellungen) */
+  var POI = { wc: ['wc', 'Parkplatz mit WC'], laden: ['laden', 'Ladesäule'], essen: ['kaffee', 'Bäcker / Café'], tanken: ['tanken', 'Tankstelle'] };
   function poisZeigen(r) {
     var e = A().e;
-    K.pois((r.pois || []).filter(function (p) { return p.art === 'wc' ? e.wc !== false : e.laden !== false; }), function (p) {
-      A().blatt('<h2>' + sym(p.art === 'laden' ? 'laden' : 'wc') + h(p.art === 'laden' ? 'Ladesäule' : 'Parkplatz mit WC') + '<button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    K.pois((r.pois || []).filter(function (p) { return e[p.art] !== false; }), function (p) {
+      var x = POI[p.art] || POI.wc;
+      A().blatt('<h2>' + sym(x[0]) + h(x[1]) + '<button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
         '<div class="block"><div class="detailzeile">' + sym('pin') + '<div><small>Name</small>' + h(p.name) + '</div></div>' + (p.info ? '<div class="detailzeile">' + sym('info') + '<div><small>Angaben</small>' + h(p.info) + '</div></div>' : '') +
         '<div class="detailzeile">' + sym('route') + '<div><small>Auf der Strecke nach</small>' + G.km(p.weg) + (p.abseits > 60 ? ' · ' + p.abseits + ' m abseits' : '') + '</div></div></div>' +
         '<p class="klein2">Angaben aus OpenStreetMap, ohne Gewähr.</p>');
@@ -237,7 +255,7 @@
         if (meins !== lauf) return;
         z.nav.route = r; z.nav.von = von; z.nav.nach = nach;
         zeichne(r, von, nach);
-        G.limits(r); G.pois(r).then(function () { if (meins === lauf || F.route === r) poisZeigen(r); });
+        G.limits(r); G.pois(r).then(function () { if (meins === lauf || (F.route === r && A().oben() === 'fahrt')) poisZeigen(r); });
         K.wenn(function () { K.vorladen(r); });
       });
     }).catch(function (e) { if (meins === lauf) meldung(e.message || 'Die Route konnte nicht berechnet werden.', true); });
@@ -254,16 +272,20 @@
     }
     A().fahrtZiel(ziel.name + (ziel.adresse ? ', ' + adr1(ziel.adresse) : ''), ziel.phase === 'ankunft' ? ziel.auftrag : '');
     if (ziel.art === 'frei') zielMerken(ziel, n.nach);
-    A().zeige('fahrt', {}, 'ersetzen');
+    if (F.aktiv) F.stopp(true);   // eine neue Route löst die laufende ab
+    z.lauf = n; z.reiter = 'karte';
+    A().zeige('fahrt', {}, 'ersetzen'); A().stapel = A().stapel.slice(-1);
     if (S.demo) { F.probefahrt(70); A().toast('Probefahrt: Die Demo fährt die Strecke von selbst ab.', 5000); }
   };
 
   /* ====================== Zielführung ====================== */
   var uhrTimer = null;
   Se.fahrt = function () {
-    var z = A().z, n = z.nav, e = A().e; if (!n || !n.route) { A().zurueck(); return; }
-    seite(kopf('Route', '<button class="rand knopf klein" data-tun="fahrt-ueber">' + sym('karte') + 'Übersicht</button>') +
+    var z = A().z, n = z.lauf, e = A().e; if (!n || !n.route) { A().stapel = []; A().zeige('auftraege', {}, 'reiter'); return; }
+    // Kein Zurück-Pfeil: Aus der Zielführung führt nur das X (mit Rückfrage). Andere Seiten bleiben über die Leiste unten erreichbar.
+    seite('<div class="zeile"><button class="xknopf" data-tun="fahrt-ende" aria-label="Navigation beenden">' + sym('zu') + '</button><h1>Route</h1><button class="rand knopf klein" data-tun="fahrt-ueber">' + sym('karte') + 'Übersicht</button></div>' +
       kartenfeld('<div class="abbiegen" id="abb">' + sym('a_gerade') + '<div class="txt"><b>…</b><span>Position wird gesucht</span></div></div>' +
+        '<button class="fahrknopf xknopf xvoll" data-tun="fahrt-ende" aria-label="Navigation beenden">' + sym('zu') + '</button>' +
         '<button class="fahrknopf kartenknopf dunkel rund auswahl" data-tun="fahrt-auswahl" id="auswknopf">' + sym('ebenen') + '<span id="wcweit"></span></button>' +
         '<div class="auswahlfeld" id="auswfeld" hidden></div>' +
         '<button class="fahrknopf kartenknopf dunkel rund info" data-tun="fahrt-info" aria-label="Uhrzeit und Ankunft">' + sym('auto') + '</button>' +
@@ -273,7 +295,12 @@
         '<button class="fahrknopf kartenknopf dunkel rund vollb" data-tun="fahrt-voll" id="vollknopf" aria-label="Vollbild">' + sym(document.body.classList.contains('vollbild') ? 'vollzu' : 'voll') + '</button>' +
         '<button class="fahrknopf kartenknopf dunkel rund mitte" data-tun="fahrt-mitte" id="mitteknopf" aria-label="Auf das Auto zentrieren" hidden>' + sym('ort') + '</button>'));
     auswahlZeichnen();
-    K.setzen($('#kfeld')).then(function () { K.start(null); K.route(F.route || n.route); poisZeigen(F.route || n.route); });
+    F.sicht(true);
+    K.setzen($('#kfeld')).then(function () {
+      if (A().oben() !== 'fahrt') return;
+      K.start(null); K.route(F.route || n.route); if (!K.hat('ziel')) K.ziel(n.nach); poisZeigen(F.route || n.route);
+      F.sicht(true);   // nach der Rückkehr von einer anderen Seite: Auto und Kartenausschnitt sofort wieder richtig
+    });
     function stand(s) {
       var a = $('#abb'); if (!a) return;
       a.innerHTML = sym(s.schritt.art) + '<div class="txt"><b>' + (s.rechnet ? '…' : G.meter(s.bis)) + '</b><span>' + h(s.rechnet ? 'Route wird neu berechnet' : s.aufRoute ? s.schritt.text : 'Zurück zur Route') + '</span></div>';
@@ -284,7 +311,7 @@
       $('#wcweit').textContent = (e.wc !== false && s.wcIn >= 0) ? 'WC ' + G.km(s.wcIn) : '';
     }
     if (!F.aktiv) {
-      F.start(n.route, n.nach, { beiStand: stand, beiPois: function () { poisZeigen(F.route); }, beiNeu: function (r) { n.route = r; },
+      F.start(n.route, n.nach, { beiStand: stand, beiPois: function () { if (A().oben() === 'fahrt') poisZeigen(F.route); }, beiNeu: function (r) { n.route = r; },
         beiFolgen: function (an) { var k = $('#mitteknopf'); if (k) k.hidden = an; }, beiZiel: angekommen });
     }
     clearInterval(uhrTimer); uhrTimer = setInterval(function () { var u = $('#fuhr'); if (u) u.textContent = G.uhr(); else clearInterval(uhrTimer); }, 15000);
@@ -294,6 +321,8 @@
     var e = A().e, f = $('#auswfeld'); if (!f) return;
     f.innerHTML = '<button data-tun="fahrt-schalter" data-k="wc" class="' + (e.wc !== false ? 'an' : '') + '">' + sym('wc') + 'Parkplätze mit WC<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="laden" class="' + (e.laden !== false ? 'an' : '') + '">' + sym('laden') + 'E-Ladesäulen<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="essen" class="' + (e.essen !== false ? 'an' : '') + '">' + sym('kaffee') + 'Bäcker und Café<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="tanken" class="' + (e.tanken !== false ? 'an' : '') + '">' + sym('tanken') + 'Tankstellen (Diesel)<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="ansage" class="' + (e.ansage !== false ? 'an' : '') + '">' + sym('ton') + 'Sprachansage<i></i></button>';
   }
   Tun['fahrt-auswahl'] = function () { var f = $('#auswfeld'); f.hidden = !f.hidden; };
@@ -302,16 +331,19 @@
   Tun['fahrt-voll'] = function () { A().vollbild(!document.body.classList.contains('vollbild')); };
   Tun['fahrt-mitte'] = function () { F.zentrieren(); };
   Tun['fahrt-ueber'] = function () { F.uebersicht(); };
-  Tun['fahrt-ende'] = function () { A().frage('Navigation beenden?', 'Beenden').then(function (ja) { if (ja) fahrtBeenden(true); }); };
-  function fahrtBeenden(zurueck) {
-    F.stopp(); clearInterval(uhrTimer); A().vollbild(false); K.leeren(); A().z.nav = null;
-    if (zurueck) { A().stapel = []; A().zeige('auftraege', {}, 'reiter'); A().ladeAuftraege(); }
-  }
-  Se.fahrt_weg = function (nach) { if (nach === 'zurueck' && F.aktiv) { fahrtBeenden(false); } };
-  function angekommen() {
-    var z = A().z, ziel = z.nav && z.nav.ziel || {}, km = A().fahrtEnde(ziel.name);
-    clearInterval(uhrTimer); A().vollbild(false); K.leeren(); z.nav = null;
+  Tun['fahrt-ende'] = function () { A().frage('Navigation beenden?', 'Ja', 'Nein').then(function (ja) { if (ja) fahrtBeenden(); }); };
+  function fahrtBeenden() {
+    var z = A().z;
+    F.stopp(); clearInterval(uhrTimer); A().vollbild(false); K.leeren(); if (z.nav === z.lauf) z.nav = null; z.lauf = null;
     A().stapel = []; A().zeige('auftraege', {}, 'reiter'); A().ladeAuftraege();
+  }
+  /* Die Fahrt-Seite wird verlassen (Lager, Aufträge, Einstellungen …): Die Zielführung läuft weiter, nur die Karte ruht. */
+  Se.fahrt_weg = function () { F.sicht(false); clearInterval(uhrTimer); };
+  function angekommen() {
+    var z = A().z, ziel = z.lauf && z.lauf.ziel || {}, km = A().fahrtEnde(ziel.name);
+    clearInterval(uhrTimer); if (z.nav === z.lauf) z.nav = null; z.lauf = null;
+    if (A().oben() === 'fahrt') { A().vollbild(false); K.leeren(); A().stapel = []; A().zeige('auftraege', {}, 'reiter'); A().ladeAuftraege(); }
+    // Ist der Fahrer gerade auf einer anderen Seite, bleibt er dort und sieht nur die Meldung.
     A().blatt('<h2>' + sym('a_ziel') + 'Ziel erreicht<button data-tun="blatt-zu">' + sym('zu') + '</button></h2><div class="block creme"><b style="font-size:19px">' + h(ziel.name || 'Ziel') + '</b><div>' + adr2(ziel.adresse) + '</div></div>' +
       (km ? '<div class="gut">Fahrt ins Fahrtenbuch geschrieben: ' + String(km).replace('.', ',') + ' km.</div>' : '') +
       (ziel.auftrag && ziel.phase === 'ankunft' ? '<div class="zweier"><button class="rand knopf" data-tun="ziel-fest" data-z="lagerhalle" data-id="' + h(ziel.auftrag) + '">Zur Lagerhalle</button><button class="rand knopf" data-tun="ziel-fest" data-z="verwaltung" data-id="' + h(ziel.auftrag) + '">Zur Verwaltung</button></div><div style="height:8px"></div>' : '') +
@@ -356,12 +388,16 @@
 
   /* ====================== Alle Aufträge des Tages auf der Karte ====================== */
   Tun.uebersicht = function () { A().zeige('uebersicht'); };
-  Se.uebersicht = function () {
-    var z = A().z, liste = A().tagesliste(z.tag), meins = ++lauf;
-    seite(kopf('Aufträge ' + datumKurz(z.tag)) + kartenfeld('<div class="kartenmeldung" id="kmeld"><i class="dreh"></i><span>Adressen werden gesucht …</span></div>' +
+  Se.uebersicht = function (p) {
+    var z = A().z, tag = p && p.tag || z.tag, liste = A().tagesliste(tag), meins = ++lauf;
+    seite(kopf('Aufträge ' + datumKurz(tag)) + kartenfeld('<div class="kartenmeldung" id="kmeld"><i class="dreh"></i><span>Adressen werden gesucht …</span></div>' +
       '<div class="zoom"><button data-tun="zoom" data-n="1">' + sym('plus') + '</button><button data-tun="zoom" data-n="-1">' + sym('minus') + '</button></div>'));
     K.setzen($('#kfeld')).then(function () { K.leeren(); });
-    if (!liste.length) { $('#kmeld').innerHTML = sym('info') + '<span>An diesem Tag gibt es keine Aufträge.</span>'; return; }
+    if (!liste.length) {
+      $('#kmeld').innerHTML = sym('info') + '<span>An diesem Tag gibt es keine Aufträge.</span>';
+      K.wenn(function () { var o = B.ort(); if (meins === lauf && o) { K.start(o); K.mitte(o, 13); } });
+      return;
+    }
     var punkte = [], kette = Promise.resolve();
     function zeigen() {   // jede gefundene Adresse erscheint sofort, die Karte zieht den Ausschnitt nach
       if (meins !== lauf) return;
@@ -510,7 +546,7 @@
     var e = A().e, i = B.info(), fest = B.lesen('festorte', {}) || {};
     function sch(k, s, titel, klein) { return '<button class="schalter' + (e[k] !== false ? ' an' : '') + '" data-tun="schalter" data-k="' + k + '">' + sym(s) + '<span>' + titel + (klein ? '<small>' + klein + '</small>' : '') + '</span><i></i></button>'; }
     seite(kopf('Einstellungen', '', false) + '<div class="rollen"><div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '</div>' +
-      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + '</div>' +
+      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + '</div>' +
       '<div class="block"><h2>' + sym('haus') + 'Zuhause</h2><label class="feld">Adresse für das Schnellziel „Zuhause“<input class="eingabe" id="zuhause" value="' + h(e.zuhause) + '" placeholder="Straße, PLZ Ort"></label><button class="rand knopf breit" data-tun="zuhause">Speichern</button></div>' +
       '<div class="block"><h2>' + sym('halle') + 'Lagerhalle und Verwaltung</h2><p class="klein2" style="margin:0 0 8px">Findet die Karte die Hausnummer nicht genau? Einmal vor Ort antippen, dann führt die App künftig genau dorthin.</p>' +
       '<div class="zweier"><button class="rand knopf" data-tun="festort" data-z="lagerhalle">Hier ist die Lagerhalle' + (fest.lagerhalle ? ' ✓' : '') + '</button><button class="rand knopf" data-tun="festort" data-z="verwaltung">Hier ist die Verwaltung' + (fest.verwaltung ? ' ✓' : '') + '</button></div></div>' +

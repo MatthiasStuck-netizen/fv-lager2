@@ -2,14 +2,15 @@
 (function () {
   'use strict';
   var G = FV.G, B = FV.B, K = FV.K;
-  var F = FV.F = { aktiv: false, route: null, ziel: null, stand: null };
+  var F = FV.F = { aktiv: false, sichtbar: false, route: null, ziel: null, stand: null };
   var o = null, hoerer = null, zustand = null, folgeTimer = null, simTimer = null;
 
-  function neuerZustand() { return { weg: 0, idx: 0, abseits: 0, neuUm: 0, rechnet: false, zoom: 16, gesagt: {}, wcGesagt: {}, start: Date.now(), angekommen: false, letzter: null }; }
+  function neuerZustand() { return { weg: 0, idx: 0, abseits: 0, neuUm: 0, rechnet: false, neuGesagt: false, fehl: 0, zoom: 16, gesagt: {}, wcGesagt: {}, start: Date.now(), angekommen: false, letzter: null }; }
 
   F.start = function (route, ziel, opt) {
     F.stopp(true);
     F.route = route; F.ziel = ziel; o = opt || {}; zustand = neuerZustand(); F.aktiv = true; K.folgt = true; F.stand = null;
+    document.body.classList.add('navi');
     B.ortStart(); B.wach(true);
     hoerer = B.beiOrt(ort);
     K.beiGeste(function () { if (!F.aktiv) return; K.folgt = false; clearTimeout(folgeTimer); folgeTimer = setTimeout(function () { K.folgt = true; if (zustand && zustand.letzter) kamera(zustand.letzter, true); }, 8000); if (o.beiFolgen) o.beiFolgen(false); });
@@ -22,6 +23,13 @@
     clearTimeout(folgeTimer); clearInterval(simTimer); simTimer = null; B.probe = false;
     if (F.aktiv && !leise) B.still();
     F.aktiv = false; K.beiGeste(null); B.wach(false);
+    document.body.classList.remove('navi');
+  };
+  /** Die Fahrt-Seite ist zu sehen (an) oder der Fahrer schaut gerade auf eine andere Seite (aus).
+   *  Die Zielführung läuft in beiden Fällen weiter; die Karte wird nur bewegt, solange sie zu sehen ist. */
+  F.sicht = function (an) {
+    F.sichtbar = !!an;
+    if (an && F.aktiv && zustand && zustand.letzter) { K.auto(zustand.letzter.pos, zustand.letzter.kurs); kamera(zustand.letzter, true); }
   };
   F.zentrieren = function () { K.folgt = true; clearTimeout(folgeTimer); if (zustand && zustand.letzter) kamera(zustand.letzter, false); if (o && o.beiFolgen) o.beiFolgen(true); };
   F.uebersicht = function () { K.folgt = false; clearTimeout(folgeTimer); K.rahmen(F.route.punkte, { top: 110, bottom: 90, left: 40, right: 60 }); if (o && o.beiFolgen) o.beiFolgen(false); };
@@ -30,7 +38,7 @@
   function klein(t) { t = String(t || '').replace(/\.\s*$/, ''); return t.charAt(0).toLowerCase() + t.slice(1); }
 
   function kamera(k, sofort) {
-    if (!K.folgt) return;
+    if (!K.folgt || !F.sichtbar) return;
     K.folgen(k.pos, k.kurs, zustand.zoom, sofort);
   }
   function zoomZiel(kmh, bisAbbiegen, limit) {
@@ -49,8 +57,10 @@
     if (!s || s.entf > 80) s = G.einrasten(r, p) || s;
     if (!s) return;
     var grenze = 40 + Math.min(p.genau || 0, 30);
-    if (s.entf > grenze) z.abseits++; else z.abseits = 0;
-    if (z.abseits >= 4 && !z.rechnet && jetzt - z.neuUm > 9000) { neuRechnen(p); }
+    if (s.entf > grenze) z.abseits++; else { z.abseits = 0; z.neuGesagt = false; z.fehl = 0; }
+    // Klappt die Neuberechnung nicht (Funkloch), wird in wachsenden Abständen still weiter versucht: 9, 18, 36, höchstens 60 Sekunden
+    var pause = Math.min(60000, 9000 * Math.pow(2, z.fehl));
+    if (z.abseits >= 4 && !z.rechnet && jetzt - z.neuUm > pause) { neuRechnen(p); }
     var aufRoute = s.entf <= grenze;
     if (aufRoute) { z.weg = s.weg; z.idx = s.idx; }
     var kmh = p.tempo >= 0 ? p.tempo * 3.6 : 0;
@@ -86,7 +96,7 @@
     var limit = G.limitBei(r, z.idx);
     var zz = zoomZiel(kmh, bis, limit); z.zoom += Math.max(-0.35, Math.min(0.35, zz - z.zoom));
     z.letzter = { pos: pos, kurs: kurs };
-    K.auto(pos, kurs); K.gefahren(r, aufRoute ? s : null); kamera(z.letzter, false);
+    if (F.sichtbar) { K.auto(pos, kurs); K.gefahren(r, aufRoute ? s : null); } kamera(z.letzter, false);
 
     F.stand = { bis: bis, schritt: schritt, restM: rest, restS: restS, ankunft: new Date(jetzt + restS * 1000), kmh: Math.round(kmh), limit: limit, wcIn: wcIn, aufRoute: aufRoute, rechnet: z.rechnet };
     if (o.beiStand) o.beiStand(F.stand);
@@ -100,15 +110,15 @@
 
   function neuRechnen(p) {
     var z = zustand; z.rechnet = true; z.neuUm = Date.now();
-    sag('Die Route wird neu berechnet.');
+    if (!z.neuGesagt) { z.neuGesagt = true; sag('Die Route wird neu berechnet.'); }   // nur einmal je Abweichung, nicht bei jedem Versuch
     G.route({ lat: p.lat, lon: p.lon, kurs: p.kurs, tempo: p.tempo }, F.ziel).then(function (r) {
-      if (!F.aktiv) return;
+      if (!F.aktiv || zustand !== z) return;   // inzwischen beendet oder eine andere Route gestartet
       var gesamtStart = zustand.start; F.route = r; zustand = neuerZustand(); zustand.start = gesamtStart; zustand.neuUm = Date.now(); zustand.gesagt[0] = 2;
-      K.route(r);
+      if (F.sichtbar) K.route(r);
       G.limits(r); G.pois(r).then(function () { if (o.beiPois) o.beiPois(r.pois); });
       if (o.beiNeu) o.beiNeu(r);
       var q = B.ort(); if (q) ort(q);
-    }).catch(function () { zustand.rechnet = false; });
+    }).catch(function () { if (zustand === z) { z.rechnet = false; z.fehl++; z.neuUm = Date.now(); } });
   }
 
   /* ---------- Probefahrt (Vorschau/Test): fährt die Route automatisch ab ---------- */

@@ -25,7 +25,10 @@ export const overpass = { elements: [
   { type: 'node', id: 2, lat: 53.1568, lon: 7.6566, tags: { amenity: 'toilets', opening_hours: '24/7' } },
   { type: 'node', id: 3, lat: 53.2194, lon: 7.7448, tags: { amenity: 'charging_station', operator: 'EWE Go', capacity: '2', 'socket:type2': '2' } },
   { type: 'node', id: 4, lat: 53.1702, lon: 7.6706, tags: { amenity: 'charging_station', operator: 'EnBW', capacity: '4', 'socket:type2_combo': '4' } },
-  { type: 'node', id: 5, lat: 53.1403, lon: 7.6308, tags: { amenity: 'charging_station', name: 'Rathaus Ostrhauderfehn', capacity: '2', 'socket:type2': '2' } }] };
+  { type: 'node', id: 5, lat: 53.1403, lon: 7.6308, tags: { amenity: 'charging_station', name: 'Rathaus Ostrhauderfehn', capacity: '2', 'socket:type2': '2' } },
+  { type: 'node', id: 6, lat: 53.1904, lon: 7.7006, tags: { shop: 'bakery', name: 'Bäckerei Ripken', opening_hours: 'Mo-Sa 06:00-18:00' } },
+  { type: 'node', id: 7, lat: 53.1603, lon: 7.6606, tags: { amenity: 'fuel', brand: 'Raiffeisen', 'fuel:diesel': 'yes', opening_hours: '24/7' } },
+  { type: 'node', id: 8, lat: 53.2300, lon: 7.9000, tags: { amenity: 'cafe', name: 'Weit weg' } }] };
 export const orte = [
   [/flimmen|apen|lagerhalle/i, 53.2245, 7.7560, 'Schulze-Flimmenstraße', '20', '26689', 'Apen'],
   [/hauptstra/i, 53.1386, 7.6238, 'Hauptstraße', '12', '26842', 'Ostrhauderfehn'],
@@ -58,7 +61,8 @@ export const auftraege = [
   A('a5', 'A-0043', 'Herr Müller', 'Mühlenstraße 18, 26849 Filsum', '14:00', '15:30', 'Lieferung', 'bestaetigt', '0160 4443322'),
   { ...A('a6', 'A-0044', 'Verein Fehntjer Musikanten', 'Hauptstraße 80, 26842 Ostrhauderfehn', '10:00', '', 'Lieferung', 'bestaetigt', ''), datum: morgen, bis: morgen }];
 export function server(d) {
-  const ok = x => ({ typ: 'ok', frei: true, rolle: 'admin', name: 'Admin', seit: '', ...x });
+  const ma = String(d.token || '').startsWith('b');   // Token des Mitarbeiters (login_ma) beginnt mit b, das des Admins mit a
+  const ok = x => ({ typ: 'ok', frei: true, rolle: ma ? 'lager' : 'admin', name: ma ? 'Jan Beispiel' : 'Admin', seit: '', ...x });
   switch (d.aktion) {
     case 'login_admin': return d.passwort === 'test' ? { typ: 'ok', token: 'a'.repeat(64), rolle: 'admin', name: 'Admin' } : { typ: 'err', msg: 'Admin-Passwort falsch.' };
     case 'login_ma': return { typ: 'ok', token: 'b'.repeat(64), rolle: 'lager', name: 'Jan Beispiel' };

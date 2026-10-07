@@ -32,6 +32,13 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 #leiste button + button::before { content: ""; position: absolute; left: 0; top: 18%; bottom: 18%; width: 1px; background: #1c2027; }
 #leiste button .sym { width: 26px; height: 26px; }
 #leiste button.akt { color: var(--gold); font-weight: 700; }
+/* Sechs Knöpfe: Breite nach Inhalt, damit auch „Einstellungen“ ganz zu lesen bleibt. „Karte“ ist immer da und führt zur Karte
+   bzw. zurück auf die laufende Strecke; der grüne Punkt zeigt, dass eine Zielführung läuft. */
+#leiste button { flex: 1 1 auto; }
+#leiste button[data-r=karte] .sym { color: var(--gold); }
+#leiste .laeuft { display: none; position: absolute; top: 6px; left: calc(50% + 8px); width: 11px; height: 11px; border-radius: 50%; background: #35c26b; border: 2px solid #05070a; }
+body.navi #leiste .laeuft { display: block; }
+body.navi #leiste button[data-r=karte] { color: #fff; font-weight: 700; }
 #leiste button.akt::after { content: ""; position: absolute; left: 22%; right: 22%; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--gold); }
 
 /* ---------- Knöpfe ---------- */
@@ -147,6 +154,11 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 .abbiegen .txt b { display: block; font-size: 30px; font-weight: 700; line-height: 1.05; }
 .abbiegen .txt span { display: block; font-size: 17px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .fahrknopf { position: absolute; z-index: 5; }
+/* X: einziger Weg aus der Zielführung (mit Rückfrage). Oben in der Kopfzeile, im Vollbild auf der Karte. */
+.xknopf { width: 42px; height: 42px; border-radius: 50%; flex: none; display: flex; align-items: center; justify-content: center; background: linear-gradient(180deg, #e2463f, #b3262a); color: #fff; border: 1px solid #8f1c20; box-shadow: 0 2px 6px rgba(0,0,0,.5); }
+.xknopf .sym { width: 26px; height: 26px; }
+.xknopf.xvoll { display: none; left: 10px; top: 96px; }
+body.vollbild .xknopf.xvoll { display: flex; }
 .fahrknopf.info { left: 10px; bottom: 14px; width: 52px; height: 52px; }
 .fahrknopf.info .sym { width: 30px; height: 30px; }
 .fahrknopf.vollb { right: 10px; bottom: 72px; }
@@ -176,7 +188,7 @@ button { cursor: pointer; border: 0; background: none; padding: 0; }
 .m-auto { width: 44px; height: 60px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.65)); }
 .m-poi { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.6); color: #fff; }
 .m-poi .sym { width: 16px; height: 16px; }
-.m-poi.wc { background: #1c56b4; } .m-poi.laden { background: #1d7a3c; }
+.m-poi.wc { background: #1c56b4; } .m-poi.laden { background: #1d7a3c; } .m-poi.essen { background: #8a5a2b; } .m-poi.tanken { background: #b3262a; }
 .m-schild { background: #fff; color: #111; border-radius: 8px; padding: 5px 9px; font-family: var(--schmal); font-size: 13px; line-height: 1.2; box-shadow: 0 2px 8px rgba(0,0,0,.5); white-space: nowrap; }
 .m-schild b { display: block; font-size: 14.5px; }
 .m-schild.links { }
@@ -264,6 +276,7 @@ textarea.eingabe { min-height: 84px; resize: none; }
 #blatt .innen { width: 100%; max-height: 88%; overflow-y: auto; background: #0b0f15; border-top: 2px solid var(--gold-dunkel); border-radius: 16px 16px 0 0; padding: 14px 12px calc(16px + var(--unten)); }
 #blatt h2 { margin: 0 0 10px; font-size: 19px; display: flex; align-items: center; gap: 8px; } #blatt h2 .sym { color: var(--gold); }
 #blatt h2 button { margin-left: auto; color: var(--grau); }
+#blatt .fragetext { margin: 0 0 12px; color: #e3ddcd; font-size: 15px; line-height: 1.35; }
 #blase { position: fixed; left: 10px; right: 10px; top: calc(10px + var(--oben)); z-index: 50; background: linear-gradient(180deg, #fdf0c9, #f1d087); color: var(--tinte); border: 2px solid var(--gold-dunkel); border-radius: 16px 16px 16px 4px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start; box-shadow: 0 6px 20px rgba(0,0,0,.6); animation: rein .25s ease-out; }
 #blase .sym { width: 28px; height: 28px; } #blase b { display: block; font-size: 14px; } #blase span { font-size: 16px; line-height: 1.25; }
 @keyframes rein { from { transform: translateY(-20px); opacity: 0; } }

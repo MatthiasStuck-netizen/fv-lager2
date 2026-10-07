@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val START = "https://appassets.androidplatform.net/assets/www/index.html"
-        const val KENNUNG = "FehnverleihNavi/3.0 (Android; +https://www.fehnverleih.de)"
+        const val KENNUNG = "FehnverleihNavi/3.1 (Android; +https://www.fehnverleih.de)"
     }
 
     private lateinit var web: WebView
@@ -421,7 +421,14 @@ class MainActivity : ComponentActivity() {
 
         @JavascriptInterface
         fun ortStopp() {
-            // Der Dienst laeuft weiter, damit die Kilometer bis „Ziel erreicht“ gezaehlt werden.
+            // Wird beim Abmelden gerufen: Standort-Dienst beenden. Solange jemand angemeldet ist, laeuft er weiter,
+            // damit die Kilometer bis „Ziel erreicht“ gezaehlt werden. Gesendet wird der Standort nur waehrend einer Fahrt.
+            runOnUiThread {
+                try {
+                    stopService(Intent(this@MainActivity, FahrtDienst::class.java))
+                } catch (_: Exception) {
+                }
+            }
         }
 
         @JavascriptInterface

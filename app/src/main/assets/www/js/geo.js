@@ -9,7 +9,7 @@
     osrm: 'https://routing.openstreetmap.de/routed-car',
     nominatim: 'https://nominatim.openstreetmap.org',
     photon: 'https://photon.komoot.io',
-    overpass: ['https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.private.coffee/api/interpreter'],
+    overpass: ['https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'],
     wetter: 'https://api.brightsky.dev'
   };
 
@@ -101,6 +101,8 @@
 
   /* ---------- Adresssuche ---------- */
   var geoMerker = B.lesen('geo', {}) || {}, nomZeit = 0;
+  /** Gemerkte Adressen vergessen (beim Abmelden) */
+  G.vergessen = function () { geoMerker = {}; };
   function adresseAus(a, name) {
     var str = [a.road || a.pedestrian || a.hamlet || '', a.house_number || ''].join(' ').trim();
     var ort = [a.postcode || '', a.city || a.town || a.village || a.municipality || a.suburb || ''].join(' ').trim();
@@ -270,7 +272,7 @@
     return 0;
   };
 
-  /* ---------- Ladesäulen und Parkplätze mit WC entlang der Route ---------- */
+  /* ---------- Ladesäulen, Parkplätze mit WC, Bäcker/Cafés und Diesel-Tankstellen entlang der Route ---------- */
   /** Rechtecke um je 20 km Strecke (mit 600 m Rand) – höchstens 12, also die nächsten 240 km */
   function kaesten(r) {
     var aus = [], schritt = 20000;
@@ -293,7 +295,9 @@
       '(nwr["amenity"="parking"](around.t:120);nwr["highway"~"^(rest_area|services)$"](around.t:200);)->.p;' +
       '(nwr.t(around.p:200);' + je('["highway"="rest_area"]["toilets"="yes"]') + je('["amenity"="parking"]["toilets"="yes"]') + ')->.wc;' +
       '.wc out center tags;' +
-      '(' + je('["amenity"="charging_station"]') + ');out center tags;';
+      '(' + je('["amenity"="charging_station"]') + ');out center tags;' +
+      // Bäcker und Cafés, Tankstellen mit Diesel (alles außer ausdrücklich „kein Diesel“)
+      '(' + je('["shop"="bakery"]') + je('["amenity"="cafe"]') + je('["amenity"="fuel"]["fuel:diesel"!="no"]') + ');out center tags;';
     function frag(i) {
       return B.json({ methode: 'POST', url: G.DIENST.overpass[i], kopf: { 'Content-Type': 'application/x-www-form-urlencoded' }, daten: 'data=' + encodeURIComponent(q), zeit: 30000 })
         .then(function (j) { if (!j || !Array.isArray(j.elements)) throw new Error('leer'); return j; })
@@ -304,16 +308,22 @@
       (j.elements || []).forEach(function (e) {
         var lat = e.lat != null ? e.lat : e.center && e.center.lat, lon = e.lon != null ? e.lon : e.center && e.center.lon, t = e.tags || {};
         if (lat == null) return;
-        var laden = t.amenity === 'charging_station';
+        var art = t.amenity === 'charging_station' ? 'laden' : t.amenity === 'fuel' ? 'tanken' : (t.shop === 'bakery' || t.amenity === 'cafe') ? 'essen' : 'wc';
         var s = G.einrasten(r, { lat: lat, lon: lon });
-        if (!s || s.entf > u + 150) return;
-        var key = (laden ? 'l' : 'w') + Math.round(s.weg / 150);   // dicht beieinander liegende Einträge zusammenfassen
+        if (!s || s.entf > (art === 'essen' ? 350 : u + 150)) return;   // Bäcker und Cafés nur, wenn sie nah an der Strecke liegen
+        var key = art + Math.round(s.weg / (art === 'essen' ? 300 : 150));   // dicht beieinander liegende Einträge zusammenfassen
         if (gesehen[key]) return; gesehen[key] = 1;
-        var p = { art: laden ? 'laden' : 'wc', lat: lat, lon: lon, weg: s.weg, abseits: Math.round(s.entf), name: t.name || t.operator || (laden ? 'Ladesäule' : 'Parkplatz mit WC') };
-        if (laden) {
+        var offen = t.opening_hours === '24/7' ? 'immer offen' : (t.opening_hours ? 'geöffnet ' + t.opening_hours : '');
+        var ersatz = { laden: 'Ladesäule', tanken: 'Tankstelle', essen: t.shop === 'bakery' ? 'Bäckerei' : 'Café', wc: 'Parkplatz mit WC' }[art];
+        var p = { art: art, lat: lat, lon: lon, weg: s.weg, abseits: Math.round(s.entf), name: t.name || (art === 'tanken' ? t.brand : '') || t.operator || ersatz };
+        if (art === 'laden') {
           var st = [];
           if (t['socket:type2_combo']) st.push('CCS'); if (t['socket:type2']) st.push('Typ 2'); if (t['socket:chademo']) st.push('CHAdeMO'); if (t['socket:schuko']) st.push('Schuko');
           p.info = [t.capacity ? (String(t.capacity) === '1' ? '1 Platz' : t.capacity + ' Plätze') : '', st.join(' · '), t.operator && t.operator !== p.name ? t.operator : ''].filter(Boolean).join(' · ');
+        } else if (art === 'tanken') {
+          p.info = [t.brand && t.brand !== p.name ? t.brand : '', t['fuel:diesel'] === 'yes' ? 'Diesel' : '', t['fuel:adblue'] === 'yes' ? 'AdBlue' : '', offen].filter(Boolean).join(' · ');
+        } else if (art === 'essen') {
+          p.info = [p.name !== ersatz ? ersatz : '', offen].filter(Boolean).join(' · ');
         } else {
           p.info = [t.fee === 'yes' ? 'gebührenpflichtig' : (t.fee === 'no' ? 'kostenlos' : ''), t.wheelchair === 'yes' ? 'barrierefrei' : '', t.opening_hours === '24/7' ? 'immer offen' : ''].filter(Boolean).join(' · ');
         }

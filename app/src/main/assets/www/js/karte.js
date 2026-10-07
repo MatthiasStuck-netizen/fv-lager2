@@ -121,6 +121,7 @@
     marken[name] = new maplibregl.Marker(o).setLngLat([lon, lat]).addTo(K.map);
     return marken[name];
   }
+  K.hat = function (name) { return !!marken[name]; };
   K.ziel = function (z, schild, links) {
     marke('ziel', z && z.lon, z && z.lat, el(PIN, 'm-ziel'), { anchor: 'bottom' });
     marke('zielschild', z && schild ? z.lon : null, z && z.lat, el(schild || '', 'm-schild'), { anchor: links ? 'right' : 'left', offset: [links ? -22 : 22, -30] });
@@ -139,7 +140,7 @@
     poiMarken.forEach(function (m) { m.remove(); }); poiMarken = [];
     if (!K.map) return;
     (liste || []).forEach(function (p) {
-      var e = el(FV.sym(p.art === 'laden' ? 'laden' : 'wc'), 'm-poi ' + p.art);
+      var e = el(FV.sym({ laden: 'laden', tanken: 'tanken', essen: 'kaffee' }[p.art] || 'wc'), 'm-poi ' + p.art);
       e.addEventListener('click', function (ev) { ev.stopPropagation(); if (beiTipp) beiTipp(p); });
       poiMarken.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([p.lon, p.lat]).addTo(K.map));
     });
