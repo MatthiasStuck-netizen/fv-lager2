@@ -1,0 +1,3 @@
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)

@@ -1,0 +1,57 @@
+D/nativeloader( 2242): Load /system/lib64/libwebviewchromium_plat_support.so using ns clns-9 from class loader (caller=/data/app/~~owasAeGPopGGJcrXgula4Q==/com.google.android.webview-DRZrP4R8yRzqDiVr2TUwcA==/WebViewGoogle.apk): ok
+I/chromium( 2242): [1007/091917.394574:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+I/chromium( 2242): [1007/091917.394972:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+W/chromium( 2242): [WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+I/ActivityManager(  583): Start proc 2308:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0ai9000 for  {de.fehnverleih.navi/org.chromium.content.app.SandboxedProcessService0:0}
+I/ActivityManager(  583): Start proc 2323:com.google.android.webview:webview_service/u0a151 for service {com.google.android.webview/org.chromium.android_webview.services.VariationsSeedServer}
+I/cr_WebViewApkApp( 2308): Launched version=124.0.6367.219 minSdkVersion=29 isBundle=false processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+W/chromium( 1310): [1007/091918.142546:WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+W/FontLog ( 1310): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):4)
+W/chromium( 2308): [WARNING:runtime_features.cc(694)] SharedStorage for M118+ cannot be enabled in this configuration. Use --enable-features=SharedStorageAPI,SharedStorageAPIM118 in addition.
+W/chromium( 2308): [WARNING:runtime_features.cc(730)] AttributionReportingCrossAppWeb cannot be enabled in this configuration. Use --enable-features=ConversionMeasurement,AttributionReportingCrossAppWeb in addition.
+W/FontLog ( 1310): 	at org.chromium.net.impl.CronetUrlRequest.onError(:com.google.android.gms.dynamite_cronetdynamite@242335041@24.23.35 (190800-0):4)
+I/chromium( 2308): [INFO:viewport_data.cc(133)] E2E_Used ViewportFitCover
+I/chromium( 2308): [INFO:document_style_environment_variables.cc(104)] E2E_Used SafeAreaInsetBottom
+W/chromium( 2359): [1007/091921.389587:WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+D/nativeloader( 2827): Load /data/app/~~8XkWRSMGuO9qH6zkwhmCVw==/com.android.chrome-fPPvdAWRhKtIhL3VRaXqlA==/Chrome.apk!/lib/x86_64/libchromium_android_linker.so using ns clns-8 from class loader (caller=/data/app/~~8XkWRSMGuO9qH6zkwhmCVw==/com.android.chrome-fPPvdAWRhKtIhL3VRaXqlA==/Chrome.apk): ok
+W/chromium( 1783): [1007/091926.594992:WARNING:url_request_context_config.cc(716)] Unrecognized Cronet experimental option "enable_telemetry" with params "false
+W/chromium( 1783): 
+I/ActivityManager(  583): Start proc 3031:com.google.android.webview:webview_apk/u0a151 for service {com.google.android.webview/org.chromium.android_webview.nonembedded.AwComponentUpdateService}
+W/cr_AWNetworkFetcherTask( 3031): 	at org.chromium.android_webview.nonembedded.NetworkFetcherTask.postRequest(chromium-TrichromeWebViewGoogle6432.apk-stable-636771938:79)
+W/chromium( 1783): [1007/091942.214912:WARNING:url_request_context_config.cc(716)] Unrecognized Cronet experimental option "enable_telemetry" with params "false
+W/chromium( 1783): 
+D/nativeloader( 1783): Load /system/lib64/libwebviewchromium_plat_support.so using ns clns-9 from class loader (caller=/data/app/~~owasAeGPopGGJcrXgula4Q==/com.google.android.webview-DRZrP4R8yRzqDiVr2TUwcA==/WebViewGoogle.apk): ok
+I/chromium( 1783): [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+I/chromium( 1783): [INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+I/ActivityManager(  583): Start proc 3856:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i1 for  {com.google.android.googlequicksearchbox/org.chromium.content.app.SandboxedProcessService0:0}
+I/cr_WebViewApkApp( 3856): Launched version=124.0.6367.219 minSdkVersion=29 isBundle=false processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.getEnabledCronetProviders(PG:25)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.createBuilderDelegate(PG:16)
+D/StrictMode( 3511): 	at org.chromium.net.CronetEngine$Builder.<init>(PG:1)
+D/StrictMode( 3511): 	at org.chromium.net.ExperimentalCronetEngine$Builder.<init>(PG:1)
+I/cr_CronetUrlRequestContext( 3511): destroyNativeStreamLocked org.chromium.net.impl.CronetBidirectionalStream@a7cd279
+I/cr_CronetUrlRequestContext( 1516): destroyNativeStreamLocked org.chromium.net.impl.CronetBidirectionalStream@b115121
+I/cr_CronetUrlRequestContext( 3511): destroyNativeStreamLocked org.chromium.net.impl.CronetBidirectionalStream@91ded4f
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)
+I/FehnverleihNavi( 2242): WARNING Expected value to be of type number, but found null instead. (df6e7ce6-d9e0-4732-a738-e8b2285844fd:1)

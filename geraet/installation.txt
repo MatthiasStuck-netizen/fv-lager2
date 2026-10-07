@@ -1,0 +1,35 @@
+Performing Streamed Install
+Success
+    versionName=124.0.6367.219
+Starting: Intent { cmp=de.fehnverleih.navi/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: de.fehnverleih.navi/.MainActivity
+TotalTime: 1598
+WaitTime: 1605
+Complete
+Starting: Intent { act=android.intent.action.VIEW dat=fehnverleihnavi://demo/... pkg=de.fehnverleih.navi }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: de.fehnverleih.navi/.MainActivity
+TotalTime: 0
+WaitTime: 9
+Complete
+Starting: Intent { act=android.intent.action.VIEW dat=fehnverleihnavi://demo/... pkg=de.fehnverleih.navi }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: de.fehnverleih.navi/.MainActivity
+TotalTime: 0
+WaitTime: 88
+Complete
+Starting: Intent { act=android.intent.action.VIEW dat=fehnverleihnavi://demo/... pkg=de.fehnverleih.navi }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+Status: ok
+LaunchState: UNKNOWN (0)
+Activity: de.fehnverleih.navi/.MainActivity
+TotalTime: 0
+WaitTime: 5
+Complete
+Geraetetest fertig

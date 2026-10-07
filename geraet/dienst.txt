@@ -1,0 +1,3 @@
+  * ServiceRecord{ad3be22 u0 de.fehnverleih.navi/org.chromium.content.app.SandboxedProcessService0:0 c:de.fehnverleih.navi}
+  * ServiceRecord{77605c3 u0 de.fehnverleih.navi/.FahrtDienst c:de.fehnverleih.navi}
+    isForeground=true foregroundId=1 types=0x00000008 foregroundNoti=Notification(channel=fahrt shortcut=null contentView=null vibrate=null sound=null defaults=0 flags=ONGOING_EVENT|NO_CLEAR|FOREGROUND_SERVICE color=0x00000000 vis=PRIVATE)
