@@ -6,7 +6,8 @@ class H(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a): pass
     def kopf(self, code, laenge=None, extra=()):
         self.send_response(code)
-        self.send_header('Access-Control-Allow-Origin', '*')
+        if code < 300 or os.environ.get('CORS_IMMER'):   # wie Strato mit "Header set": Freigabe nur bei Erfolg
+            self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Expose-Headers', 'Content-Length, Content-Range')
         self.send_header('Accept-Ranges', 'bytes')
         if laenge is not None: self.send_header('Content-Length', str(laenge))

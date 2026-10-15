@@ -262,36 +262,42 @@ window.FV = window.FV || {};
   }
 
   O._hintergrund = hintergrund;   // für Tests
-  /** Größe einer Datei auf dem Server: >0 Größe, 0 = gibt es nicht, -1 = Größe unbekannt */
+  /** Größe einer Datei auf dem Server: >0 Größe, 0 = gibt es nicht, -1 = Größe unbekannt, null = keine Antwort.
+   *  Achtung: Antwortet der Server mit "nicht gefunden" ohne Freigabe-Kopfzeile (so macht es Strato),
+   *  meldet der Browser das wie "keine Verbindung" – darum bedeutet null nicht immer ein Netzproblem. */
   function groesseHolen(url) {
     return fetch(url, { method: 'HEAD', cache: 'no-store' }).then(function (r) {
       if (r.status === 404 || r.status === 410) return 0;
       if (!r.ok) { var e = new Error('Der Server meldet Fehler ' + r.status + ' für ' + url); e.status = r.status; throw e; }
       var g = +r.headers.get('content-length');
       return g > 0 ? g : -1;
-    });
+    }, function () { return null; });
   }
   /** Was liegt auf dem Server? Erst die ganze Datei, sonst die Teile teil-00, teil-01, … */
   O.planen = async function () {
-    var fehler = null;
+    var fehler = null, keineAntwort = 0;
     for (var q = 0; q < QUELLEN.length; q++) {
       var basis = QUELLEN[q];
       try {
         var g = await groesseHolen(basis + DATEI);
-        if (g < 0) throw new Error('Der Server nennt die Größe der Kartendatei nicht.');
+        if (g === -1) throw new Error('Der Server nennt die Größe der Kartendatei nicht.');
         if (g > 0) return { basis: basis, teile: [{ name: DATEI, groesse: g }], gesamt: g };
-        var teile = [], gesamt = 0;
-        for (var i = 0; i < 100; i++) {
+        var s0 = await groesseHolen(basis + 'teil-00');
+        if (s0 === null) { if (g === null) keineAntwort++; continue; }
+        if (s0 === -1) throw new Error('Der Server nennt die Größe von „teil-00“ nicht.');
+        if (s0 === 0) continue;
+        var teile = [{ name: 'teil-00', groesse: s0 }], gesamt = s0;
+        for (var i = 1; i < 100; i++) {
           var name = 'teil-' + (i < 10 ? '0' : '') + i, s = await groesseHolen(basis + name);
-          if (s < 0) throw new Error('Der Server nennt die Größe von „' + name + '“ nicht.');
-          if (s === 0) break;
+          if (s === -1) throw new Error('Der Server nennt die Größe von „' + name + '“ nicht.');
+          if (!s) break;   // 0 oder keine Antwort: hier enden die Teile
           teile.push({ name: name, groesse: s }); gesamt += s;
         }
-        if (teile.length) return { basis: basis, teile: teile, gesamt: gesamt };
+        return { basis: basis, teile: teile, gesamt: gesamt };
       } catch (e) { fehler = e; }
     }
-    if (fehler && fehler instanceof TypeError) throw new Error('Keine Verbindung zum Kartenordner auf www.fehnverleih.de. Internet prüfen. Auf dem Server muss im Ordner „karten“ die Datei „.htaccess“ liegen (nicht „.htaccess.txt“).');
     if (fehler) throw fehler;
+    if (keineAntwort) throw new Error('Keine Verbindung zum Kartenordner auf www.fehnverleih.de. Internet prüfen. Auf dem Server muss im Ordner „karten“ die Datei „.htaccess“ liegen.');
     throw new Error('Im Ordner „karten“ auf www.fehnverleih.de wurde keine Kartendatei gefunden (deutschland.pmtiles oder teil-00, teil-01 …).');
   };
 

@@ -14,8 +14,8 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 - Auf dem Server muss im Ordner `karten` die Datei `.htaccess` aus `server-karten/htaccess` liegen.
 
 ## Bauen
-    python3 werkzeuge/bauen.py Fehnverleih-Navi-3.9.3.apk www fehnverleih-app.jks <PASSWORT> fehnverleih Fehnverleih-Navi-3.9.4.apk 3.9.4 395
-    python3 werkzeuge/pruefen.py Fehnverleih-Navi-3.9.4.apk
+    python3 werkzeuge/bauen.py Fehnverleih-Navi-3.9.3.apk www fehnverleih-app.jks <PASSWORT> fehnverleih Fehnverleih-Navi-3.9.5.apk 3.9.5 396
+    python3 werkzeuge/pruefen.py Fehnverleih-Navi-3.9.5.apk
 
 Der Schlüssel `fehnverleih-app.jks` und sein Passwort gehören **nie** in dieses (öffentliche) Repository.
 
