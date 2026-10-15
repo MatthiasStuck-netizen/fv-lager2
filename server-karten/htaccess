@@ -1,0 +1,17 @@
+# Fehnverleih Navi: Offline-Karte zum Herunterladen freigeben
+# Auf Strato in den Ordner "karten" legen und in  .htaccess  umbenennen (Punkt vorne, ohne .txt).
+
+# Die Navi-App darf die Dateien abholen
+<IfModule mod_headers.c>
+  Header set Access-Control-Allow-Origin "*"
+  Header set Access-Control-Expose-Headers "Content-Length, Content-Range"
+  Header set Cache-Control "no-transform"
+</IfModule>
+
+# Nicht nachträglich komprimieren, sonst klappt das Weiterladen nach einer Unterbrechung nicht
+<IfModule mod_deflate.c>
+  SetEnv no-gzip 1
+</IfModule>
+
+# Ordnerinhalt nicht als Liste anzeigen
+Options -Indexes
