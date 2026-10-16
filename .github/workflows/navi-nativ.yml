@@ -91,3 +91,46 @@ jobs:
         run: |
           gh release delete navi-nativ -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
           gh release create navi-nativ aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi: Android-Teil mit Satelliten (unsigniert)" --notes "Zwischenstand fuer den Bau, nicht zum Installieren."
+
+  geraetetest:
+    needs: bauen
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Test-APK bauen (Wegwerf-Schlüssel, nur zum Testen)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download navi-nativ -R "$GITHUB_REPOSITORY" -p 'Navi-nativ-unsigniert.apk'
+          keytool -genkeypair -keystore wegwerf.jks -storepass wegwerf123 -keypass wegwerf123 -alias test -keyalg RSA -keysize 2048 -validity 30 -dname "CN=Test" > /dev/null
+          pip install -q cryptography
+          python3 werkzeug/bauen.py Navi-nativ-unsigniert.apk www wegwerf.jks wegwerf123 test test.apk 4.2.1 421
+      - name: KVM freischalten
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: App im Emulator
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot -memory 4096
+          script: bash werkzeug/geraetetest.sh
+      - name: Ergebnis bereitstellen
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p geraet; ls -l geraet
+          gh release delete navi-nativ-test -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create navi-nativ-test geraet/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi nativ: Geraetetest" --notes "Bilder und Protokoll aus dem Emulator"
