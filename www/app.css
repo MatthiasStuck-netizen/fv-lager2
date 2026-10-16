@@ -712,3 +712,24 @@ body.s-fahrt .fahrinfo:not([hidden]) ~ .satknopf { display: none; }
 .satsys span { width: 140px; flex: none; } .satsys .offbalken { flex: 1; margin: 0; } .satsys b { width: 52px; text-align: right; flex: none; } .satsys b small { font-weight: 400; color: var(--grau2); }
 html.hell .satknopf { background: rgba(255,255,255,.96); color: #1d1b17; box-shadow: 0 1px 5px rgba(0,0,0,.25); }
 html.hell .satgross.sq-gut b { color: #1d8a3c; } html.hell .satgross.sq-mittel b { color: #b26a00; }
+
+/* ---------- 4.3: Start-Knopf in den Verbindungen, Reise-Navigation ---------- */
+.ostart { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 6px 12px 6px 9px; border-radius: 16px; background: linear-gradient(180deg, #f9de94, #d9a33a); color: var(--tinte); border: 1px solid #b07a18; font: 700 14px/1 var(--schmal); }
+.ostart .sym { width: 17px; height: 17px; transform: rotate(45deg); }
+.ostart:disabled { opacity: .45; }
+.ostart + .odetail { margin-left: 4px; }
+.okopf .opreis + .ostart { margin-left: 0; }
+.reiseleiste { flex: none; display: flex; align-items: stretch; gap: 4px; margin: 0 8px 6px; background: #0e131a; border: 1.5px solid var(--gold-dunkel); border-radius: 10px; font-family: var(--schmal); }
+.rlknopf { width: 34px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--gold); }
+.rlknopf:disabled { opacity: .3; }
+.rlknopf .sym { width: 26px; height: 26px; }
+.rltxt { flex: 1; min-width: 0; padding: 6px 2px; cursor: pointer; }
+.rltxt small { display: block; font-size: 11.5px; color: var(--grau2); }
+.rltxt b { display: flex; align-items: center; gap: 5px; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rltxt b .sym { width: 19px; height: 19px; color: var(--gold); }
+.rltxt span { display: block; font-size: 13.5px; color: var(--grau); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rltxt em { display: block; font-style: normal; font-size: 12.5px; color: var(--gold-hell); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.vollbild .reiseleiste { display: none; }
+.zl.akt { background: rgba(234,185,74,.12); border-radius: 0 8px 8px 0; }
+.zl[data-tun] { cursor: pointer; }
+html.hell .reiseleiste { background: #fff; }

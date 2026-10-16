@@ -107,7 +107,7 @@ jobs:
           gh release download navi-nativ -R "$GITHUB_REPOSITORY" -p 'Navi-nativ-unsigniert.apk'
           keytool -genkeypair -keystore wegwerf.jks -storepass wegwerf123 -keypass wegwerf123 -alias test -keyalg RSA -keysize 2048 -validity 30 -dname "CN=Test" > /dev/null
           pip install -q cryptography
-          python3 werkzeug/bauen.py Navi-nativ-unsigniert.apk www wegwerf.jks wegwerf123 test test.apk 4.2.1 421
+          python3 werkzeug/bauen.py Navi-nativ-unsigniert.apk www wegwerf.jks wegwerf123 test test.apk 4.3.0 430
       - name: KVM freischalten
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

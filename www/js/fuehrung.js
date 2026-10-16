@@ -3,7 +3,7 @@
   'use strict';
   var G = FV.G, B = FV.B, K = FV.K;
   var F = FV.F = { aktiv: false, sichtbar: false, route: null, ziel: null, stand: null };
-  var o = null, hoerer = null, zustand = null, folgeTimer = null, simTimer = null, verkehrTimer = null, vGesagt = {};
+  var o = null, hoerer = null, zustand = null, folgeTimer = null, simTimer = null, verkehrTimer = null, zeitTimer = null, vGesagt = {};
   var VERKEHR_ALLE = 240000;   // alle 4 Minuten neue Verkehrsmeldungen holen
 
   function neuerZustand() { return { weg: 0, idx: 0, abseits: 0, neuUm: 0, rechnet: false, neuGesagt: false, fehl: 0, zoom: 16, gesagt: {}, wcGesagt: {}, start: Date.now(), angekommen: false, letzter: null }; }
@@ -19,13 +19,17 @@
     var s0 = route.schritte[0];
     var um = route.umleitung && FV.V ? 'Wegen ' + FV.V.sprache(route.umleitung.grund) + ' fahren wir eine Umleitung. ' : '';
     sag(um + (s0 ? s0.ansage + ' ' : '') + 'Die Strecke ist ' + G.km(route.laenge).replace(' km', ' Kilometer') + ' lang.');
-    var p = B.ort(); if (p) ort(p);
+    var p = B.ort(); if (p && !route.nurZeit) ort(p);
     vGesagt = {};
+    /* Zug, Bus, Schiff, Flug: Fahrplan als Ersatz für GPS (im Flugzeug immer, sonst wenn das GPS gerade schweigt) */
+    clearInterval(zeitTimer); zeitTimer = null;
+    if (route.oev && route.zeitAb && route.zeitAn) { zeitTimer = setInterval(zeitTakt, 5000); setTimeout(zeitTakt, 300); }
     clearInterval(verkehrTimer); verkehrTimer = null;
     if (F.modus() === 'auto' && FV.V) { verkehrTimer = setInterval(verkehrPruefen, VERKEHR_ALLE); setTimeout(verkehrPruefen, route.verkehrStand && Date.now() - route.verkehrStand < 60000 ? 60000 : 4000); }
   };
   F.stopp = function (leise) {
     if (hoerer) { hoerer(); hoerer = null; }
+    clearInterval(zeitTimer); zeitTimer = null;
     clearTimeout(folgeTimer); clearInterval(simTimer); simTimer = null; B.probe = false; clearInterval(verkehrTimer); verkehrTimer = null;
     if (F.aktiv && !leise) B.still();
     F.aktiv = false; K.beiGeste(null); B.wach(false);
@@ -55,18 +59,29 @@
     return z;
   }
 
+  /** Position nach Fahrplan: Anteil der Fahrzeit = Anteil der Strecke */
+  function zeitTakt() {
+    if (!F.aktiv || !F.route || !F.route.oev || zustand.angekommen) return;
+    var r = F.route, q = B.ort(), jetzt = Date.now();
+    if (!r.nurZeit && q && jetzt - (q.zeit || 0) < 45000 && (q.genau || 0) < 150) return;   // echtes GPS ist da
+    var ab = +r.zeitAb, an = +r.zeitAn, t = an > ab ? Math.max(0, Math.min(1, (jetzt - ab) / (an - ab))) : 0;
+    var w = r.laenge * t, a = G.punktBei(r, w), b = G.punktBei(r, Math.min(r.laenge, w + 50));
+    ort({ lat: a.lat, lon: a.lon, genau: 10, tempo: jetzt >= ab && jetzt < an ? r.laenge / Math.max(60, (an - ab) / 1000) : 0, kurs: G.kurs(a, b), zeit: jetzt, fahrplan: true });
+  }
+  F.zeitTakt = zeitTakt;
   function ort(p) {
     if (!F.aktiv || !F.route || zustand.angekommen) return;
     var r = F.route, z = zustand, jetzt = Date.now();
-    if (p.genau > 80) return;
+    if (r.nurZeit && !p.fahrplan) return;   // im Flugzeug zählt nur der Flugplan
+    if (p.genau > (r.oev ? 150 : 80)) return;
     var s = G.einrasten(r, p, z.idx - 4, z.idx + 90);
     if (!s || s.entf > 80) s = G.einrasten(r, p) || s;
     if (!s) return;
-    var grenze = 40 + Math.min(p.genau || 0, 30);
+    var grenze = r.oev ? 600 : 40 + Math.min(p.genau || 0, 30);
     if (s.entf > grenze) z.abseits++; else { z.abseits = 0; z.neuGesagt = false; z.fehl = 0; }
     // Klappt die Neuberechnung nicht (Funkloch), wird in wachsenden Abständen still weiter versucht: 9, 18, 36, höchstens 60 Sekunden
     var pause = Math.min(60000, 9000 * Math.pow(2, z.fehl));
-    if (z.abseits >= 4 && !z.rechnet && jetzt - z.neuUm > pause) { neuRechnen(p); }
+    if (z.abseits >= 4 && !z.rechnet && jetzt - z.neuUm > pause && !r.oev) { neuRechnen(p); }   // Gleise, Wasser und Luft rechnet man nicht neu
     var aufRoute = s.entf <= grenze;
     if (aufRoute) { z.weg = s.weg; z.idx = s.idx; }
     var kmh = p.tempo >= 0 ? p.tempo * 3.6 : 0;
@@ -86,8 +101,9 @@
     /* Ansagen */
     if (n >= 0 && aufRoute) {
       var v = Math.max(3, p.tempo > 0 ? p.tempo : 8), fern = Math.max(250, Math.min(1200, v * 25)), nah = Math.max(40, Math.min(160, v * 5.5));
+      if (r.oev) { fern = Math.max(2500, Math.min(15000, v * 180)); nah = Math.max(500, Math.min(3000, v * 45)); }   // im Zug rechtzeitig vor dem Aussteigen
       var davor = sch[n].weg - sch[n - 1].weg, m = z.gesagt[n] || 0;
-      if (m < 2 && bis <= nah) { z.gesagt[n] = 2; sag(schritt.ziel ? 'Sie erreichen gleich Ihr Ziel.' : schritt.ansage); }
+      if (m < 2 && bis <= nah) { z.gesagt[n] = 2; sag(schritt.ziel ? (r.oev ? schritt.ansage : r.zielName ? 'Sie erreichen gleich ' + r.zielName + '.' : 'Sie erreichen gleich Ihr Ziel.') : schritt.ansage); }
       else if (m < 1 && bis <= fern && bis > nah * 1.8 && davor > fern * 0.7) { z.gesagt[n] = 1; sag('In ' + G.meterSprache(bis) + ' ' + klein(schritt.hinweis || schritt.text) + '.'); }
     }
     /* Parkplatz mit WC drei Kilometer vorher ansagen */
@@ -127,8 +143,8 @@
     } else if (!limit || kmh <= limit + 2) z.zuSchnellUm = 0;
 
     /* Ziel erreicht */
-    if (aufRoute && rest < 35 && (p.genau || 0) < 60) {
-      z.angekommen = true; sag('Sie haben Ihr Ziel erreicht.');
+    if (aufRoute && rest < (r.oev ? 250 : 35) && (p.genau || 0) < (r.oev ? 160 : 60) && !(r.oev && r.zeitAn && p.fahrplan && jetzt < +r.zeitAn)) {
+      z.angekommen = true; sag(r.oev ? 'Sie sind in ' + (r.zielName || 'der Zielhaltestelle') + ' angekommen.' : r.zielName ? 'Sie haben ' + r.zielName + ' erreicht.' : 'Sie haben Ihr Ziel erreicht.');
       var cb = o.beiZiel; F.stopp(true); if (cb) cb();
     }
   }

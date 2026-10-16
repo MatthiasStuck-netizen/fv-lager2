@@ -478,5 +478,12 @@
       });
     });
   };
+  /** Route der Zielführung über die Linien der Bus-/Bahn-Verbindung legen (Reise-Navigation) */
+  K.routeNachOben = function () {
+    K.wenn(function () {
+      var map = K.map, vor; try { var ls = map.getStyle().layers; for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { vor = ls[i].id; break; } } catch (e) {}
+      ['route-rand', 'route', 'gefahren'].forEach(function (id) { if (map.getLayer(id)) try { map.moveLayer(id, vor); } catch (e) {} });
+    });
+  };
   K.leeren = function () { K.flugstrecken(null); K.flugzeuge([]); K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
 })();
