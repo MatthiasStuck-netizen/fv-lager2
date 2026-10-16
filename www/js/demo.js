@@ -28,11 +28,16 @@
         case 'flugtafel': {
           var m = function (n) { return new Date(Date.now() + n * 60000).toISOString(); };
           return ok({ stand: '', abfluege: [
-            { nr: 'LH 2083', airline: 'Lufthansa', ort: 'München (MUC)', plan: m(20), neu: m(20), verz: 0, status: 'Boarding', terminal: '1', gate: 'A4' },
+            { nr: 'LH 2083', airline: 'Lufthansa', ort: 'München (MUC)', plan: m(20), neu: m(20), verz: 0, status: 'Boarding', terminal: '1', gate: 'A4', cs: 'DLH2083', reg: 'D-AIZD', hex: '3c6444', typ: 'Airbus A320', ab_plan: m(20), ab_neu: m(20), an_plan: m(85), an_neu: m(83) },
+            { nr: 'KL 1778', airline: 'KLM', ort: 'Amsterdam (AMS)', plan: m(-40), neu: m(-36), verz: 4, status: 'Departed', gate: 'A2', cs: 'KLM50K', reg: 'PH-AXR', hex: '4868f8', typ: 'Airbus A321neo', ab_plan: m(-40), ab_neu: m(-36), an_plan: m(15), an_neu: m(18) },
             { nr: 'FR 1234', airline: 'Ryanair', ort: 'Palma de Mallorca (PMI)', plan: m(40), neu: m(75), verz: 35, status: 'Delayed', gate: 'B2' },
             { nr: 'KL 1774', airline: 'KLM', ort: 'Amsterdam (AMS)', plan: m(60), neu: '', verz: 0, status: 'Canceled' }],
             ankuenfte: [{ nr: 'LH 2080', airline: 'Lufthansa', ort: 'München (MUC)', plan: m(-10), neu: m(-14), verz: -4, status: 'Arrived', band: '3' },
               { nr: 'EW 7742', airline: 'Eurowings', ort: 'Stuttgart (STR)', plan: m(35), neu: m(52), verz: 17, status: 'Expected', band: '' }] });
+        }
+        case 'flug': {
+          var m2 = function (n) { return new Date(Date.now() + n * 60000).toISOString(); };
+          return ok({ flug: { nr: 'KL 1778', airline: 'KLM', status: 'EnRoute', von: 'CPH', von_ort: 'Kopenhagen', nach: 'AMS', nach_ort: 'Amsterdam', ab_plan: m2(-55), ab_neu: '', ab_ist: m2(-51), an_plan: m2(25), an_neu: m2(22), an_ist: '', typ: 'Airbus A321neo', reg: 'PH-AXR' } });
         }
         case 'apotheken_notdienst': {
           var h0 = new Date(); h0.setHours(8, 30, 0, 0); if (h0 > new Date()) h0 = new Date(h0.getTime() - 86400000);

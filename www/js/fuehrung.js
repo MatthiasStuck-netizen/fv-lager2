@@ -153,7 +153,7 @@
     var z = zustand; z.rechnet = true; z.neuUm = Date.now();
     if (!z.neuGesagt) { z.neuGesagt = true; sag('Die Route wird neu berechnet.'); }   // nur einmal je Abweichung, nicht bei jedem Versuch
     var alt = F.route;
-    G.route({ lat: p.lat, lon: p.lon, kurs: p.kurs, tempo: p.tempo }, F.ziel, { modus: F.modus(), meiden: alt && alt.meiden }).then(function (r) {
+    G.route({ lat: p.lat, lon: p.lon, kurs: p.kurs, tempo: p.tempo }, F.ziel, { modus: F.modus(), meiden: alt && alt.meiden, art: F.route && F.route.art }).then(function (r) {
       if (alt && alt.umleitung) r.umleitung = alt.umleitung;
       if (!F.aktiv || zustand !== z) return;   // inzwischen beendet oder eine andere Route gestartet
       var gesamtStart = zustand.start; F.route = r; zustand = neuerZustand(); zustand.start = gesamtStart; zustand.neuUm = Date.now(); zustand.gesagt[0] = 2;

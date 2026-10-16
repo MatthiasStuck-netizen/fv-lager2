@@ -70,7 +70,7 @@
     return st;
   }
   function kopie(x) { return JSON.parse(JSON.stringify(x)); }
-  var EIGENE = /^(route|gefahren|verkehr|netz|oev|bahn-|see-|flug-)/;
+  var EIGENE = /^(route|gefahren|verkehr|netz|oev|bahn-|see-|flug-|gelaende|live-)/;
   /** Tag/Nacht umschalten, ohne die Karte neu aufzubauen (Route, Marken und eigene Ebenen bleiben) */
   K.designNeu = function () {
     if (!K.map || !K.bereit) return;
@@ -81,7 +81,7 @@
         var p = ebenenFarben(l, hell); if (!p) return;
         Object.keys(p).forEach(function (k) { try { K.map.setPaintProperty(l.id, k, p[k]); } catch (e) {} });
       });
-      zusatzFarben();
+      zusatzFarben(); gelaende(); liveFarben();
     } catch (e) {}
     var f = K.map.getContainer(); if (f && f.parentNode) f.parentNode.style.background = hell ? '#e9e5dc' : '';
   };
@@ -97,8 +97,8 @@
         return st;
       });
     }
-    /* Offline-Karte auf dem Handy: Kacheln kommen aus der Datei (Einstellungen → Offline-Karten) */
-    if (FV.O && FV.O.aktiv()) {
+    /* Offline-Karte auf dem Handy: Kacheln kommen aus der Datei (Einstellungen → Offline-Karten) – außer, der Fahrer hat auf „Online“ geschaltet */
+    if (K.quelle() === 'offline') {
       FV.O.protokoll(); stilArt = 'offline';
       if (merker && merker.layers) { netz().catch(function () {}); return Promise.resolve(einfaerben(FV.O.stil(merker))); }
       var bis = new Promise(function (ok, fehl) { setTimeout(function () { fehl(new Error('zeit')); }, 6000); });
@@ -107,6 +107,70 @@
     if (merker && merker.layers) { netz().catch(function () {}); stilArt = 'vektor'; return Promise.resolve(einfaerben(kopie(merker))); }
     return netz().then(function (st) { stilArt = 'vektor'; return einfaerben(kopie(st)); }).catch(function () { stilArt = 'raster'; return einfaerben(kopie(RASTER)); });
   }
+
+  /** Woher kommt die Karte? 'offline' (Datei auf dem Handy) oder 'online'. Ohne Wahl: offline, sobald eine Offline-Karte geladen ist. */
+  K.quelle = function () {
+    var q = (FV.app && FV.app.e && FV.app.e.kartenQuelle) || '', da = !!(FV.O && FV.O.aktiv());
+    if (q === 'online') return 'online';
+    return da ? 'offline' : 'online';
+  };
+  K.offlineDa = function () { return !!(FV.O && FV.O.aktiv()); };
+  /** Kartenstil neu laden (nach Umschalten online/offline). Route, Linien, Marken und eigene Ebenen bleiben. */
+  K.stilNeu = function () {
+    if (!K.map) return Promise.resolve();
+    return stilHolen().then(function (st) {
+      var map = K.map;
+      return new Promise(function (ok) {
+        map.once('style.load', function () {
+          try { ebenen(); gelaende(); liveEbenen(); K.live(liveListe); } catch (e) { console.error(e); }
+          ok();
+        });
+        map.setStyle(st, { diff: false, transformStyle: function (alt, neu) {
+          if (!alt) return neu;
+          var eigen = {}, vorher = alt.sources || {};
+          Object.keys(vorher).forEach(function (k) { if (vorher[k].type === 'geojson') eigen[k] = vorher[k]; });
+          neu.sources = Object.assign({}, neu.sources, eigen);
+          var eigeneEbenen = (alt.layers || []).filter(function (l) { return l.source && eigen[l.source]; });
+          var i = 0; while (i < neu.layers.length && neu.layers[i].type !== 'symbol') i++;
+          var unten = eigeneEbenen.filter(function (l) { return l.type !== 'symbol'; }), oben = eigeneEbenen.filter(function (l) { return l.type === 'symbol'; });
+          neu.layers = neu.layers.slice(0, i).concat(unten, neu.layers.slice(i), oben);
+          return neu;
+        } });
+      });
+    });
+  };
+
+  /* ---------- Gelände: Schummerung (Relief) aus Höhendaten, auf Wunsch schräg von der Seite ----------
+   * Höhen: Terrain Tiles von Mapzen/Amazon (frei, ohne Schlüssel). Braucht Internet; offline bleibt die Karte flach. */
+  var DEM = { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'], encoding: 'terrarium', tileSize: 256, maxzoom: 14, attribution: 'Höhen: Mapzen Terrain Tiles' };
+  function gelaende() {
+    var map = K.map; if (!map) return;
+    var an = !!(FV.app && FV.app.e && FV.app.e.gelaende), hell = K.hell();
+    try {
+      if (!an) {
+        if (map.getLayer('gelaende-schatten')) map.removeLayer('gelaende-schatten');
+        try { map.setTerrain(null); } catch (e) {}
+        return;
+      }
+      if (!map.getSource('gelaende')) map.addSource('gelaende', Object.assign({}, DEM));
+      if (!map.getSource('gelaende-3d')) map.addSource('gelaende-3d', Object.assign({}, DEM));
+      var vor = null, ls = map.getStyle().layers;
+      for (var i = 0; i < ls.length; i++) { var sl = ls[i]['source-layer'] || ''; if (sl === 'building' || sl === 'transportation' || ls[i].type === 'symbol') { vor = ls[i].id; break; } }
+      if (!map.getLayer('gelaende-schatten')) map.addLayer({ id: 'gelaende-schatten', type: 'hillshade', source: 'gelaende', paint: {} }, vor || undefined);
+      map.setPaintProperty('gelaende-schatten', 'hillshade-exaggeration', 0.75);
+      map.setPaintProperty('gelaende-schatten', 'hillshade-shadow-color', hell ? '#5a5040' : '#000000');
+      map.setPaintProperty('gelaende-schatten', 'hillshade-highlight-color', hell ? '#ffffff' : '#b8c7b0');
+      map.setPaintProperty('gelaende-schatten', 'hillshade-accent-color', hell ? '#7a6a50' : '#0a140c');
+      try { map.setTerrain({ source: 'gelaende-3d', exaggeration: 1.5 }); } catch (e) {}
+    } catch (e) { console.error(e); }
+  }
+  K.gelaende = function (schraeg) {
+    K.wenn(function () {
+      gelaende();
+      var an = !!(FV.app && FV.app.e && FV.app.e.gelaende);
+      if (schraeg && !(FV.F && FV.F.aktiv)) K.map.easeTo({ pitch: an ? 55 : 0, duration: 700 });
+    });
+  };
 
   /* ---------- Karte anlegen / in eine Seite setzen ---------- */
   K.setzen = function (ziel) {
@@ -125,7 +189,7 @@
         var fertig = false;
         function los() {
           if (fertig) return; fertig = true;
-          ebenen(); K.bereit = true; warte.splice(0).forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
+          ebenen(); bilder(); gelaende(); liveEbenen(); K.bereit = true; warte.splice(0).forEach(function (f) { try { f(); } catch (e) { console.error(e); } });
           ok(map);
         }
         map.on('load', los); setTimeout(los, 6000);
@@ -262,6 +326,73 @@
     Object.keys(fzMarken).forEach(function (k) { if (!neu[k]) fzMarken[k].remove(); });
     fzMarken = neu; fzDrehen();
   };
+
+  /* ---------- Züge und Schiffe live: Symbole mit Kennung, antippbar ----------
+   * Quelle „live“: Punkte mit { art: zug|fern|sbahn|bus|tram|faehre|schiff, farbe, kurs (Grad oder -1), name, id } */
+  var liveTipp = null, liveGehoert = null, liveDaten = { type: 'FeatureCollection', features: [] };
+  /** Farbiges Symbol (Pfeil = fährt in diese Richtung, Kreis = Richtung unbekannt) mit dunklem Rand, als Bild für die Karte */
+  function pfeilBild(groesse, form, farbe) {
+    var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'), n = groesse * r; c.width = c.height = n;
+    var g = c.getContext('2d'), m = n / 2;
+    g.beginPath();
+    if (form === 'schiff') { g.moveTo(m, n * 0.06); g.lineTo(n * 0.78, n * 0.62); g.lineTo(n * 0.7, n * 0.92); g.lineTo(n * 0.3, n * 0.92); g.lineTo(n * 0.22, n * 0.62); }
+    else if (form === 'zug') { g.moveTo(m, n * 0.05); g.lineTo(n * 0.86, n * 0.5); g.lineTo(n * 0.86, n * 0.92); g.lineTo(n * 0.14, n * 0.92); g.lineTo(n * 0.14, n * 0.5); }
+    else { g.arc(m, m, n * 0.36, 0, Math.PI * 2); }
+    g.closePath();
+    g.fillStyle = farbe; g.fill();
+    g.lineWidth = 2.2 * r; g.strokeStyle = K.hell() ? '#ffffff' : '#05080b'; g.stroke();
+    if (form !== 'punkt') { g.beginPath(); g.arc(m, n * (form === 'schiff' ? 0.62 : 0.6), n * 0.09, 0, Math.PI * 2); g.fillStyle = K.hell() ? '#ffffff' : '#05080b'; g.fill(); }
+    var d = g.getImageData(0, 0, n, n);
+    return { bild: { width: n, height: n, data: new Uint8Array(d.data.buffer) }, r: r };
+  }
+  var bildFarben = {};
+  function bild(form, farbe) {
+    var id = 'fv-' + form + '-' + farbe + (K.hell() ? '-h' : '');
+    if (K.map && !K.map.hasImage(id)) { try { var b = pfeilBild(form === 'punkt' ? 20 : 30, form, farbe); K.map.addImage(id, b.bild, { pixelRatio: b.r }); } catch (e) {} }
+    return id;
+  }
+  function bilder() {}
+  function liveEbenen() {
+    var map = K.map; if (!map) return;
+    var hell = K.hell(), glyphen = !!map.getStyle().glyphs, font = schrift(map);
+    if (!map.getSource('live')) map.addSource('live', { type: 'geojson', data: liveDaten });
+    if (!map.getLayer('live-symbol')) map.addLayer({ id: 'live-symbol', type: 'symbol', source: 'live',
+      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 9, 0.85, 13, 1.1], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'] },
+      paint: {} });
+    if (glyphen && font && !map.getLayer('live-name')) map.addLayer({ id: 'live-name', type: 'symbol', source: 'live', minzoom: 8.5,
+      layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.25], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
+      paint: { 'text-color': ['get', 'farbe'], 'text-halo-color': hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)', 'text-halo-width': 1.6 } });
+    if (liveGehoert !== map) {
+      liveGehoert = map;
+      ['live-symbol', 'live-name'].forEach(function (id) {
+        map.on('click', id, function (ev) { var f = ev.features && ev.features[0]; if (f && liveTipp) { ev.originalEvent && ev.originalEvent.stopPropagation && ev.originalEvent.stopPropagation(); liveTipp(f.properties.typ, f.properties.id); } });
+        map.on('mouseenter', id, function () { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', id, function () { map.getCanvas().style.cursor = ''; });
+      });
+    }
+  }
+  function liveFarben() {
+    var map = K.map, hell = K.hell(); if (!map) return;
+    K.live(liveListe);   // Symbole mit passendem Rand neu
+    try { map.setPaintProperty('live-name', 'text-halo-color', hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)'); } catch (e) {}
+  }
+  /** Live-Punkte setzen. liste = [{ typ: 'zug'|'schiff', id, lat, lon, kurs, art, farbe, name, rang }] · beiTipp(typ, id) */
+  var liveListe = [];
+  K.live = function (liste, beiTipp) {
+    if (beiTipp) liveTipp = beiTipp;
+    liveListe = liste || [];
+    K.wenn(function () {
+      liveDaten = { type: 'FeatureCollection', features: liveListe.map(function (x) {
+        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6';
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] },
+          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, rang: x.rang || 0,
+            bild: bild(kurs == null ? 'punkt' : x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff' : 'zug', farbe) } };
+      }) };
+      var q = K.map.getSource('live'); if (q) q.setData(liveDaten);
+    });
+  };
+  K.sichtbar = function () { return !!(K.map && K.map.getContainer && K.map.getContainer().isConnected); };
 
   /* ---------- Marken ---------- */
   function el(html, klasse) { var d = document.createElement('div'); if (klasse) d.className = klasse; d.innerHTML = html; return d; }
@@ -462,8 +593,12 @@
     if (!map.getLayer('oev')) map.addLayer({ id: 'oev', type: 'line', source: 'oev', filter: ['!=', ['get', 'fuss'], true], layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': breit(6) } }, vor);
     if (!map.getLayer('oev-fuss')) map.addLayer({ id: 'oev-fuss', type: 'line', source: 'oev', filter: ['==', ['get', 'fuss'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e9e4d6', 'line-width': breit(4), 'line-dasharray': [0.1, 1.8] } }, vor);
   }
+  var oevAkt = null;
   K.oev = function (f) {
     oevMarken.forEach(function (m) { m.remove(); }); oevMarken = [];
+    oevAkt = f;
+    // Bahnstrecken schienengenau nachladen (Transitous) und dann neu zeichnen
+    if (f && FV.LIVE && FV.LIVE.gleise) FV.LIVE.gleise(f, function (ff) { if (oevAkt === ff) K.oev(ff); });
     K.wenn(function () {
       oevEbenen();
       var feats = [];
@@ -485,5 +620,5 @@
       ['route-rand', 'route', 'gefahren'].forEach(function (id) { if (map.getLayer(id)) try { map.moveLayer(id, vor); } catch (e) {} });
     });
   };
-  K.leeren = function () { K.flugstrecken(null); K.flugzeuge([]); K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
+  K.leeren = function () { K.flugstrecken(null); K.flugzeuge([]); K.live([]); K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
 })();

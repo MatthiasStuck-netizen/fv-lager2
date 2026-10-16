@@ -61,6 +61,7 @@
     A().blattZu();
     A().zeige('vorschau', { ziel: { name: x.name, adresse: x.adresse || x.name, lat: zahl(x.lat), lon: zahl(x.lon), art: 'frei' } });
   };
+  FAV.html = function () { return favHtml(); };
   function favHtml() {
     var l = FAV.alle();
     if (!l.length) return '<p class="klein2" style="padding:0 4px">Noch keine Favoriten. Den Stern ' + sym('stern_leer', 'inline') + ' bei einem Ziel, Flughafen, Bahnhof oder Anleger antippen – dann steht er hier.</p>';

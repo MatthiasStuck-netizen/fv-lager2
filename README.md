@@ -1,10 +1,27 @@
-# Fehnverleih Navi 3.9.x / 4.1.x – Oberfläche und Bauwerkzeuge
+# Fehnverleih Navi 3.9.x – 4.4.x – Oberfläche und Bauwerkzeuge
 
 Dieser Zweig enthält die Oberfläche der installierten Navi-App ab **3.9.3** (aus der APK zurückgeholt)
 und die Änderungen ab **3.9.4**. Der Android-Teil (Kotlin) von 3.9.x liegt nur kompiliert in der APK vor;
 gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und neu unterschrieben wird.
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
+
+## Neu in 4.4.0
+- **Startseite:** unter „Route starten“ / „Karte anzeigen“ kleine Knöpfe Favoriten, Telefon, Spotify, Nachrichten, Verkehrsfunk. Dünner schwarzer Rahmen um das Fehnverleih-Bild.
+- **Telefon** (`extras.js`, Seite `telefon`): letzte Anrufe, Kontakte (mit Suche, Favoriten zuerst), Kunden heute, Wähltastatur. Anrufen direkt (CALL_PHONE), sonst Wähltastatur.
+- **Nachrichten** (`nachrichten`): WhatsApp, Telegram, Signal, SMS über den Benachrichtigungs-Zugriff (Android-Dienst `Mitteiler`), Einblendung oben über der Karte (`#melder`), Vorlesen während der Fahrt, Schnellantworten (RemoteInput). **E-Mail** per IMAP (nur lesen, `Post.java`, Konto nur auf dem Handy, beim Abmelden gelöscht).
+- **Musik:** Blatt mit Titel/Künstler (MediaSession), Zurück/Pause/Weiter, „Zu Spotify wechseln“.
+- **Verkehrsfunk** (`verkehrsfunk`): Radio live (NDR 1 Niedersachsen, NDR 2, ffn, Antenne, Bremen Eins, WDR 2, NPO Radio 1 – Adressen über radio-browser.info) und Meldungen im Umkreis von 60 km (`V.umgebung`: Autobahnen aus OSM → Autobahn GmbH, mit TomTom-Schlüssel alle Straßen), vorlesbar.
+- **Karte:** Knöpfe rechts: Online/Offline (`e.kartenQuelle`, `K.stilNeu` ohne Neuaufbau), Gelände (Schummerung + 3D aus Mapzen Terrain Tiles, `K.gelaende`), Musik, Nachrichten.
+- **Züge live** (`live.js`): Transitous/MOTIS `map/trips`, Position nach Uhr entlang der Linie, antippen → Halte mit Verspätung. Fähren mit Fahrplan ebenso. **Schiffe live** per AIS (aisstream.io, Schlüssel in der Verwaltung oder in den Einstellungen; Verbindung im Android-Teil `Ais.java`), alle Kennungen (MMSI, IMO, Rufzeichen, Typ, Ziel, ETA, Maße).
+- **Bahnstrecke schienengenau:** `FV.LIVE.gleise` holt für jeden Bahn-/Bus-Abschnitt die Linie aus Transitous `plan` (gleiche Linie, Abfahrt ±12 Min.) – `K.oev` zeichnet danach neu.
+- **Routenwahl** schnellste / sparsame / kürzeste (`G.routenArten`, Valhalla `shortest` bzw. `top_speed`, Sprit geschätzt nach Tempo je Abschnitt, PKW/Transporter); die Wahl gilt auch für Neuberechnung und Umleitung.
+- **Flugtafel:** Flug antippen → Abflug/Ankunft (Plan + neu), Gate, Flugzeug und – in der Luft – Höhe, Tempo, Kurs, Kennung (adsb.lol). Live-Flugzeug: Uhrzeit, Abflug, Ankunft (Server-Aufruf `flug`, AeroDataBox, 1 Std. gemerkt; sonst geschätzt).
+- **Zielführung im Vollbild:** unten Uhrzeit · Abfahrt · Ankunft · Rest.
+- **Entfernt:** Offline-Navi über Organic Maps / OsmAnd (Einstellungen und Knopf „Offline-Navi“).
+- Android-Teil (Zweig `navi-nativ`): `Extras.java` (Brücke `FVNative.extra(befehl, json)`), `Mitteiler.java`, `Post.java`, `Ais.java`; Manifest: READ_CONTACTS, READ_CALL_LOG, CALL_PHONE, Dienst `Mitteiler`, Sichtbarkeit Spotify/WhatsApp.
+- Server (`warenwirtschaft.php`): `flug`, Flugtafel mit Rufzeichen/Flugzeug/beiden Zeiten, aisstream-Schlüssel in Verwaltung → App.
+- Test: `test/test_44.py` (Browser, Android-Teil nachgebildet).
 
 ## Neu in 4.3.0: Navigation für Zug, Bus, Schiff, Flug und Gesamtstrecke
 - Bei jeder Verbindung „Start“ / „Navigation starten“ (Zug, Bus, Schiff, Flugzeug, Gesamtstrecke). Die Reise läuft Abschnitt für Abschnitt:
