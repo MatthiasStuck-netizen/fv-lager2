@@ -6,6 +6,11 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.2.1: Satelliten-Knopf auf der Karte
+- Kleiner Knopf unten links auf jeder Karte: verbundene (für den Standort genutzte) / gesehene Satelliten, Farbe nach Güte; antippen → Einzelheiten je System (GPS, Galileo, GLONASS, BeiDou …), Signalstärke, Genauigkeit.
+- Dafür gibt es erstmals eine Änderung im Android-Teil: Zweig `navi-nativ` (Klasse `Satelliten.java` als `classes2.dex`, Methode `satelliten()` in `MainActivity$Bruecke`). Der Auftrag dort baut die unsignierte Grund-APK (Release `navi-nativ`) und testet sie im Emulator (Release `navi-nativ-test`).
+- Bauen ab 4.2.1: `bauen.py Navi-nativ-unsigniert.apk www …` (statt der alten 3.9.3/4.1.1-APK).
+
 ## Neu in 4.2.0
 - Neuer Knopf **Suche** in der Leiste unten: Ziel suchen (weltweit), **Favoriten** (Stern ☆ bei Ziel, Flughafen, Bahnhof, Haltestelle, Anleger; umbenennen, sortieren, löschen), **Letzte Ziele** (jede berechnete Route, mit Löschen).
 - **Abfahrten und Ankünfte an jedem Ort**: Flughafen (eingebaute Liste aller Linienflughäfen weltweit, `www/js/flughaefen.js` aus OurAirports), Bahnhof, Bus, Schiff (Bahn-Fahrplan `SCHIFFE`, sonst Anleger aus OpenStreetMap mit Reederei-Link und Linien).

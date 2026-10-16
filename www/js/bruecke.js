@@ -72,6 +72,11 @@ window.FV = window.FV || {};
   B.ortStopp = function () { if (N) N.ortStopp(); else if (wache != null) { navigator.geolocation.clearWatch(wache); wache = null; } };
   B.beiOrt = function (f) { ortHoerer.push(f); return function () { var i = ortHoerer.indexOf(f); if (i >= 0) ortHoerer.splice(i, 1); }; };
   B.ort = function () { return letzterOrt; };
+  /** Satelliten (nur in der App): { sichtbar, genutzt, snr, alter, systeme: { GPS: [genutzt, sichtbar], … } } oder null */
+  B.satelliten = function () {
+    if (!N || typeof N.satelliten !== 'function') return null;
+    try { return JSON.parse(N.satelliten() || 'null'); } catch (e) { return null; }
+  };
   B._simOrt = ortEmpfangen;   // für Tests und Vorschau
   /* Kilometerzähler (läuft in Android weiter, auch wenn der Bildschirm aus ist) */
   var simMeter = 0, simLetzter = null;

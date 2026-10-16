@@ -190,7 +190,37 @@
 
   /* ====================== Routen-Vorschau ====================== */
   var lauf = 0;
-  function kartenfeld(extra) { return '<div class="kartenfeld" id="kfeld"><div class="quelle">© OpenStreetMap</div>' + (extra || '') + '</div>'; }
+  function kartenfeld(extra) { return '<div class="kartenfeld" id="kfeld"><div class="quelle">© OpenStreetMap</div>' + satKnopf() + (extra || '') + '</div>'; }
+  /* ---------- Satelliten: kleiner Knopf auf der Karte (genutzt für den Standort / gesehen) ---------- */
+  function satKnopf() { return '<button class="satknopf" data-tun="satelliten" aria-label="Satelliten">' + sym('satellit') + '<b class="satzahl">' + satText() + '</b></button>'; }
+  function satText() {
+    var s = B.satelliten(), o = B.ort();
+    if (!s) return B.nativ ? '…' : '–';
+    if (s.aus || s.alter < 0 || s.alter > 15000) return '0';
+    return s.genutzt + '<small>/' + s.sichtbar + '</small>';
+  }
+  function satGuete(s) { return 'sq-' + (!s || s.aus || s.alter < 0 || s.alter > 15000 ? 'kein' : s.genutzt >= 8 ? 'gut' : s.genutzt >= 4 ? 'mittel' : 'schlecht'); }
+  setInterval(function () {
+    var k = document.querySelectorAll('.satknopf'); if (!k.length) return;
+    var t = satText(), g = satGuete(B.satelliten());
+    [].forEach.call(k, function (e) { var b = e.querySelector('.satzahl'); if (b && b.innerHTML !== t) b.innerHTML = t; e.className = 'satknopf ' + g; });
+    var bl = $('#satblatt'); if (bl) bl.innerHTML = satDetails();
+  }, 2000);
+  function satDetails() {
+    var s = B.satelliten(), o = B.ort(), NAME = { GPS: 'GPS (USA)', GLONASS: 'GLONASS (Russland)', Galileo: 'Galileo (Europa)', BeiDou: 'BeiDou (China)', QZSS: 'QZSS (Japan)', SBAS: 'SBAS (Korrektur)', NavIC: 'NavIC (Indien)' };
+    if (!s) return '<p class="klein2">' + (B.nativ ? 'Diese Anzeige braucht die neue Navi-App (Android-Teil ab 4.2.1).' : 'Die Satelliten zeigt nur die App auf dem Handy.') + '</p>';
+    var aktuell = !(s.aus || s.alter < 0 || s.alter > 15000), g = satGuete(s);
+    var html = '<div class="satgross ' + g + '"><b>' + (aktuell ? s.genutzt : 0) + '</b><span>Satelliten verbunden<small>' + (aktuell ? s.sichtbar + ' in Sicht' : 'GPS-Empfang ist gerade aus') + '</small></span></div>';
+    html += '<div class="block">' + '<div class="detailzeile">' + sym('ort') + '<div><small>Genauigkeit des Standorts</small>' + (o && o.genau != null && Date.now() - (o.zeit || 0) < 60000 ? '± ' + Math.round(o.genau) + ' m' : 'kein aktueller Standort') + '</div></div>' +
+      (aktuell && s.snr ? '<div class="detailzeile">' + sym('tempo') + '<div><small>Signalstärke (Durchschnitt der genutzten)</small>' + s.snr + ' dB-Hz · ' + (s.snr >= 35 ? 'stark' : s.snr >= 25 ? 'mittel' : 'schwach') + '</div></div>' : '') + '</div>';
+    if (aktuell && s.systeme) html += '<h3 class="ueber">' + sym('satellit') + 'Nach System</h3>' + Object.keys(s.systeme).map(function (k) {
+      var x = s.systeme[k], p = x[1] ? Math.round(x[0] * 100 / x[1]) : 0;
+      return '<div class="satsys"><span>' + h(NAME[k] || k) + '</span><div class="offbalken"><i style="width:' + p + '%"></i></div><b>' + x[0] + '<small> / ' + x[1] + '</small></b></div>';
+    }).join('');
+    html += '<p class="klein2">Verbunden = für den Standort genutzt. Ab 4 ist der Standort brauchbar, ab 8 gut. In Tunneln, Parkhäusern und zwischen hohen Häusern werden es weniger.</p>';
+    return html;
+  }
+  Tun.satelliten = function () { A().blatt('<h2>' + sym('satellit') + 'Satelliten<button data-tun="blatt-zu">' + sym('zu') + '</button></h2><div id="satblatt">' + satDetails() + '</div>'); };
   function zielkarte(z) {
     return '<div class="ziel">' + sym(z.art === 'halle' ? 'halle' : z.art === 'frei' ? 'pin' : 'lkw') + '<div class="txt"><b>' + h(z.name) + '</b><div class="adr">' + sym('pin') + '<span>' + adr2(z.adresse) + '</span></div></div>' +
       (z.tel ? '<button class="rund" data-tun="anrufen" data-tel="' + h(z.tel) + '" aria-label="Anrufen">' + sym('telefon') + '</button>' : '') +
