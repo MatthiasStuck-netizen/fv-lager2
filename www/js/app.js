@@ -3,12 +3,12 @@
   'use strict';
   var B = FV.B, S = FV.S, G = FV.G, K = FV.K, F = FV.F;
   var $ = function (s, w) { return (w || document).querySelector(s); };
-  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, offlineApp: 'app.organicmaps', fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true };
+  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, offlineApp: 'app.organicmaps', fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true, design: 'auto', bahnnetz: true, seewege: true, flugrouten: true, flugzeuge: false };
   var app = FV.app = { e: Object.assign({}, STD, B.lesen('einstellungen', {}) || {}), z: { reiter: 'auftraege', tag: G.iso(new Date()), auftraege: [], ziele: {}, stand: '', laedt: false, fehler: '' }, stapel: [] };
   B.stimmeWaehlen(app.e.stimme, app.e.tempo, app.e.hoehe);   // gewählte Stimme gleich beim Start setzen
   FV.esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
-  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['einstellungen', 'zahnrad', 'Einstellungen']];
+  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['suche', 'suche', 'Suche'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['einstellungen', 'zahnrad', 'Einstellungen']];
   var HOCH = { auftraege: 1, anmeldung: 1, sperre: 1 }, OHNE_LEISTE = { anmeldung: 1, sperre: 1 };
 
   app.speichern = function () { B.schreiben('einstellungen', app.e); };
@@ -91,13 +91,13 @@
   app.aufraeumen = function (wer) {
     if (S.demo) return;
     try { app.fahrtEnde('ohne Ziel', wer); } catch (e) {}
-    ['auftraege', 'letzte', 'geo', 'fahrt', 'einstellungen', 'kartenstil'].forEach(function (k) { B.schreiben(k, null); });
+    ['auftraege', 'letzte', 'favoriten', 'geo', 'fahrt', 'einstellungen'].forEach(function (k) { B.schreiben(k, null); });
     B.zaehlerNull();
     app.e = Object.assign({}, STD);
     var z = app.z;
     z.auftraege = []; z.ziele = {}; z.stand = ''; z.fehler = ''; z.nav = null; z.lauf = null; z.neu = null; z.artikel = null; z.fahrzeuge = null;
     z.treffer = null; z.tank = null; z.letzterAuftrag = ''; z.ausweis = ''; z.tag = app.heute(); z.reiter = 'auftraege'; z.meldenAus = false;
-    G.vergessen(); K.leeren();
+    G.vergessen(); K.leeren(); if (FV.D) FV.D.anwenden();
   };
   app.los = function () { app.stapel = []; app.zeige('auftraege', {}, 'reiter'); app.ladeAuftraege(); S.nachsenden(); B.ortStart(); if (!S.demo) fahrtPruefen(); };
 

@@ -6,6 +6,14 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.2.0
+- Neuer Knopf **Suche** in der Leiste unten: Ziel suchen (weltweit), **Favoriten** (Stern ☆ bei Ziel, Flughafen, Bahnhof, Haltestelle, Anleger; umbenennen, sortieren, löschen), **Letzte Ziele** (jede berechnete Route, mit Löschen).
+- **Abfahrten und Ankünfte an jedem Ort**: Flughafen (eingebaute Liste aller Linienflughäfen weltweit, `www/js/flughaefen.js` aus OurAirports), Bahnhof, Bus, Schiff (Bahn-Fahrplan `SCHIFFE`, sonst Anleger aus OpenStreetMap mit Reederei-Link und Linien).
+- Karte: **Bahnstrecken** und **Schiffs-/Fährstrecken** aus den Kartendaten (alle Quellen, auch offline), **Flugstrecken** (echte Flüge aus der Flugtafel, Seite „Flugstrecken“), **Flugzeuge live** (adsb.lol, sonst OpenSky; Strecke über adsb.lol routeset / adsbdb). Schalter in Ebenen, Zielführung und Einstellungen.
+- **Tag-/Nachtdesign** (`www/js/design.js`): Automatisch nach Sonnenstand, Tag, Nacht – App (`html.hell` in app.css) und Karte (Farbtafeln in karte.js, Umschalten ohne Neuaufbau).
+- Offline-**Weltkarte** `welt.pmtiles` / `welt-teil-NN` (Zweig `karte-welt`, Release `karte-welt`, aus dem OpenFreeMap-Planet bis Zoom 10, ca. 4 GB). Liegt unter den Länderkarten.
+- Test: `test/test_42.py` (Karte mit Bahn/Fähre: `test/testkarte_strecken.py`).
+
 ## Neu in 4.1.1: mehrere Länder offline
 - Einstellungen → Offline-Karten: je Land ein eigener Knopf (Deutschland, Spanien + Portugal). Es lädt immer nur eine Karte gleichzeitig.
 - Spanien + Portugal: `spanien-portugal.pmtiles` oder die Teile `spanien-portugal-teil-00`, `-01`, … im selben Ordner `karten`.

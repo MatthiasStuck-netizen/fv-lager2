@@ -42,7 +42,7 @@
     return neu.catch(function (e) { if (d && alter < (o.notfall != null ? o.notfall : 30 * ZW_TAG)) return d.l; throw e; });
   };
   /** Alles Gespeicherte löschen (Einstellungen) */
-  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
+  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt', 'halt_schiff'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
 
   /* ---------- OpenStreetMap (Overpass): zuerst über die Verwaltung (Zwischenspeicher auf dem Server), sonst direkt ---------- */
   function wirt(u) { return String(u).replace(/^https?:\/\//, '').split('/')[0]; }
@@ -696,6 +696,7 @@
     if (!art || art === 'zug') return (navi ? NAVIZUG : DBZUG)[g] || null;
     var p = (navi ? NAVI_ALLE : DB_ALLE)[g] || (g ? 'bus' : '');
     if (art === 'stadt') return p === 'suburban' || p === 'subway' ? p : null;
+    if (art === 'schiff') return p === 'ferry' ? p : null;
     return p;
   }
   function tafelDb(id, ankunft, gruende, art) {
@@ -738,7 +739,7 @@
   }
   function tafelNavi(id, ankunft, gruende, art) {
     var jetzt = new Date(Date.now() - 5 * 60000), spaeter = new Date(jetzt.getTime() + 50 * 60000);
-    var vmListe = art === 'bus' ? ['ALL'] : art === 'stadt' ? ['SBAHNEN', 'UBAHN'] : ['HOCHGESCHWINDIGKEITSZUEGE', 'INTERCITYUNDEUROCITYZUEGE', 'INTERREGIOUNDSCHNELLZUEGE', 'NAHVERKEHRSONSTIGEZUEGE', 'SBAHNEN'];
+    var vmListe = art === 'bus' ? ['ALL'] : art === 'schiff' ? ['SCHIFFE'] : art === 'stadt' ? ['SBAHNEN', 'UBAHN'] : ['HOCHGESCHWINDIGKEITSZUEGE', 'INTERCITYUNDEUROCITYZUEGE', 'INTERREGIOUNDSCHNELLZUEGE', 'NAHVERKEHRSONSTIGEZUEGE', 'SBAHNEN'];
     function frag(d, g) {
       return naviFrage('bahnhofstafel/' + (ankunft ? 'ankunft' : 'abfahrt'), 'bahnhofstafeln.v2', { anfragezeit: hm(d), datum: tag(d), ursprungsBahnhofId: 'A=1@L=' + id + '@',
         verkehrsmittel: vmListe }, g);
@@ -794,7 +795,7 @@
   }
   function tafelRest(id, ankunft, gruende, wasArt) {
     var art = ankunft ? 'arrivals' : 'departures';
-    var filter = wasArt === 'bus' ? '' : wasArt === 'stadt' ? '&nationalExpress=false&national=false&regionalExpress=false&regional=false&bus=false&ferry=false&tram=false&taxi=false' : '&bus=false&ferry=false&subway=false&tram=false&taxi=false';
+    var filter = wasArt === 'bus' ? '' : wasArt === 'schiff' ? '&nationalExpress=false&national=false&regionalExpress=false&regional=false&suburban=false&bus=false&subway=false&tram=false&taxi=false' : wasArt === 'stadt' ? '&nationalExpress=false&national=false&regionalExpress=false&regional=false&bus=false&ferry=false&tram=false&taxi=false' : '&bus=false&ferry=false&subway=false&tram=false&taxi=false';
     return bahnFrage('/stops/' + encodeURIComponent(id) + '/' + art + '?duration=90&results=30&remarks=true&language=de' + filter, gruende).then(function (j) {
       var roh = Array.isArray(j) ? j : (j && j[art]) || [];
       return roh.map(function (x) {
@@ -917,7 +918,8 @@
    * 2. Wahl: OpenStreetMap (Kennung wird beim Öffnen der Tafel über die Lage gesucht) */
   var HALT_PROD = {
     bus: ['BUSSE', 'ANRUFPFLICHTIGEVERKEHRE'],
-    stadt: ['SBAHNEN', 'UBAHN']
+    stadt: ['SBAHNEN', 'UBAHN'],
+    schiff: ['SCHIFFE']
   };
   var PROD_NAME = { BUSSE: 'bus', BUS: 'bus', ANRUFPFLICHTIGEVERKEHRE: 'bus', ANRUFPFLICHTIG: 'bus', SBAHNEN: 'sbahn', SBAHN: 'sbahn', UBAHN: 'ubahn', STRASSENBAHN: 'tram', STR: 'tram', TRAM: 'tram',
     HOCHGESCHWINDIGKEITSZUEGE: 'zug', ICE: 'zug', INTERCITYUNDEUROCITYZUEGE: 'zug', IC_EC: 'zug', EC_IC: 'zug', INTERREGIOUNDSCHNELLZUEGE: 'zug', IR: 'zug', NAHVERKEHRSONSTIGEZUEGE: 'zug', RB: 'zug', REGIONAL: 'zug', SCHIFFE: 'schiff', SCHIFF: 'schiff' };
@@ -957,7 +959,8 @@
         if (!id || lat == null) return;
         if (art === 'stadt' && !pr.sbahn && !pr.ubahn) return;
         if (art === 'bus' && !pr.bus && Object.keys(pr).length) return;
-        l.push({ id: id, name: x.name || lid.O || 'Haltestelle', lat: lat, lon: lon, bus: !!pr.bus, sbahn: !!pr.sbahn, ubahn: !!pr.ubahn, tram: !!pr.tram, zug: !!pr.zug });
+        if (art === 'schiff' && !pr.schiff && Object.keys(pr).length) return;
+        l.push({ id: id, name: x.name || lid.O || 'Haltestelle', lat: lat, lon: lon, bus: !!pr.bus, sbahn: !!pr.sbahn, ubahn: !!pr.ubahn, tram: !!pr.tram, zug: !!pr.zug, schiff: !!pr.schiff });
       });
       if (!l.length && roh.length) throw new Error('leer');
       return l;
@@ -965,7 +968,8 @@
   }
   function haltOsm(p, meter, art) {
     var um = '(around:' + Math.min(meter, 10000) + ',' + p.lat.toFixed(5) + ',' + p.lon.toFixed(5) + ')';
-    var q = art === 'bus'
+    var q = art === 'schiff' ? '[out:json][timeout:25];nwr["amenity"="ferry_terminal"]' + um + ';out center tags 60;'
+      : art === 'bus'
       ? '[out:json][timeout:25];(node["highway"="bus_stop"]' + um + ';nwr["public_transport"="platform"]["bus"="yes"]' + um + ';);out center tags 150;'
       : '[out:json][timeout:25];(nwr["railway"~"^(station|halt)$"]["station"~"^(subway|light_rail|suburban)$"]' + um + ';nwr["railway"~"^(station|halt)$"]["subway"="yes"]' + um + ';nwr["railway"~"^(station|halt)$"]["network"~"S-Bahn"]' + um + ';nwr["railway"~"^(station|halt)$"]["operator"~"S-Bahn"]' + um + ';);out center tags 80;';
     return V.osm(q, 7 * 86400).then(function (j) {
@@ -974,6 +978,7 @@
         var t = e.tags || {}, o = osmOrt(e); if (o.lat == null || !t.name) return;
         if (/^(disused|abandoned|razed)$/.test(t.railway || '') || t['disused:railway']) return;
         var ub = t.station === 'subway' || t.subway === 'yes' || /U-Bahn/i.test(t.network || '');
+        if (art === 'schiff') { l.push({ id: '', name: t['name:de'] || t.name, lat: o.lat, lon: o.lon, schiff: true, osm: true, web: t.website || t['contact:website'] || '', betreiber: t.operator || '' }); return; }
         l.push({ id: '', name: t.name, lat: o.lat, lon: o.lon, bus: art === 'bus', sbahn: art !== 'bus' && !ub, ubahn: art !== 'bus' && ub, tram: false, zug: false, osm: true });
       });
       return l;
@@ -985,7 +990,8 @@
     if (b.id) return Promise.resolve(b.id);
     var key = b.name + '|' + b.lat.toFixed(4) + ',' + b.lon.toFixed(4);
     if (haltIdMerker[key]) return Promise.resolve(haltIdMerker[key]);
-    return naviFrage('location/nearby', 'location.v3', { area: { coordinates: { longitude: b.lon, latitude: b.lat }, radius: 400 }, maxResults: 20, products: ['ALL'] }, gruende).then(function (j) {
+    var schiff = art === 'schiff';
+    return naviFrage('location/nearby', 'location.v3', { area: { coordinates: { longitude: b.lon, latitude: b.lat }, radius: schiff ? 2000 : 400 }, maxResults: 20, products: schiff ? ['SCHIFFE'] : ['ALL'] }, gruende).then(function (j) {
       var n0 = String(b.name).toLowerCase(), best = null, bw = 1e9;
       (Array.isArray(j) ? j : []).forEach(function (x) {
         var c = x.coordinates || {}, id = evaOhneNull(x.evaNr || x.extId || lidTeile(x.locationId).L); if (!id || c.latitude == null) return;

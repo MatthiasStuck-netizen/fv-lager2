@@ -193,7 +193,8 @@
   function kartenfeld(extra) { return '<div class="kartenfeld" id="kfeld"><div class="quelle">© OpenStreetMap</div>' + (extra || '') + '</div>'; }
   function zielkarte(z) {
     return '<div class="ziel">' + sym(z.art === 'halle' ? 'halle' : z.art === 'frei' ? 'pin' : 'lkw') + '<div class="txt"><b>' + h(z.name) + '</b><div class="adr">' + sym('pin') + '<span>' + adr2(z.adresse) + '</span></div></div>' +
-      (z.tel ? '<button class="rund" data-tun="anrufen" data-tel="' + h(z.tel) + '" aria-label="Anrufen">' + sym('telefon') + '</button>' : '') + '</div>';
+      (z.tel ? '<button class="rund" data-tun="anrufen" data-tel="' + h(z.tel) + '" aria-label="Anrufen">' + sym('telefon') + '</button>' : '') +
+      (FV.FAV ? FV.FAV.knopf({ typ: 'ziel', name: z.name, adresse: z.adresse, lat: z.lat, lon: z.lon }, 'rund stern') : '') + '</div>';
   }
   function startpunkt() {
     var o = B.ort();
@@ -336,7 +337,7 @@
   }
   var umgebungPunkte = [];
   function umgebungKarte(punkte) { umgebungPunkte = punkte; bahnhoefeKarte(punkte); apothekenKarte(punkte); aerzteKarte(punkte); flughafenKarte(punkte); haltKarte('bus', punkte); haltKarte('stadt', punkte); netzKarte(punkte); }
-  var EBENEN = [['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
+  var EBENEN = [['bahnnetz', 'zug', 'Bahnstrecken'], ['seewege', 'schiff', 'Schiffs- und Fährstrecken'], ['flugzeuge', 'flug', 'Flugzeuge live'], ['flugrouten', 'route', 'Flugstrecken'], ['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
   function ebeneNeu(k) {
     var e = A().e, pk = umgebungPunkte.length ? umgebungPunkte : [B.ort(), F.ziel], an = e[k] !== false;
     if (k === 'bahnhof') { if (!an) K.bahnhoefe([]); else bahnhoefeKarte(pk); }
@@ -345,6 +346,8 @@
     if (k === 'flughafen') { if (!an) K.flughaefen([]); else flughafenKarte(pk); }
     if (k === 'bus' || k === 'stadt') { if (!an) K.haltestellen(k, []); else haltKarte(k, pk); }
     if (k === 'hhnetz') { if (!an) K.netz(null); else netzKarte(pk, true); }
+    if (k === 'bahnnetz' || k === 'seewege' || k === 'flugrouten') K.streckenNeu();
+    if (k === 'flugzeuge' && FV.FL) FV.FL.live();
   }
   function ebenenFeld() {
     var e = A().e;
@@ -383,9 +386,11 @@
   function tafelBlatt(b, ankunft, art) {
     art = art || 'zug';
     A().z.tafel = b; A().z.tafelArt = art;
-    var tsym = art === 'bus' ? 'bus' : art === 'stadt' ? 'tram' : 'zug', wer = art === 'bus' ? 'Bus' : art === 'stadt' ? 'S- oder U-Bahn' : 'Zug';
-    var unter = art === 'zug' ? bfArt(b) : haltArt(b);
-    var kopfH = '<h2>' + sym(tsym) + '<span>' + h(b.name) + '<br><small style="font-weight:400;font-size:13px">' + G.km(b.weit || 0) + ' entfernt' + (unter ? ' · ' + h(unter) : '') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    var tsym = art === 'bus' ? 'bus' : art === 'stadt' ? 'tram' : art === 'schiff' ? 'schiff' : 'zug', wer = art === 'bus' ? 'Bus' : art === 'stadt' ? 'S- oder U-Bahn' : art === 'schiff' ? 'Schiff' : 'Zug';
+    var unter = art === 'zug' ? bfArt(b) : art === 'schiff' ? (b.betreiber || 'Fähre / Schiff') : haltArt(b);
+    var weg = b.weit != null ? G.km(b.weit) + ' entfernt' : '';
+    var stern = FV.FAV ? FV.FAV.knopf({ typ: art, name: b.name, lat: b.lat, lon: b.lon, id: b.id || '', web: b.web || '', betreiber: b.betreiber || '' }, 'stern') : '';
+    var kopfH = '<h2>' + sym(tsym) + '<span>' + h(b.name) + '<br><small style="font-weight:400;font-size:13px">' + [weg, unter ? h(unter) : ''].filter(Boolean).join(' · ') + '</small></span>' + stern + '<button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
       '<div class="modi" style="padding:0 0 8px"><button data-tun="tafel-art" data-a="ab"' + (!ankunft ? ' class="akt"' : '') + '>' + sym(tsym) + '<span>Abfahrten</span></button><button data-tun="tafel-art" data-a="an"' + (ankunft ? ' class="akt"' : '') + '>' + sym('a_ziel') + '<span>Ankünfte</span></button></div>';
     A().blatt(kopfH + '<div id="tafel" data-id="' + h(b.name) + '">' + laedt('Live-Daten werden geladen …') + '</div>' +
       '<div class="zweier"><button class="gold knopf" data-tun="bahnhof-hin" data-m="auto">' + sym('auto') + 'Hinfahren</button><button class="rand knopf" data-tun="bahnhof-hin" data-m="fuss">' + sym('fuss') + 'Zu Fuß hin</button></div>');
@@ -393,20 +398,44 @@
       var t = $('#tafel'); if (!t || t.getAttribute('data-id') !== String(b.name)) { clearInterval(tafelTimer); return; }
       FV.V.tafel(b, ankunft, art).then(function (l) {
         var t2 = $('#tafel'); if (!t2 || t2.getAttribute('data-id') !== String(b.name)) return;
-        if (!l.length) { t2.innerHTML = '<div class="gut">In den nächsten 90 Minuten ' + (ankunft ? 'kommt' : 'fährt') + ' hier ' + (art === 'zug' ? 'kein Zug' : art === 'bus' ? 'kein Bus' : 'keine S- oder U-Bahn') + '.</div>'; return; }
+        if (!l.length) { t2.innerHTML = '<div class="gut">In den nächsten 90 Minuten ' + (ankunft ? 'kommt' : 'fährt') + ' hier ' + (art === 'zug' ? 'kein Zug' : art === 'bus' ? 'kein Bus' : art === 'schiff' ? 'kein Schiff laut Fahrplan der Bahn' : 'keine S- oder U-Bahn') + '.</div>' + (art === 'schiff' ? schiffInfoHtml(b) : ''); if (art === 'schiff') schiffLinien(b); return; }
         var pk = 0, sp = 0, au = 0; l.forEach(function (x) { if (x.faellt) au++; else if (x.verz >= 6) sp++; else if (x.verz != null) pk++; });
         A().z.tafelListe = l;
         t2.innerHTML = '<div class="tafelsumme"><span class="pk">' + pk + ' pünktlich</span>' + (sp ? '<span class="sp">' + sp + ' verspätet</span>' : '') + (au ? '<span class="au">' + au + ' fällt aus</span>' : '') + '<small>Stand ' + G.uhr() + ' · alle 60 s neu</small></div>' +
           l.map(function (x, xi) {
             var gw = x.gleisPlan && x.gleis && x.gleis !== x.gleisPlan;
             var st = x.faellt ? '<em class="spaet">fällt aus</em>' : x.verz == null ? '<em class="grau2">ohne Live-Daten</em>' : x.verz >= 1 ? '<em class="spaet">+' + x.verz + ' · ' + G.uhr(x.echt) + '</em>' : '<em class="puenktlich">pünktlich</em>';
-            return '<div class="tz' + (x.faellt ? ' faellt' : '') + (!ankunft ? ' tippbar' : '') + '"' + (!ankunft ? ' data-tun="tafel-zug" data-i="' + xi + '"' : '') + '><div class="tzeit"><b>' + G.uhr(x.plan) + '</b>' + st + '</div>' +
+            var tippen = !ankunft && art !== 'schiff';
+            return '<div class="tz' + (x.faellt ? ' faellt' : '') + (tippen ? ' tippbar' : '') + '"' + (tippen ? ' data-tun="tafel-zug" data-i="' + xi + '"' : '') + '><div class="tzeit"><b>' + G.uhr(x.plan) + '</b>' + st + '</div>' +
               '<div class="tinfo"><b><i class="lin ' + h(x.produkt) + '">' + h(x.linie) + '</i> ' + (ankunft ? 'von ' : '→ ') + h(x.richtung) + '</b>' + x.hinweise.map(function (y) { return '<small class="spaet">' + h(y) + '</small>'; }).join('') + '</div>' +
-              '<div class="tgleis' + (gw ? ' wechsel' : '') + '"><small>' + (x.produkt === 'bus' ? 'Steig' : 'Gleis') + '</small><b>' + h(x.gleis || '–') + '</b>' + (gw ? '<s>' + h(x.gleisPlan) + '</s>' : '') + '</div></div>';
+              '<div class="tgleis' + (gw ? ' wechsel' : '') + '"><small>' + (x.produkt === 'bus' ? 'Steig' : x.produkt === 'ferry' ? 'Anleger' : 'Gleis') + '</small><b>' + h(x.gleis || '–') + '</b>' + (gw ? '<s>' + h(x.gleisPlan) + '</s>' : '') + '</div></div>';
           }).join('');
-      }).catch(function (e) { var t3 = $('#tafel'); if (t3) t3.innerHTML = '<div class="fehler">Die Live-Daten konnten gerade nicht geladen werden. Es wird gleich noch einmal versucht.' + FV.V.grundHtml(e) + '</div>'; });
+      }).catch(function (e) {
+        var t3 = $('#tafel'); if (!t3) return;
+        if (art === 'schiff') { t3.innerHTML = '<div class="gut">Für diesen Anleger hat die Bahn keinen Fahrplan.</div>' + schiffInfoHtml(b); schiffLinien(b); clearInterval(tafelTimer); return; }
+        t3.innerHTML = '<div class="fehler">Die Live-Daten konnten gerade nicht geladen werden. Es wird gleich noch einmal versucht.' + FV.V.grundHtml(e) + '</div>';
+      });
     }
     clearInterval(tafelTimer); tafelTimer = setInterval(laden, 60000); laden();
+  }
+  /** Fähren, die die Bahn nicht kennt: Reederei-Webseite und Linien ab diesem Anleger (OpenStreetMap) */
+  function schiffInfoHtml(b) {
+    return '<p class="klein2" style="margin:6px 2px">Viele Fähren und Ausflugsschiffe stehen nicht im Fahrplan der Bahn. Die genauen Abfahrtszeiten nennt die Reederei' + (b.betreiber ? ' (' + h(b.betreiber) + ')' : '') + '.</p>' +
+      (b.web ? '<button class="rand knopf breit" data-tun="oeffnen" data-url="' + h(b.web) + '">' + sym('extern') + 'Fahrplan bei der Reederei</button><div style="height:8px"></div>' : '') +
+      '<button class="rand knopf breit" data-tun="oeffnen" data-url="https://www.google.com/search?q=' + encodeURIComponent('Fähre ' + b.name + ' Fahrplan') + '">' + sym('suche') + 'Fahrplan im Internet suchen</button>' +
+      '<div id="slinien" style="margin-top:10px"></div>';
+  }
+  function schiffLinien(b) {
+    FV.V.faehrLinien(b).then(function (l) {
+      var box = $('#slinien'); if (!box) return;
+      var hier = l.filter(function (x) { return Math.min(G.abstand(b, x.a), G.abstand(b, x.b)) < 3000; });
+      if (!hier.length) return;
+      box.innerHTML = '<h3 class="ueber" style="margin-top:4px">' + sym('schiff') + 'Schiffslinien ab hier</h3>' + hier.map(function (x) {
+        var ziel = G.abstand(b, x.a) < G.abstand(b, x.b) ? x.b : x.a;
+        return '<div class="eintrag">' + sym('schiff') + '<div class="txt"><b>' + h(ziel.name || x.name || 'Fähre') + '</b><span>' + h([x.name, x.betreiber, x.dauer ? 'ca. ' + G.minuten(x.dauer) : 'ca. ' + G.km(x.laenge), x.auto ? 'Autofähre' : ''].filter(Boolean).join(' · ')) + '</span></div>' +
+          (x.web ? '<div class="ende"><button class="rund tel" data-tun="oeffnen" data-url="' + h(x.web) + '" aria-label="Webseite">' + sym('extern') + '</button></div>' : '') + '</div>';
+      }).join('');
+    }).catch(function () {});
   }
   /* ---------- Zug aus der Tafel antippen: wohin? → Preistafel → Ticket ---------- */
   Tun['tafel-zug'] = function (el) { var z = A().z, x = (z.tafelListe || [])[+el.getAttribute('data-i')]; if (x) zugBlatt(x, z.tafel); };
@@ -750,15 +779,19 @@
   var flugTimer = null;
   function flugBlatt(f, ankunft) {
     A().z.flugWahl = f;
-    A().blatt('<h2>' + sym('flug') + '<span>' + h(f.name) + ' <small class="iata">' + h(f.iata) + '</small><br><small style="font-weight:400;font-size:13px">' + G.km(f.weit || 0) + ' entfernt</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    var fo = FV.FL && FV.FL.iata(f.iata), wo = [f.weit != null ? G.km(f.weit) + ' entfernt' : '', fo ? FV.FL.ortText(fo) : ''].filter(Boolean).join(' · ');
+    var stern = FV.FAV ? FV.FAV.knopf({ typ: 'flug', name: f.name, iata: f.iata, lat: f.lat, lon: f.lon, web: f.web || '' }, 'stern') : '';
+    A().blatt('<h2>' + sym('flug') + '<span>' + h(f.name) + ' <small class="iata">' + h(f.iata) + '</small><br><small style="font-weight:400;font-size:13px">' + h(wo) + '</small></span>' + stern + '<button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
       '<div class="modi" style="padding:0 0 8px"><button data-tun="flug-art" data-a="ab"' + (!ankunft ? ' class="akt"' : '') + '>' + sym('flug') + '<span>Abflüge</span></button><button data-tun="flug-art" data-a="an"' + (ankunft ? ' class="akt"' : '') + '>' + sym('a_ziel') + '<span>Ankünfte</span></button></div>' +
       '<div id="flugtafel" data-iata="' + h(f.iata) + '">' + laedt('Flugtafel wird geladen …') + '</div>' +
+      '<button class="rand knopf breit" data-tun="flugstrecken" style="margin-bottom:8px">' + sym('route') + 'Flugstrecken auf der Karte</button>' +
       '<div class="zweier"><button class="gold knopf" data-tun="flughafen-hin">' + sym('auto') + 'Hinfahren</button>' + (f.web ? '<button class="rand knopf" data-tun="oeffnen" data-url="' + h(f.web) + '">' + sym('info') + 'Webseite</button>' : '') + '</div>');
     function laden() {
       var t = $('#flugtafel'); if (!t || t.getAttribute('data-iata') !== f.iata) { clearInterval(flugTimer); return; }
       FV.V.flugtafel(f.iata).then(function (d) {
         var t2 = $('#flugtafel'); if (!t2 || t2.getAttribute('data-iata') !== f.iata) return;
         var l = (ankunft ? d.an : d.ab).filter(function (x) { return x.plan && x.plan > Date.now() - 3 * 3600000; }).slice(0, 40);
+        if (FV.FL) FV.FL.streckenAusTafel(f, d, ankunft);   // echte Flugstrecken dieses Flughafens auf die Karte (wenn eine zu sehen ist)
         if (!l.length) { t2.innerHTML = '<div class="gut">In den nächsten Stunden sind keine ' + (ankunft ? 'Ankünfte' : 'Abflüge') + ' angekündigt.</div>'; return; }
         var pk = 0, sp = 0, au = 0;
         l.forEach(function (x) { if (/Cancel/.test(x.status)) au++; else if (x.verz >= 15) sp++; else pk++; });
@@ -780,6 +813,7 @@
     }
     clearInterval(flugTimer); flugTimer = setInterval(laden, 300000); laden();
   }
+  Tun.flugstrecken = function () { var f = A().z.flugWahl; if (!f) return; A().blattZu(); A().zeige('flugkarte', { f: f }); };
   Tun['flug-art'] = function (el) { var f = A().z.flugWahl; if (f) flugBlatt(f, el.getAttribute('data-a') === 'an'); };
   Tun['flughafen-hin'] = function () { var f = A().z.flugWahl; if (!f) return; A().blattZu(); A().zeige('vorschau', { ziel: { name: 'Flughafen ' + f.name, adresse: f.name, lat: f.lat, lon: f.lon, art: 'frei' }, modus: 'auto' }); };
   Tun.oeffnen = function (el) { B.oeffnen(el.getAttribute('data-url')); };
@@ -840,7 +874,7 @@
       b.innerHTML = '<div class="fehler">' + h(t) + '</div>' + gr + (nurBus ? '<button class="gold knopf breit" data-tun="modus" data-m="zug">' + sym('zug') + 'Mit Bus und Bahn suchen</button><div style="height:8px"></div><button class="rand knopf breit" data-tun="oeffnen" data-url="https://www.flixbus.de/">' + sym('bus') + 'Fernbus bei FlixBus suchen</button><div style="height:8px"></div>' : '') + '<button class="rand knopf breit" data-tun="db-navigator">' + sym('zug') + 'Im DB Navigator suchen</button>' +
         '<div style="height:8px"></div><button class="rand knopf breit" data-tun="modus" data-m="auto">' + sym('auto') + 'Doch mit dem Auto</button>';
     }
-    var orte = Promise.all([startpunkt(), ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort())]).then(function (x) {
+    var orte = Promise.all([startpunkt(), zielOrt(ziel)]).then(function (x) {
       z.nav.von = x[0]; z.nav.nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name };
       // Autofahrt nebenbei ausrechnen, damit oben im Reiter auch „Auto 2 h 45“ steht
       if (!dauerVon(ziel, 'auto')) G.route(x[0], z.nav.nach, { modus: 'auto' }).then(function (r) { if (r && r.dauer) dauerMerk(ziel, 'auto', r.dauer); }).catch(function () {});
@@ -1011,18 +1045,7 @@
 
   /* ====================== Flugzeug: Flughafen am Start und am Ziel, Flugzeit, Flüge suchen ====================== */
   /** Großkreis zwischen zwei Flughäfen als [[lon,lat], …] */
-  function grosskreis(a, b) {
-    var r = Math.PI / 180, p1 = a.lat * r, l1 = a.lon * r, p2 = b.lat * r, l2 = b.lon * r;
-    var d = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((p2 - p1) / 2), 2) + Math.cos(p1) * Math.cos(p2) * Math.pow(Math.sin((l2 - l1) / 2), 2)));
-    if (!(d > 1e-6)) return [[a.lon, a.lat], [b.lon, b.lat]];
-    var pk = [];
-    for (var i = 0; i <= 48; i++) {
-      var f = i / 48, A1 = Math.sin((1 - f) * d) / Math.sin(d), B1 = Math.sin(f * d) / Math.sin(d);
-      var x = A1 * Math.cos(p1) * Math.cos(l1) + B1 * Math.cos(p2) * Math.cos(l2), y = A1 * Math.cos(p1) * Math.sin(l1) + B1 * Math.cos(p2) * Math.sin(l2), zz = A1 * Math.sin(p1) + B1 * Math.sin(p2);
-      pk.push([Math.atan2(y, x) / r, Math.atan2(zz, Math.sqrt(x * x + y * y)) / r]);
-    }
-    return pk;
-  }
+  function grosskreis(a, b) { return K.grosskreis(a, b, 48); }
   /** Bester Flughafen: der nächste große (international), sonst der nächste */
   function flugBester(l) { var g = l.filter(function (f) { return f.gross; })[0]; return g && g.weit <= (l[0].weit + 60000) ? l.indexOf(g) : 0; }
   /** Geschätzte Flugzeit in Sekunden: Rollen, Steigen, Sinken ca. 30 Min. + Reiseflug ca. 800 km/h */
@@ -1042,7 +1065,7 @@
     modusDauern(ziel);
     K.leeren();
     K.setzen($('#kfeld')).catch(function () {});
-    Promise.all([startpunkt(), ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort())]).then(function (x) {
+    Promise.all([startpunkt(), zielOrt(ziel)]).then(function (x) {
       if (meins !== lauf) return;
       var von = x[0], nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name };
       z.nav.von = von; z.nav.nach = nach;
@@ -1301,7 +1324,7 @@
     K.setzen($('#kfeld')).catch(function () {});
   }
   function reiseOrte(ziel) {
-    return Promise.all([startpunkt(), ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort())]).then(function (x) {
+    return Promise.all([startpunkt(), zielOrt(ziel)]).then(function (x) {
       var z = A().z; z.nav.von = x[0]; z.nav.nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name };
       return { S: x[0], D: z.nav.nach };
     });
@@ -1559,7 +1582,7 @@
     modusDauern(ziel);
     if (gleich) { zeichne(z.nav.route, z.nav.von, z.nav.nach); poisZeigen(z.nav.route); return; }
     K.leeren();
-    Promise.all([startpunkt(), ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort())]).then(function (x) {
+    Promise.all([startpunkt(), zielOrt(ziel)]).then(function (x) {
       if (meins !== lauf) return;
       var von = x[0], nach = { lat: x[1].lat, lon: x[1].lon, name: ziel.name, ungefaehr: !!x[1].ungefaehr };
       return G.route(von, nach, { modus: modus }).then(function (r) {
@@ -1675,10 +1698,13 @@
       '<button data-tun="fahrt-schalter" data-k="apotheke" class="' + (e.apotheke !== false ? 'an' : '') + '">' + sym('apotheke') + 'Apotheken<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="arzt" class="' + (e.arzt !== false ? 'an' : '') + '">' + sym('arzt') + 'Ärzte<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="flughafen" class="' + (e.flughafen !== false ? 'an' : '') + '">' + sym('flug') + 'Flughäfen<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="bahnnetz" class="' + (e.bahnnetz !== false ? 'an' : '') + '">' + sym('zug') + 'Bahnstrecken<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="seewege" class="' + (e.seewege !== false ? 'an' : '') + '">' + sym('schiff') + 'Schiffsstrecken<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="flugzeuge" class="' + (e.flugzeuge ? 'an' : '') + '">' + sym('flug') + 'Flugzeuge live<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="ansage" class="' + (e.ansage !== false ? 'an' : '') + '">' + sym('ton') + 'Sprachansage<i></i></button>';
   }
   Tun['fahrt-auswahl'] = function () { var f = $('#auswfeld'); f.hidden = !f.hidden; };
-  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
+  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz|bahnnetz|seewege|flugrouten|flugzeuge)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
   Tun['fahrt-info'] = function () { var f = $('#finfo'); f.hidden = !f.hidden; if (!f.hidden) $('#fuhr').textContent = G.uhr(); };
   Tun['fahrt-voll'] = function () { A().vollbild(!document.body.classList.contains('vollbild')); };
   Tun['fahrt-mitte'] = function () { F.zentrieren(); };
@@ -1706,10 +1732,18 @@
   }
 
   /* ====================== Neue Route (freies Ziel) ====================== */
-  function zielMerken(ziel, ort) {
-    var l = B.lesen('letzte', []) || [];
-    l = l.filter(function (x) { return x.adresse !== ziel.adresse || x.name !== ziel.name; });
-    l.unshift({ name: ziel.name, adresse: ziel.adresse, lat: ort.lat, lon: ort.lon }); B.schreiben('letzte', l.slice(0, 12));
+  /** Jedes Ziel, zu dem eine Route berechnet wird, kommt oben in die Liste „Letzte Ziele“ (höchstens 25, ohne doppelte) */
+  function letzteMerken(ziel, ort) {
+    if (!ziel || !ort || ort.lat == null) return;
+    var l = B.lesen('letzte', []) || [], adr = adr1(ziel.adresse || '');
+    l = l.filter(function (x) { return !((x.name === ziel.name && adr1(x.adresse || '') === adr) || (x.lat != null && G.abstand(x, ort) < 25 && x.name === ziel.name)); });
+    l.unshift({ name: ziel.name || adr || 'Ziel', adresse: adr, lat: +(+ort.lat).toFixed(6), lon: +(+ort.lon).toFixed(6), art: ziel.art || 'frei', t: Date.now() });
+    B.schreiben('letzte', l.slice(0, 25));
+  }
+  function zielMerken(ziel, ort) { letzteMerken(ziel, ort); }
+  function zielOrt(ziel) {
+    var p = ziel.lat != null ? Promise.resolve({ lat: ziel.lat, lon: ziel.lon }) : G.finde(ziel.adresse, B.ort());
+    return p.then(function (c) { letzteMerken(ziel, c); return c; });
   }
   Tun.neueroute = function () { A().zeige('neueroute'); };
   Se.neueroute = function () {
@@ -1724,7 +1758,7 @@
       '<button type="button" class="chip" data-tun="flughaefen">' + sym('flug') + '<span>Flughäfen<small>Flüge live</small></span></button></div>' +
       '<button class="gold knopf breit gross">' + sym((G.MODI[e.modus] || G.MODI.auto).sym) + 'Route berechnen</button></form></div>' +
       '<div id="ztreffer"></div><h3 class="ueber">' + sym('uhr') + 'Letzte Ziele</h3>' +
-      (letzte.length ? letzte.map(function (x, i) { return '<button class="eintrag" data-tun="ziel-letztes" data-i="' + i + '">' + sym('pin') + '<div class="txt"><b>' + h(x.name) + '</b><span>' + h(x.adresse) + '</span></div><div class="ende">' + sym('rechts') + '</div></button>'; }).join('') : '<p class="klein2" style="padding:0 4px">Noch keine Ziele gefahren.</p>') + '</div>');
+      (letzte.length ? letzte.map(function (x, i) { return '<div class="eintrag tippbar" data-tun="ziel-letztes" data-i="' + i + '">' + sym('verlauf') + '<div class="txt"><b>' + h(x.name) + '</b><span>' + h(x.adresse) + '</span></div><div class="ende">' + (FV.FAV ? FV.FAV.knopf({ typ: 'ziel', name: x.name, adresse: x.adresse, lat: x.lat, lon: x.lon }, 'stern klein') : '') + sym('rechts') + '</div></div>'; }).join('') : '<p class="klein2" style="padding:0 4px">Noch keine Ziele gefahren.</p>') + '</div>');
   };
   Tun['zsuche-leer'] = function () { var i = $('#zsuche'); i.value = ''; i.focus(); $('#ztreffer').innerHTML = ''; };
   Tun['ziel-suchen'] = function () {
@@ -1904,10 +1938,17 @@
   Se.einstellungen = function () {
     var e = A().e, i = B.info(), fest = B.lesen('festorte', {}) || {};
     function sch(k, s, titel, klein) { return '<button class="schalter' + (e[k] !== false ? ' an' : '') + '" data-tun="schalter" data-k="' + k + '">' + sym(s) + '<span>' + titel + (klein ? '<small>' + klein + '</small>' : '') + '</span><i></i></button>'; }
-    seite(kopf('Einstellungen', '', false) + '<div class="rollen"><div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('pieper', 'warnung', 'Warnpieper bei zu schnellem Fahren', 'kurzer Piepton ab 6 km/h über dem Tempolimit') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '<button class="schalter" data-tun="stimmen">' + sym('stimme') + '<span>Stimme auswählen<small>' + h(stimmeName(e.stimme)) + '</small></span>' + sym('rechts') + '</button></div>' +
+    var dm = FV.D ? FV.D.modus() : 'auto';
+    seite(kopf('Einstellungen', '', false) + '<div class="rollen">' +
+      '<div class="block" id="designblock"><h2>' + sym('tagnacht') + 'Darstellung</h2><div class="wahl">' +
+        [['auto', 'Automatisch'], ['tag', 'Tag (hell)'], ['nacht', 'Nacht (dunkel)']].map(function (x) { return '<button data-tun="design" data-d="' + x[0] + '"' + (x[0] === dm ? ' class="akt"' : '') + '>' + x[1] + '</button>'; }).join('') + '</div>' +
+        '<p class="klein2" style="margin:8px 2px 0">' + (dm === 'auto' ? 'Automatisch: tagsüber hell, ab der Dämmerung dunkel – nach Sonnenaufgang und -untergang am Standort. Gerade: ' + (FV.D && FV.D.hell() ? 'Tagsicht' : 'Nachtsicht') + '.' : dm === 'tag' ? 'Immer helles Design mit heller Karte (Tagsicht).' : 'Immer dunkles Design mit dunkler Karte (Nachtsicht) – blendet nachts nicht.') + '</p></div>' +
+      '<div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('pieper', 'warnung', 'Warnpieper bei zu schnellem Fahren', 'kurzer Piepton ab 6 km/h über dem Tempolimit') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '<button class="schalter" data-tun="stimmen">' + sym('stimme') + '<span>Stimme auswählen<small>' + h(stimmeName(e.stimme)) + '</small></span>' + sym('rechts') + '</button></div>' +
       '<div class="block"><h2>' + sym('ampel') + 'Verkehr</h2>' + sch('verkehr', 'warnung', 'Verkehrsmeldungen', 'Stau, Unfall, Sperrung, Baustelle – mit Ansage') + sch('umleiten', 'umleitung', 'Automatisch umleiten', 'bei Sperrung, Unfall oder Stau die schnellste Umleitung') +
         '<p class="klein2" style="margin:6px 2px 0">Quellen: ' + h(FV.V.quellen()) + (FV.V.schluessel() ? ' – alle Straßen.' : ' – nur Autobahnen. Für Landstraßen und Orte trägt das Büro in der Verwaltung (Einstellungen → App) einen kostenlosen TomTom-Schlüssel ein.') + '</p></div>' +
       '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + sch('bahnhof', 'zug', 'Bahnhöfe', 'antippen: Live-Abfahrten mit Gleis und Verspätung') + sch('stadt', 'tram', 'U- und S-Bahn-Stationen', 'antippen: Abfahrten live') + sch('bus', 'bus', 'Bushaltestellen', 'Namen ab naher Ansicht · antippen: Abfahrten live') + sch('hhnetz', 'zug', 'Hamburger S-/U-Bahn-Netz', 'Linien farbig, sobald Start oder Ziel bei Hamburg liegt') + sch('apotheke', 'apotheke', 'Apotheken', 'grün = hat gerade Notdienst') + sch('arzt', 'arzt', 'Ärzte', 'rot = Notaufnahme / Bereitschaftspraxis') + sch('flughafen', 'flug', 'Flughäfen', 'antippen: Starts und Landungen live') +
+        sch('bahnnetz', 'zug', 'Bahnstrecken', 'Gleise aller Bahnlinien auf der Karte') + sch('seewege', 'schiff', 'Schiffs- und Fährstrecken', 'Fähren und Schiffslinien auf See, Flüssen und Seen') +
+        sch('flugrouten', 'route', 'Flugstrecken', 'echte Flüge ab dem gewählten Flughafen bzw. des angetippten Flugzeugs') + sch('flugzeuge', 'flug', 'Flugzeuge live', 'Flugzeuge in der Luft über dem Kartenausschnitt (ADS-B)') +
         '<button class="schalter" data-tun="bahnhoefe">' + sym('zug') + '<span>Bahnhöfe in der Nähe<small>Abfahrtstafeln öffnen</small></span>' + sym('rechts') + '</button>' +
         '<button class="schalter" data-tun="haltestellen" data-art="stadt">' + sym('tram') + '<span>U- und S-Bahn in der Nähe<small>Abfahrten live</small></span>' + sym('rechts') + '</button>' +
         '<button class="schalter" data-tun="haltestellen" data-art="bus">' + sym('bus') + '<span>Bushaltestellen in der Nähe<small>Abfahrten live</small></span>' + sym('rechts') + '</button>' +
@@ -1997,6 +2038,7 @@
     var html = '<div class="detailzeile">' + sym(s.fertig ? 'haken' : 'info') + '<div><small>Offline-Karte ' + h(K.name) + '</small><span id="offtext-' + k + '">' + h(text) + '</span></div></div>';
     if (laeuft || (pos > 0 && !s.fertig)) html += '<div class="offbalken"><i id="offbalken-' + k + '" style="width:' + proz + '%"></i></div>';
     if (O.letzterFehler && O.fehlerBei === k && !laeuft) html += '<div class="fehler" style="margin-top:8px">' + h(O.letzterFehler) + '</div>';
+    if (K.uebersicht) html += '<p class="klein2" style="margin:8px 0 0">Die ganze Welt als Übersicht: Länder, Städte, Haupt- und Landstraßen, Bahn- und Schiffsstrecken. Für jede einzelne Straße die Länderkarten dazuladen – sie liegen dann darüber.</p>';
     if (!s.fertig) html += '<p class="klein2" style="margin:8px 0">Lädt die Karte ' + h(K.name) + ' aus dem Ordner „karten“ auf www.fehnverleih.de auf dieses Handy' + (ges ? ' (' + O.gb(ges) + ')' : ' (mehrere GB)') + '. Am besten im WLAN, mit Ladekabel und bei offener App. Nach einer Unterbrechung geht es an derselben Stelle weiter.</p>';
     else html += '<div style="height:8px"></div>';
     if (laeuft) html += '<button class="rand knopf breit" data-tun="karte-halt"' + dk + '>' + sym('zu') + 'Anhalten</button>';
@@ -2044,7 +2086,17 @@
     if (B.offlineNavi(p, ziel)) return;
     A().frage((B.OFFLINE_APPS[p] || 'Die Offline-Navi') + ' ist auf diesem Handy noch nicht installiert. Jetzt installieren? Danach in den Einstellungen unter „Offline-Karten“ die Deutschland-Karte laden.', 'Installieren').then(function (ja) { if (ja) B.appLaden(p); });
   };
-  Tun.schalter = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); el.classList.toggle('an', e[k] !== false); };
+  Tun.schalter = function (el) {
+    var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); el.classList.toggle('an', e[k] !== false);
+    if (/^(bahnnetz|seewege|flugrouten)$/.test(k)) K.streckenNeu();
+    if (k === 'flugzeuge' && FV.FL) FV.FL.live();
+  };
+  Tun.design = function (el) {
+    A().e.design = el.getAttribute('data-d'); A().speichern();
+    if (FV.D) FV.D.anwenden();
+    A().neu();
+    A().toast(A().e.design === 'auto' ? 'Tag/Nacht wechselt jetzt automatisch.' : A().e.design === 'tag' ? 'Tagsicht (hell) eingestellt.' : 'Nachtsicht (dunkel) eingestellt.', 2200);
+  };
   Tun.festort = function (el) {
     var o = B.ort(), k = el.getAttribute('data-z');
     if (!o || o.genau > 40 || Date.now() - (o.zeit || 0) > 60000) { A().toast('Der Standort ist gerade nicht genau genug. Bitte kurz im Freien warten und noch einmal antippen.', 5000); return; }
@@ -2053,4 +2105,8 @@
     });
   };
   Tun.zuhause = function () { A().e.zuhause = $('#zuhause').value.trim(); A().speichern(); A().toast('Gespeichert.'); };
+
+  /* Bausteine für Suche, Favoriten und Flugstrecken (js/suche.js, js/fluege.js) */
+  FV.SX = { seite: seite, kopf: kopf, laedt: laedt, h: h, adr1: adr1, tafelBlatt: tafelBlatt, flugBlatt: flugBlatt, startpunkt: startpunkt, kartenfeld: kartenfeld,
+    ebenenKnopf: ebenenKnopf, haltZeichen: haltZeichen, bfArt: bfArt, letzteMerken: letzteMerken, umgebungKarte: umgebungKarte, neuerLauf: function () { return ++lauf; }, lauf: function () { return lauf; } };
 })();

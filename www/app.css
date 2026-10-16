@@ -545,3 +545,152 @@ small.iata { font-weight: 700; color: var(--gold); font-size: .8em; }
 .kosten .wahl.klein button { font-size: 13px; padding: 7px 4px; }
 .modi.acht button.gesamt span { font-size: 11.5px; letter-spacing: -.3px; text-overflow: clip; }
 .oevliste .ofahrt .okopf > b { white-space: nowrap; }
+
+/* ---------- 4.2: Leiste mit sieben Knöpfen (neu: Suche) ---------- */
+#leiste button { font-size: 12px; padding: 9px 1px 8px; letter-spacing: -.15px; min-width: 0; }
+#leiste button .sym { width: 25px; height: 25px; }
+@media (min-width: 400px) { #leiste button { font-size: 13px; letter-spacing: 0; } }
+
+/* ---------- Favoriten-Stern, tippbare Einträge ---------- */
+.favknopf { width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; color: var(--grau2); }
+.favknopf .sym { width: 24px; height: 24px; }
+.favknopf.klein { width: 34px; height: 34px; } .favknopf.klein .sym { width: 21px; height: 21px; }
+.favknopf.an { color: #f5b301; }
+.favknopf:active { background: rgba(234,185,74,.18); }
+.ziel .favknopf.rund { width: 42px; height: 42px; background: #14100a; color: #c9b27a; }
+.ziel .favknopf.rund.an { color: #ffc93c; }
+#blatt h2 .favknopf { margin-left: auto; } #blatt h2 .favknopf + button { margin-left: 4px; }
+#blatt h2 .favknopf .sym { color: inherit; }
+.eintrag.tippbar { cursor: pointer; }
+.eintrag.tippbar:active { filter: brightness(1.15); }
+.eintrag .ende .favknopf { margin-right: -2px; }
+.sym.inline { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -3px; }
+.eintrag.fav > .sym { color: #f5b301; }
+.block.creme .eintrag.hellbg { background: #fffaf0; border-color: #e1c88a; color: var(--tinte); }
+.block.creme .eintrag.hellbg .txt span { color: #5a4a22; } .block.creme .eintrag.hellbg .ende { color: var(--tinte); } .block.creme .eintrag.hellbg > .sym { color: #b3262a; }
+.sarten button { min-height: 56px; }
+
+/* ---------- Live-Flugzeuge und Flugstrecken ---------- */
+.m-flugzeug { position: relative; width: 26px; height: 26px; cursor: pointer; }
+.m-flugzeug svg { display: block; fill: #ffd34d; filter: drop-shadow(0 0 1.5px #000) drop-shadow(0 1px 2px rgba(0,0,0,.7)); transition: transform .4s; }
+.m-flugzeug.boden svg { fill: #b9b6ae; }
+.m-flugzeug.akt svg { fill: #ff5a1f; width: 32px; height: 32px; margin: -3px; }
+.m-flugzeug span { position: absolute; left: 26px; top: 3px; background: rgba(6,9,13,.82); color: #fff; font: 600 10.5px/1.2 var(--schmal); padding: 1px 4px; border-radius: 4px; white-space: nowrap; pointer-events: none; }
+.m-flugzeug span:empty { display: none; }
+.fzstrecke { padding: 10px 12px; }
+.fzorte { display: flex; align-items: center; gap: 10px; }
+.fzorte > div { flex: 1; min-width: 0; } .fzorte > div:last-child { text-align: right; }
+.fzorte b { display: block; font-size: 24px; font-weight: 800; letter-spacing: .5px; }
+.fzorte span { display: block; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fzorte > .sym { width: 30px; height: 30px; transform: rotate(90deg); flex: none; }
+.fzstrecke .offbalken { background: rgba(0,0,0,.15); } .fzstrecke small { display: block; font-size: 12.5px; color: #4a3a12; margin-top: 4px; }
+
+/* =====================================================================
+   Tagsicht: helles Design (html.hell) – Einstellungen → Darstellung
+   ===================================================================== */
+html.hell {
+  --bg: #f4f1ea; --bg2: #ffffff; --karte: #ffffff; --linie: #e2d9c2; --linie2: #d9cba4;
+  --gold: #a96f00; --gold-hell: #8a5a00; --gold-dunkel: #c48a22; --gold-tief: #8a6114;
+  --weiss: #1d1b17; --grau: #57524a; --grau2: #7a746a;
+}
+html.hell, html.hell body { background: var(--bg); color: #1d1b17; }
+html.hell #banner { border-bottom-color: #d9cba4; }
+html.hell #leiste { background: linear-gradient(#ffffff, #f1ede4); border-top-color: #d9cba4; }
+html.hell #leiste button { color: #5b564d; }
+html.hell #leiste button + button::before { background: #e4ded2; }
+html.hell #leiste button.akt { color: #9a6400; }
+html.hell #leiste button.akt::after { background: #c48a22; }
+html.hell #leiste .laeuft { border-color: #fff; }
+html.hell body.navi #leiste button[data-r=karte] { color: #1d1b17; }
+html.hell .rand { background: #ffffff; color: #8a5a00; border-color: #c9a24a; }
+html.hell .rand:active { background: #fbf3df; }
+html.hell .gold { box-shadow: 0 1px 0 rgba(255,255,255,.5) inset, 0 1px 3px rgba(0,0,0,.18); }
+html.hell .rund.tel { background: #fff; color: #8a5a00; border-color: #c48a22; }
+html.hell .zeile .pfeil { color: #8a5a00; }
+html.hell .auftrag { background: #ffffff; border-color: #e2dccf; box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+html.hell .auftrag .zeit { border-right-color: #ebe5d8; }
+html.hell .auftrag .adr { color: #3d3a33; }
+html.hell .auftrag .adr .sym { color: #b07a10; }
+html.hell .auftrag .mehr { color: #6b665c; }
+html.hell .auftrag.naechster { box-shadow: 0 0 0 1px #f9de94 inset, 0 2px 6px rgba(150,110,20,.25); }
+html.hell .auftrag.naechster .adr { color: #2a2008; }
+html.hell .leer { border-color: #d6cfbf; } html.hell .leer b { color: #1d1b17; }
+html.hell .kachel b { color: #1d1b17; } html.hell .kachel span { color: #6b665c; }
+html.hell .kartenfeld { background: #e9e5dc; }
+html.hell .kartenknopf.dunkel { background: rgba(255,255,255,.95); color: #8a5a00; border-color: #c9a24a; }
+html.hell .kartenmeldung { background: rgba(255,255,255,.96); color: #1d1b17; border-color: #c9a24a; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+html.hell .quelle { color: rgba(0,0,0,.6); text-shadow: 0 0 3px #fff; }
+html.hell .fuss { background: #ffffff; border-top-color: #e2d9c2; }
+html.hell .fuss .txt { border-right-color: #e8e2d5; } html.hell .fuss .txt span { color: #57524a; }
+html.hell .abbiegen { background: rgba(255,255,255,.96); color: #1d1b17; box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+html.hell .abbiegen > .sym { color: #1a56c4; }
+html.hell .schild .tempo { background: rgba(255,255,255,.95); color: #1d1b17; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+html.hell .fahrinfo, html.hell .auswahlfeld { background: rgba(255,255,255,.98); color: #1d1b17; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+html.hell .auswahlfeld button i, html.hell .schalter i { background: #d9d4c8; }
+html.hell .auswahlfeld button i::after, html.hell .schalter i::after { background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,.3); }
+html.hell .auswahlfeld button.an i, html.hell .schalter.an i { background: #f0d48c; }
+html.hell .auswahlfeld button.an i::after, html.hell .schalter.an i::after { background: #c48a22; }
+html.hell .block { background: #ffffff; border-color: #e2dccf; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+html.hell .block.creme { background: linear-gradient(180deg, #fdf0c9, #f1d087); }
+html.hell .block.notruf { background: #fff4f3; border-color: #e7a19c; }
+html.hell .eingabe { background: #ffffff; color: #1d1b17; border-color: #cfc6b4; }
+html.hell .wahl button { color: #8a5a00; }
+html.hell .eintrag { background: #ffffff; border-color: #e2dccf; color: #1d1b17; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+html.hell .eintrag .ende { color: #6b665c; }
+html.hell .eintrag .wert { color: #8a5a00; }
+html.hell .eintrag.apo.notd.jetzt { background: #eefaf1; border-color: #2fa85a; }
+html.hell .eintrag.zielbf { border-color: #2c7be5; }
+html.hell .schalter { border-bottom-color: #ece6da; }
+html.hell .detailzeile, html.hell .positionen .pos, html.hell .tagzeile { border-bottom-color: #ece6da; }
+html.hell .fehler { background: #fdecea; border-color: #e7a19c; color: #8a1c1f; }
+html.hell .gut { background: #e9f7ee; border-color: #8fd0a6; color: #145a2b; }
+html.hell .wetter-werte div, html.hell .stunden div { background: #faf8f3; border-color: #e6dfd0; }
+html.hell #blatt { background: rgba(40,30,10,.35); }
+html.hell #blatt .innen { background: #ffffff; color: #1d1b17; box-shadow: 0 -4px 20px rgba(0,0,0,.2); }
+html.hell #blatt .fragetext { color: #3d3a33; }
+html.hell #toast { background: rgba(255,255,255,.98); color: #1d1b17; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+html.hell .laedt .dreh, html.hell .kartenmeldung .dreh, html.hell .vleiste .dreh { border-color: #ecd9a8; border-top-color: #c48a22; }
+html.hell .stliste, html.hell .stzeile, html.hell .stprobe { border-color: #ece6da; }
+html.hell .cnachr.ich { background: #e9f1fb; color: #1d1b17; border-color: #bcd2ee; }
+html.hell .modi button { background: #ffffff; border-color: #ddd5c4; color: #4a463e; }
+html.hell .modi button:not(.akt) .mdauer { color: #8a5a00; }
+html.hell .modi.acht button.gesamt:not(.akt) { color: #8a5a00; }
+html.hell .vleiste { background: #ffffff; border-top-color: #e2d9c2; color: #2a2721; }
+html.hell .vleiste.sperrung, html.hell .vleiste.stau { background: #fdecea; }
+html.hell .vleiste.umleitung { background: #e8f0fc; }
+html.hell .vchip { background: rgba(255,255,255,.97); color: #1d1b17; }
+html.hell .vchip.umleitung { background: rgba(232,240,252,.97); }
+html.hell .vmeldung { background: #ffffff; border-color: #e2dccf; }
+html.hell .vmeldung span { color: #3d3a33; }
+html.hell .umleitungblock { background: #e8f0fc; border-color: #9fbbe6; } html.hell .umleitungblock span { color: #2c3e57; }
+html.hell em.spaet, html.hell small.spaet, html.hell .eintrag.apo .txt span.zu, html.hell b.zu, html.hell .fstatus.rot { color: #c62828; }
+html.hell em.puenktlich, html.hell .eintrag.apo .txt span.offen, html.hell b.offen, html.hell .fstatus.gut, html.hell .vleiste.frei > .sym:first-child { color: #1d8a3c; }
+html.hell .fstatus.gelb, html.hell .eintrag.apo .txt span.spaeter { color: #b26a00; }
+html.hell .zl span, html.hell .ozeit, html.hell .oplan b { color: #2a2721; }
+html.hell .zl > .sym { background: #fff; }
+html.hell .tz { border-bottom-color: #ece6da; }
+html.hell .tgleis { background: #faf8f3; border-color: #e2dccf; }
+html.hell .tgleis.wechsel { background: #fff3d6; border-color: #e0a526; } html.hell .tgleis.wechsel b { color: #9a5b00; }
+html.hell .tafelsumme .pk { background: #e3f5e9; color: #146c32; } html.hell .tafelsumme .sp, html.hell .tafelsumme .au { background: #fde7e5; color: #b3262a; }
+html.hell .oevlos, html.hell .oevneu { background: #ffffff; border-color: #ddd5c4; color: #1d1b17; }
+html.hell .ofahrt { background: #ffffff; border-color: #e2dccf; }
+html.hell .ofahrt.gewaehlt { background: #fffaf0; }
+html.hell .okopf > b { color: #1d1b17; }
+html.hell .kf { color: #4a463e; }
+html.hell .ptarif { border-color: #e2dccf; background: #fff; } html.hell .ptarif .pkopf b { color: #1d1b17; }
+html.hell .kosten .kzeile { border-bottom-color: #ece6da; } html.hell .kosten .kzeile b { color: #8a5a00; }
+html.hell .offbalken { background: #ece6da; }
+html.hell .offzwischen { border-top-color: #ece6da; }
+html.hell .m-bahnhof span, html.hell .m-stadt span, html.hell .m-bus span, html.hell .m-flug span { background: rgba(255,255,255,.95); color: #1d1b17; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+html.hell .m-flugzeug svg { fill: #6b2fd0; filter: drop-shadow(0 0 1.5px #fff) drop-shadow(0 1px 2px rgba(0,0,0,.4)); }
+html.hell .m-flugzeug.akt svg { fill: #d9480f; }
+html.hell .m-flugzeug span { background: rgba(255,255,255,.92); color: #1d1b17; }
+html.hell .favknopf { color: #a39c8e; } html.hell .favknopf.an, html.hell .eintrag.fav > .sym { color: #e09b00; }
+html.hell .ziel .favknopf.rund { background: #14100a; color: #c9b27a; } html.hell .ziel .favknopf.rund.an { color: #ffc93c; }
+html.hell .zbmarke { background: #1a56c4; }
+html.hell .ebenenfeld, html.hell .auswahlfeld { border-color: #c9a24a; }
+html.hell small.iata { color: #8a5a00; }
+html.hell .auftrag.naechster { background: linear-gradient(180deg, #fdf0c9 0%, #f8e0a2 55%, #efcd80 100%); border: 2px solid var(--gold-dunkel); }
+html.hell .auftrag.naechster .zeit { border-right-color: #d2ab55; }
+html.hell .auftrag.naechster .mehr { color: var(--tinte); }
+html.hell .auftrag.naechster .rund.tel { background: #14100a; border-color: #14100a; color: #eab94a; }

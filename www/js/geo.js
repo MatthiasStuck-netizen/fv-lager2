@@ -109,10 +109,11 @@
     var ort = [a.postcode || '', a.city || a.town || a.village || a.municipality || a.suburb || ''].join(' ').trim();
     return { strasse: str || name || '', ort: ort };
   }
-  G.suche = function (text, nahe) {
+  G.suche = function (text, nahe, weltweit) {
     text = String(text || '').trim();
     if (!text) return Promise.resolve([]);
-    var p = { format: 'jsonv2', q: text, countrycodes: 'de,nl', limit: '6', addressdetails: '1', 'accept-language': 'de' };
+    var p = { format: 'jsonv2', q: text, limit: weltweit ? '8' : '6', addressdetails: '1', 'accept-language': 'de' };
+    if (!weltweit) p.countrycodes = 'de,nl';
     if (nahe) { p.viewbox = [nahe.lon - 0.9, nahe.lat + 0.6, nahe.lon + 0.9, nahe.lat - 0.6].join(','); }
     var q = Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&');
     var warte = Math.max(0, nomZeit + 1100 - Date.now()); nomZeit = Date.now() + warte;   // Nutzungsregel von Nominatim: höchstens eine Anfrage je Sekunde

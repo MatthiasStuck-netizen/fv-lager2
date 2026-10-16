@@ -5,70 +5,107 @@
   var STIL_URL = 'https://tiles.openfreemap.org/styles/liberty';
   var feld = null, marken = {}, poiMarken = [], extraMarken = [], verkehrMarken = [], bahnMarken = [], apoMarken = [], arztMarken = [], flugMarken = [], busMarken = [], stadtMarken = [], netzMarken = [], netzDaten = null, warte = [], beiGeste = null, stilArt = '';
 
-  /* ---------- Kartenstil dunkel einfärben ---------- */
-  function strassenfarbe(id) {
-    if (/rail|transit/.test(id)) return '#6f7680';
-    if (/motorway/.test(id)) return '#f2b632';
-    if (/trunk|primary/.test(id)) return '#e9c869';
-    if (/secondary|tertiary/.test(id)) return '#ded8c4';
-    if (/path|pedestrian|cycle|steps|track|pier/.test(id)) return '#6f7a72';
-    return '#aab0b6';
+  /* ---------- Kartenstil einfärben: Nacht (dunkel, passend zum Design) oder Tag (hell) ---------- */
+  var PAL = {
+    nacht: { bg: '#17361f', fl: '#1b3f24', wasser: '#0e3a63', wald: '#123019', sand: '#4b4526', eis: '#73858c', sumpf: '#183c33', gras: '#20492a',
+      wohnen: '#2a302c', gewerbe: '#2c2e31', gruen: '#24402b', nutz: '#22342a', park: '#1a4627', haus: '#454a4d', hausD: 0.75, flug: '#34373b', verkehrF: '#3a3f44',
+      fluss: '#1a5d92', grenze: '#c9a24a', grenzeD: 0.45, rand: '#0b0e11', parkL: '#2b5a35', sonst: '#555b60',
+      bahn: '#6f7680', ab: '#f2b632', bund: '#e9c869', land: '#ded8c4', weg: '#6f7a72', strasse: '#aab0b6',
+      tWasser: '#a8cff2', tStrasse: '#f1ede2', tText: '#ffffff', halo: 'rgba(0,0,0,0.85)' },
+    tag: { bg: '#f2efe9', fl: '#ede9e0', wasser: '#a5cff0', wald: '#cde4c1', sand: '#f2eac6', eis: '#f4f8fa', sumpf: '#d5e9d6', gras: '#e1edd4',
+      wohnen: '#ebe6de', gewerbe: '#e8e2e8', gruen: '#d8ebcf', nutz: '#e8e4da', park: '#cbe6bc', haus: '#d9d2c7', hausD: 0.9, flug: '#e3e1ea', verkehrF: '#ffffff',
+      fluss: '#86c0ea', grenze: '#9a7bb5', grenzeD: 0.6, rand: '#c7bfb0', parkL: '#b2d4a3', sonst: '#bdb8ae',
+      bahn: '#8d9096', ab: '#f4a636', bund: '#f7cf64', land: '#ffffff', weg: '#b3a48c', strasse: '#ffffff',
+      tWasser: '#2a679c', tStrasse: '#39342a', tText: '#24211c', halo: 'rgba(255,255,255,0.92)' }
+  };
+  K.hell = function () { return !!(FV.D && FV.D.hell()); };
+  function strassenfarbe(id, f) {
+    if (/rail|transit/.test(id)) return f.bahn;
+    if (/motorway/.test(id)) return f.ab;
+    if (/trunk|primary/.test(id)) return f.bund;
+    if (/secondary|tertiary/.test(id)) return f.land;
+    if (/path|pedestrian|cycle|steps|track|pier/.test(id)) return f.weg;
+    return f.strasse;
   }
-  function einfaerben(st) {
+  /** Farben einer Grundkarten-Ebene für Tag oder Nacht (null = Ebene nicht anfassen) */
+  function ebenenFarben(l, hell) {
+    var f = hell ? PAL.tag : PAL.nacht, sl = l['source-layer'] || '', id = l.id, p = {};
+    if (l.type === 'background') { p['background-color'] = f.bg; return p; }
+    if (l.type === 'fill') {
+      var c = f.fl;
+      if (sl === 'water') c = f.wasser;
+      else if (sl === 'landcover') c = /wood|forest|tree/.test(id) ? f.wald : /sand|beach/.test(id) ? f.sand : /ice|glacier/.test(id) ? f.eis : /wetland/.test(id) ? f.sumpf : f.gras;
+      else if (sl === 'landuse') c = /residential|suburb/.test(id) ? f.wohnen : /industrial|commercial|retail|railway/.test(id) ? f.gewerbe : /cemetery|pitch|stadium|school|hospital|kindergarten/.test(id) ? f.gruen : f.nutz;
+      else if (sl === 'park') c = f.park;
+      else if (sl === 'building') { c = f.haus; p['fill-opacity'] = f.hausD; }
+      else if (sl === 'aeroway') c = f.flug;
+      else if (sl === 'transportation') c = f.verkehrF;
+      p['fill-color'] = c; return p;
+    }
+    if (l.type === 'line') {
+      if (sl === 'waterway' || sl === 'water') p['line-color'] = f.fluss;
+      else if (sl === 'boundary') { p['line-color'] = f.grenze; p['line-opacity'] = f.grenzeD; }
+      else if (sl === 'transportation' || sl === 'aeroway') p['line-color'] = /casing|outline/.test(id) ? f.rand : strassenfarbe(id, f);
+      else if (sl === 'park' || sl === 'landuse' || sl === 'landcover') p['line-color'] = f.parkL;
+      else p['line-color'] = f.sonst;
+      return p;
+    }
+    if (l.type === 'symbol') {
+      p['text-color'] = sl === 'water_name' || sl === 'waterway' ? f.tWasser : sl === 'transportation_name' ? f.tStrasse : f.tText;
+      p['text-halo-color'] = f.halo; p['text-halo-width'] = 1.6; return p;
+    }
+    if (l.type === 'raster') { p['raster-brightness-max'] = hell ? 1 : 0.82; p['raster-saturation'] = hell ? 0 : -0.15; return p; }
+    return null;
+  }
+  /** Ebenen, die das Navi nicht braucht (Geschäfte, Hausnummern, Muster …), fallen weg – unabhängig von Tag/Nacht */
+  function entruempeln(st) {
     var weg = { poi: 1, housenumber: 1, mountain_peak: 1, aerodrome_label: 1 };
     st.layers = st.layers.filter(function (l) { return !weg[l['source-layer'] || ''] && l.type !== 'fill-extrusion' && !/poi|pattern/.test(l.id); });
-    st.layers.forEach(function (l) {
-      var sl = l['source-layer'] || '', id = l.id, p = l.paint = l.paint || {};
-      if (l.type === 'background') { p['background-color'] = '#17361f'; return; }
-      if (l.type === 'fill') {
-        delete p['fill-pattern']; delete p['fill-outline-color'];
-        var f = '#1b3f24';
-        if (sl === 'water') f = '#0e3a63';
-        else if (sl === 'landcover') f = /wood|forest|tree/.test(id) ? '#123019' : /sand|beach/.test(id) ? '#4b4526' : /ice|glacier/.test(id) ? '#73858c' : /wetland/.test(id) ? '#183c33' : '#20492a';
-        else if (sl === 'landuse') f = /residential|suburb/.test(id) ? '#2a302c' : /industrial|commercial|retail|railway/.test(id) ? '#2c2e31' : /cemetery|pitch|stadium|school|hospital|kindergarten/.test(id) ? '#24402b' : '#22342a';
-        else if (sl === 'park') f = '#1a4627';
-        else if (sl === 'building') { f = '#454a4d'; p['fill-opacity'] = 0.75; }
-        else if (sl === 'aeroway') f = '#34373b';
-        else if (sl === 'transportation') f = '#3a3f44';
-        p['fill-color'] = f;
-        return;
-      }
-      if (l.type === 'line') {
-        if (sl === 'waterway' || sl === 'water') p['line-color'] = '#1a5d92';
-        else if (sl === 'boundary') { p['line-color'] = '#c9a24a'; p['line-opacity'] = 0.45; }
-        else if (sl === 'transportation' || sl === 'aeroway') p['line-color'] = /casing|outline/.test(id) ? '#0b0e11' : strassenfarbe(id);
-        else if (sl === 'park' || sl === 'landuse' || sl === 'landcover') p['line-color'] = '#2b5a35';
-        else p['line-color'] = '#555b60';
-        return;
-      }
-      if (l.type === 'symbol') {
-        p['text-color'] = sl === 'water_name' || sl === 'waterway' ? '#a8cff2' : sl === 'transportation_name' ? '#f1ede2' : '#ffffff';
-        p['text-halo-color'] = 'rgba(0,0,0,0.85)'; p['text-halo-width'] = 1.6; delete p['text-halo-blur'];
-      }
-    });
+    st.layers.forEach(function (l) { var p = l.paint = l.paint || {}; if (l.type === 'fill') { delete p['fill-pattern']; delete p['fill-outline-color']; } if (l.type === 'symbol') delete p['text-halo-blur']; });
     return st;
   }
+  function einfaerben(st, hell) {
+    if (hell == null) hell = K.hell();
+    st.layers.forEach(function (l) { var p = ebenenFarben(l, hell); if (p) l.paint = Object.assign(l.paint || {}, p); });
+    return st;
+  }
+  function kopie(x) { return JSON.parse(JSON.stringify(x)); }
+  var EIGENE = /^(route|gefahren|verkehr|netz|oev|bahn-|see-|flug-)/;
+  /** Tag/Nacht umschalten, ohne die Karte neu aufzubauen (Route, Marken und eigene Ebenen bleiben) */
+  K.designNeu = function () {
+    if (!K.map || !K.bereit) return;
+    var hell = K.hell();
+    try {
+      K.map.getStyle().layers.forEach(function (l) {
+        if (EIGENE.test(l.id)) return;
+        var p = ebenenFarben(l, hell); if (!p) return;
+        Object.keys(p).forEach(function (k) { try { K.map.setPaintProperty(l.id, k, p[k]); } catch (e) {} });
+      });
+      zusatzFarben();
+    } catch (e) {}
+    var f = K.map.getContainer(); if (f && f.parentNode) f.parentNode.style.background = hell ? '#e9e5dc' : '';
+  };
   var RASTER = { version: 8, sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19 } },
     layers: [{ id: 'osm', type: 'raster', source: 'osm', paint: { 'raster-brightness-max': 0.82, 'raster-saturation': -0.15 } }] };
   function stilHolen() {
-    var merker = B.lesen('kartenstil', null);
+    var merker = B.lesen('kartenstil2', null) || B.lesen('kartenstil', null);   // Online-Stil; die Farben kommen je nach Tag/Nacht dazu (ältere Fassung wird einfach neu eingefärbt)
     function netz() {
       return fetch(STIL_URL).then(function (r) { if (!r.ok) throw new Error('stil'); return r.json(); }).then(function (st) {
         if (!st || !Array.isArray(st.layers) || !st.sources) throw new Error('stil');
-        st = einfaerben(st);
-        try { B.schreiben('kartenstil', st); } catch (e) {}
+        st = entruempeln(st);
+        try { B.schreiben('kartenstil2', st); B.schreiben('kartenstil', null); } catch (e) {}
         return st;
       });
     }
     /* Offline-Karte auf dem Handy: Kacheln kommen aus der Datei (Einstellungen → Offline-Karten) */
     if (FV.O && FV.O.aktiv()) {
       FV.O.protokoll(); stilArt = 'offline';
-      if (merker && merker.layers) { netz().catch(function () {}); return Promise.resolve(FV.O.stil(merker)); }
+      if (merker && merker.layers) { netz().catch(function () {}); return Promise.resolve(einfaerben(FV.O.stil(merker))); }
       var bis = new Promise(function (ok, fehl) { setTimeout(function () { fehl(new Error('zeit')); }, 6000); });
-      return Promise.race([netz(), bis]).then(function (st) { return FV.O.stil(st); }).catch(function () { return einfaerben(FV.O.grundstil()); });
+      return Promise.race([netz(), bis]).then(function (st) { return einfaerben(FV.O.stil(st)); }).catch(function () { return einfaerben(FV.O.grundstil()); });
     }
-    if (merker && merker.layers) { netz().catch(function () {}); stilArt = 'vektor'; return Promise.resolve(merker); }
-    return netz().then(function (st) { stilArt = 'vektor'; return st; }).catch(function () { stilArt = 'raster'; return RASTER; });
+    if (merker && merker.layers) { netz().catch(function () {}); stilArt = 'vektor'; return Promise.resolve(einfaerben(kopie(merker))); }
+    return netz().then(function (st) { stilArt = 'vektor'; return einfaerben(kopie(st)); }).catch(function () { stilArt = 'raster'; return einfaerben(kopie(RASTER)); });
   }
 
   /* ---------- Karte anlegen / in eine Seite setzen ---------- */
@@ -117,7 +154,114 @@
     if (!map.getLayer('netz-rand')) map.addLayer({ id: 'netz-rand', type: 'line', source: 'netz', layout: rund, paint: { 'line-color': '#ffffff', 'line-opacity': 0.55, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 13, 5, 16, 8] } }, map.getLayer('route-rand') ? 'route-rand' : vor);
     if (!map.getLayer('netz')) map.addLayer({ id: 'netz', type: 'line', source: 'netz', layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.6, 13, 3.4, 16, 6] } }, map.getLayer('route-rand') ? 'route-rand' : vor);
     if (!map.getLayer('verkehr')) map.addLayer({ id: 'verkehr', type: 'line', source: 'verkehr', layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 13, 7, 17, 12], 'line-opacity': 0.95 } }, vor);
+    strecken(map.getLayer('netz-rand') ? 'netz-rand' : map.getLayer('route-rand') ? 'route-rand' : vor);
   }
+
+  /* ---------- Bahnstrecken, Schiffs-/Fährstrecken (aus den Kartendaten) und Flugstrecken ----------
+   * Bahn: OpenMapTiles „transportation“ class rail/transit, als Gleis gezeichnet (Linie mit hellen Querstrichen).
+   * Schiff: class ferry, blau gestrichelt, mit Namen der Linie. Gilt für jede Kartenquelle (online, Deutschland, Spanien, Welt).
+   * Flug: eigene Quelle mit Großkreisen (Flugtafel eines Flughafens, Live-Flugzeug). */
+  var SFARBE = { nacht: { bahn: '#c3c9d2', bahnKern: '#3b4048', see: '#4fb3ff', seeText: '#9fd6ff', flug: '#c9a6ff', flugAkt: '#ffd36b', halo: 'rgba(0,0,0,.85)' },
+                 tag: { bahn: '#4d535c', bahnKern: '#ffffff', see: '#1a7fd1', seeText: '#145a96', flug: '#7a3fd0', flugAkt: '#d9480f', halo: 'rgba(255,255,255,.95)' } };
+  function vektorQuellen(map) {
+    var st = map.getStyle(), l = [];
+    Object.keys(st.sources || {}).forEach(function (k) { if (st.sources[k].type === 'vector') l.push(k); });
+    return l;
+  }
+  function schrift(map) {
+    try { var ls = map.getStyle().layers; for (var i = 0; i < ls.length; i++) { var f = ls[i].layout && ls[i].layout['text-font']; if (Array.isArray(f) && typeof f[0] === 'string') return f; } } catch (e) {}
+    return null;
+  }
+  function strecken(vor) {
+    var map = K.map, f = K.hell() ? SFARBE.tag : SFARBE.nacht, e = (FV.app && FV.app.e) || {};
+    var rund = { 'line-cap': 'round', 'line-join': 'round' }, glyphen = !!map.getStyle().glyphs, font = schrift(map);
+    var bahnFilter = ['all', ['match', ['get', 'class'], ['rail', 'transit'], true, false], ['!=', ['get', 'brunnel'], 'tunnel']];
+    var seeFilter = ['==', ['get', 'class'], 'ferry'];
+    vektorQuellen(map).forEach(function (q) {
+      var sicht = function (k) { return { visibility: e[k] === false ? 'none' : 'visible' }; };
+      if (!map.getLayer('bahn-' + q)) map.addLayer({ id: 'bahn-' + q, type: 'line', source: q, 'source-layer': 'transportation', filter: bahnFilter, minzoom: 5,
+        layout: Object.assign({ 'line-join': 'round' }, sicht('bahnnetz')), paint: { 'line-color': f.bahn, 'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.8, 9, 1.8, 13, 3.4, 17, 6] } }, vor);
+      if (!map.getLayer('bahn-kern-' + q)) map.addLayer({ id: 'bahn-kern-' + q, type: 'line', source: q, 'source-layer': 'transportation', filter: bahnFilter, minzoom: 9,
+        layout: Object.assign({ 'line-join': 'round' }, sicht('bahnnetz')), paint: { 'line-color': f.bahnKern, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 0.7, 13, 1.6, 17, 3], 'line-dasharray': [2, 2.5] } }, vor);
+      if (!map.getLayer('see-' + q)) map.addLayer({ id: 'see-' + q, type: 'line', source: q, 'source-layer': 'transportation', filter: seeFilter,
+        layout: Object.assign({}, rund, sicht('seewege')), paint: { 'line-color': f.see, 'line-width': ['interpolate', ['linear'], ['zoom'], 4, 1.2, 9, 2.2, 14, 3.5], 'line-dasharray': [2, 1.6], 'line-opacity': 0.95 } }, vor);
+      if (glyphen && font && !map.getLayer('see-name-' + q)) map.addLayer({ id: 'see-name-' + q, type: 'symbol', source: q, 'source-layer': 'transportation_name', filter: seeFilter, minzoom: 8,
+        layout: Object.assign({ 'symbol-placement': 'line', 'text-field': ['coalesce', ['get', 'name:de'], ['get', 'name']], 'text-font': font, 'text-size': 12, 'text-max-angle': 30, 'symbol-spacing': 300 }, sicht('seewege')),
+        paint: { 'text-color': f.seeText, 'text-halo-color': f.halo, 'text-halo-width': 1.6 } });
+    });
+    var leer = { type: 'FeatureCollection', features: [] };
+    if (!map.getSource('flug-strecken')) map.addSource('flug-strecken', { type: 'geojson', data: flugDaten || leer });
+    if (!map.getLayer('flug-linie')) map.addLayer({ id: 'flug-linie', type: 'line', source: 'flug-strecken', layout: Object.assign({}, rund, { visibility: e.flugrouten === false ? 'none' : 'visible' }),
+      paint: { 'line-color': ['case', ['==', ['get', 'akt'], true], f.flugAkt, f.flug], 'line-width': ['case', ['==', ['get', 'akt'], true], 3.2, ['interpolate', ['linear'], ['get', 'n'], 1, 1.4, 6, 2.6, 20, 4]],
+        'line-opacity': 0.9, 'line-dasharray': [3, 1.5] } });
+  }
+  var flugDaten = null;
+  /** Farben der Zusatz-Ebenen nach Tag/Nacht */
+  function zusatzFarben() {
+    var map = K.map, f = K.hell() ? SFARBE.tag : SFARBE.nacht;
+    vektorQuellen(map).forEach(function (q) {
+      try { map.setPaintProperty('bahn-' + q, 'line-color', f.bahn); map.setPaintProperty('bahn-kern-' + q, 'line-color', f.bahnKern); map.setPaintProperty('see-' + q, 'line-color', f.see); } catch (e) {}
+      try { map.setPaintProperty('see-name-' + q, 'text-color', f.seeText); map.setPaintProperty('see-name-' + q, 'text-halo-color', f.halo); } catch (e) {}
+    });
+    try { map.setPaintProperty('flug-linie', 'line-color', ['case', ['==', ['get', 'akt'], true], f.flugAkt, f.flug]); } catch (e) {}
+  }
+  /** Schalter Bahnstrecken / Schiffsstrecken / Flugstrecken übernehmen */
+  K.streckenNeu = function () {
+    if (!K.map || !K.bereit) return;
+    var e = (FV.app && FV.app.e) || {}, map = K.map;
+    vektorQuellen(map).forEach(function (q) {
+      ['bahn-', 'bahn-kern-'].forEach(function (v) { if (map.getLayer(v + q)) map.setLayoutProperty(v + q, 'visibility', e.bahnnetz === false ? 'none' : 'visible'); });
+      ['see-', 'see-name-'].forEach(function (v) { if (map.getLayer(v + q)) map.setLayoutProperty(v + q, 'visibility', e.seewege === false ? 'none' : 'visible'); });
+    });
+    if (map.getLayer('flug-linie')) map.setLayoutProperty('flug-linie', 'visibility', e.flugrouten === false ? 'none' : 'visible');
+  };
+  /** Großkreis zwischen zwei Punkten als [[lon,lat], …] – über die Datumsgrenze ohne Sprung */
+  K.grosskreis = function (a, b, n) {
+    var r = Math.PI / 180, p1 = a.lat * r, l1 = a.lon * r, p2 = b.lat * r, l2 = b.lon * r; n = n || 64;
+    var d = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin((p2 - p1) / 2), 2) + Math.cos(p1) * Math.cos(p2) * Math.pow(Math.sin((l2 - l1) / 2), 2)));
+    if (!(d > 1e-6)) return [[a.lon, a.lat], [b.lon, b.lat]];
+    var pk = [], vorher = null;
+    for (var i = 0; i <= n; i++) {
+      var t = i / n, A1 = Math.sin((1 - t) * d) / Math.sin(d), B1 = Math.sin(t * d) / Math.sin(d);
+      var x = A1 * Math.cos(p1) * Math.cos(l1) + B1 * Math.cos(p2) * Math.cos(l2), y = A1 * Math.cos(p1) * Math.sin(l1) + B1 * Math.cos(p2) * Math.sin(l2), z = A1 * Math.sin(p1) + B1 * Math.sin(p2);
+      var lon = Math.atan2(y, x) / r, lat = Math.atan2(z, Math.sqrt(x * x + y * y)) / r;
+      if (vorher != null) { while (lon - vorher > 180) lon -= 360; while (lon - vorher < -180) lon += 360; }
+      vorher = lon; pk.push([lon, lat]);
+    }
+    return pk;
+  };
+  /** Flugstrecken zeichnen: liste = [{ von:{lat,lon}, nach:{lat,lon}, n: Anzahl Flüge, akt: hervorgehoben }] oder null */
+  K.flugstrecken = function (liste) {
+    flugDaten = { type: 'FeatureCollection', features: (liste || []).map(function (s) {
+      return { type: 'Feature', geometry: { type: 'LineString', coordinates: K.grosskreis(s.von, s.nach) }, properties: { n: s.n || 1, akt: !!s.akt } };
+    }) };
+    K.wenn(function () { var q = K.map.getSource('flug-strecken'); if (q) q.setData(flugDaten); });
+  };
+  /** Live-Flugzeuge als Marken: [{ id, lat, lon, kurs, name, boden, akt }] – nur das Flugzeug dreht sich, der Name bleibt lesbar */
+  var fzMarken = {}, fzDreher = null;
+  var FLUGZEUG = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>';
+  function fzDrehen() {
+    var b = K.map ? K.map.getBearing() : 0;
+    Object.keys(fzMarken).forEach(function (k) { var e = fzMarken[k].getElement(), f = e._fz, s = e.firstChild; if (f && s) s.style.transform = 'rotate(' + Math.round((f.kurs || 0) - b) + 'deg)'; });
+  }
+  K.flugzeuge = function (liste, beiTipp) {
+    var neu = {};
+    if (K.map) {
+      if (fzDreher !== K.map) { fzDreher = K.map; K.map.on('rotate', fzDrehen); }
+      (liste || []).forEach(function (f) {
+        var m = fzMarken[f.id];
+        if (!m) {
+          var e = el(FLUGZEUG + '<span>' + FV.esc(f.name || '') + '</span>', 'm-flugzeug' + (f.boden ? ' boden' : ''));
+          e.addEventListener('click', function (ev) { ev.stopPropagation(); if (beiTipp) beiTipp(e._fz); });
+          m = new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat([f.lon, f.lat]).addTo(K.map);
+        } else m.setLngLat([f.lon, f.lat]);
+        m.getElement()._fz = f; m.getElement().classList.toggle('akt', !!f.akt);
+        neu[f.id] = m;
+      });
+    }
+    Object.keys(fzMarken).forEach(function (k) { if (!neu[k]) fzMarken[k].remove(); });
+    fzMarken = neu; fzDrehen();
+  };
 
   /* ---------- Marken ---------- */
   function el(html, klasse) { var d = document.createElement('div'); if (klasse) d.className = klasse; d.innerHTML = html; return d; }
@@ -334,5 +478,5 @@
       });
     });
   };
-  K.leeren = function () { K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
+  K.leeren = function () { K.flugstrecken(null); K.flugzeuge([]); K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
 })();
