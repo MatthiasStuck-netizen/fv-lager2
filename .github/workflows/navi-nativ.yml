@@ -1,8 +1,9 @@
 name: Navi Android-Teil erweitern
 
-# Setzt in die vorhandene Navi-APK (Android-Teil nur kompiliert vorhanden) einen kleinen Zusatz ein:
-#  - Klasse de.fehnverleih.navi.Satelliten (Java, nativ/) als zusätzliche classes2.dex
-#  - in der Brücke zur Oberfläche (MainActivity$Bruecke) die Methode satelliten() für FVNative.satelliten()
+# Setzt in die vorhandene Navi-APK (Android-Teil nur kompiliert vorhanden) Zusätze ein:
+#  - Klassen aus nativ/ (Satelliten, Extras, Mitteiler, Post, Ais) als zusätzliche classes2.dex
+#  - in der Brücke zur Oberfläche (MainActivity$Bruecke) die Methoden satelliten() und extra(befehl, daten)
+#  - im Manifest: Rechte für Kontakte/Anrufliste/Anrufen, Benachrichtigungs-Dienst (WhatsApp & Co.), Sichtbarkeit von Spotify/WhatsApp
 # Ergebnis: Release "navi-nativ" mit der UNSIGNIERTEN APK. Oberfläche und Unterschrift kommen danach mit werkzeuge/bauen.py dazu.
 
 on:
@@ -50,7 +51,7 @@ jobs:
           m = re.search(r'^\.field [^\n]*? (\S+):Lde/fehnverleih/navi/MainActivity;', s, re.M)
           assert m, 'Feld mit MainActivity nicht gefunden'
           feld = m.group(1)
-          assert 'satelliten()' not in s
+          assert 'satelliten()' not in s and 'extra(' not in s
           neu = '''
           .method public final satelliten()Ljava/lang/String;
               .registers 2
@@ -62,19 +63,55 @@ jobs:
               move-result-object v0
               return-object v0
           .end method
-          ''' % feld
+
+          .method public final extra(Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+              .registers 4
+              .annotation runtime Landroid/webkit/JavascriptInterface;
+              .end annotation
+              iget-object v0, p0, Lde/fehnverleih/navi/MainActivity$Bruecke;->%s:Lde/fehnverleih/navi/MainActivity;
+              check-cast v0, Landroid/content/Context;
+              invoke-static {v0, p1, p2}, Lde/fehnverleih/navi/Extras;->ruf(Landroid/content/Context;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+              move-result-object v0
+              return-object v0
+          .end method
+          ''' % (feld, feld)
           neu = '\n'.join(l[10:] if l.startswith(' ' * 10) else l for l in neu.split('\n'))
           s = s.rstrip() + '\n' + neu + '\n'
           open(p, 'w', encoding='utf-8').write(s)
           print('Feld:', feld)
           EOF
           tail -15 "$BRUECKE" | tee -a protokoll.txt
+      - name: Manifest erweitern (voll zerlegt, nur das neue Manifest wird übernommen)
+        run: |
+          java -jar apktool.jar d -f basis/Fehnverleih-Navi-4.1.1.apk -o voll > /dev/null
+          python3 - <<'EOF'
+          import re
+          p = 'voll/AndroidManifest.xml'; s = open(p, encoding='utf-8').read()
+          rechte = ['READ_CONTACTS', 'READ_CALL_LOG', 'CALL_PHONE']
+          neu = ''.join('    <uses-permission android:name="android.permission.%s"/>\n' % r for r in rechte if 'android.permission.%s"' % r not in s)
+          s = re.sub(r'(<uses-permission )', neu + r'\1', s, count=1)
+          pakete = ['com.spotify.music', 'com.whatsapp', 'com.whatsapp.w4b']
+          q = ''.join('        <package android:name="%s"/>\n' % x for x in pakete if '"%s"' % x not in s)
+          if '<queries>' in s: s = s.replace('<queries>', '<queries>\n' + q, 1)
+          else: s = s.replace('<application', '<queries>\n' + q + '    </queries>\n    <application', 1)
+          dienst = ('        <service android:name="de.fehnverleih.navi.Mitteiler" android:label="Fehnverleih Navi" android:exported="true" '
+                    'android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">\n'
+                    '            <intent-filter><action android:name="android.service.notification.NotificationListenerService"/></intent-filter>\n'
+                    '        </service>\n')
+          assert 'Mitteiler' not in s
+          s = s.replace('</application>', dienst + '    </application>', 1)
+          open(p, 'w', encoding='utf-8').write(s)
+          EOF
+          grep -nE "uses-permission|<package|Mitteiler|queries" voll/AndroidManifest.xml | tee -a protokoll.txt
+          java -jar apktool.jar b voll -o voll.apk 2>&1 | tail -5 | tee -a protokoll.txt
+          mkdir -p manifest && unzip -o -q voll.apk AndroidManifest.xml -d manifest && ls -l manifest
       - name: Wieder zusammensetzen
         run: |
           java -jar apktool.jar b deko -o unsigniert.apk
           ls deko/build/apk || true
           if unzip -l unsigniert.apk | grep -q 'classes2.dex'; then echo "::error::classes2.dex gibt es schon"; exit 1; fi
           cp dexaus/classes.dex classes2.dex && zip -q unsigniert.apk classes2.dex
+          (cd manifest && zip -q ../unsigniert.apk AndroidManifest.xml)
           unzip -l unsigniert.apk | grep -E 'classes|Manifest|resources.arsc'
           mkdir aus && cp unsigniert.apk aus/Navi-nativ-unsigniert.apk
       - name: Protokoll bereitstellen (auch bei Fehler)
@@ -90,7 +127,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete navi-nativ -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create navi-nativ aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi: Android-Teil mit Satelliten (unsigniert)" --notes "Zwischenstand fuer den Bau, nicht zum Installieren."
+          gh release create navi-nativ aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi: Android-Teil 4.4 (unsigniert)" --notes "Zwischenstand fuer den Bau, nicht zum Installieren."
 
   geraetetest:
     needs: bauen
@@ -107,7 +144,7 @@ jobs:
           gh release download navi-nativ -R "$GITHUB_REPOSITORY" -p 'Navi-nativ-unsigniert.apk'
           keytool -genkeypair -keystore wegwerf.jks -storepass wegwerf123 -keypass wegwerf123 -alias test -keyalg RSA -keysize 2048 -validity 30 -dname "CN=Test" > /dev/null
           pip install -q cryptography
-          python3 werkzeug/bauen.py Navi-nativ-unsigniert.apk www wegwerf.jks wegwerf123 test test.apk 4.3.0 430
+          python3 werkzeug/bauen.py Navi-nativ-unsigniert.apk www wegwerf.jks wegwerf123 test test.apk 4.4.0 440
       - name: KVM freischalten
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules

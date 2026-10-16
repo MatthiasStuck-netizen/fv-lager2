@@ -78,6 +78,16 @@ window.FV = window.FV || {};
     try { return JSON.parse(N.satelliten() || 'null'); } catch (e) { return null; }
   };
   B._simOrt = ortEmpfangen;   // für Tests und Vorschau
+  /** Zusätze des Android-Teils ab 4.4 (Telefon, Nachrichten, Musik, E-Mail, Schiffe): FVNative.extra(befehl, json) → Objekt.
+   *  Ohne Android-Teil (Browser, ältere App) null – im Test kann FV_TEST.extra(befehl, daten) antworten. */
+  B.hatExtra = function () { return !!(N && typeof N.extra === 'function') || !!(window.FV_TEST && FV_TEST.extra); };
+  B.extra = function (befehl, daten) {
+    try {
+      if (N && typeof N.extra === 'function') return JSON.parse(N.extra(befehl, daten == null ? '' : typeof daten === 'string' ? daten : JSON.stringify(daten)) || 'null');
+      if (window.FV_TEST && FV_TEST.extra) return FV_TEST.extra(befehl, daten);
+    } catch (e) { return { ok: false, fehler: String(e && e.message || e) }; }
+    return null;
+  };
   /* Kilometerzähler (läuft in Android weiter, auch wenn der Bildschirm aus ist) */
   var simMeter = 0, simLetzter = null;
   B.beiOrt(function (p) {
@@ -136,21 +146,14 @@ window.FV = window.FV || {};
 
   /* ---------- Andere Apps ---------- */
   B.kartenApp = function (ziel) { if (N) N.kartenApp(ziel); else window.open('https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=' + encodeURIComponent(ziel), '_blank'); };
-  B.anrufen = function (tel) { if (N) N.anrufen(tel); else location.href = 'tel:' + encodeURIComponent(tel); };
+  B.anrufen = function (tel) {
+    if (B.hatExtra()) { var r = B.extra('anrufen', { tel: String(tel) }); if (r && r.ok) return; }
+    if (N) N.anrufen(tel); else location.href = 'tel:' + encodeURIComponent(tel);
+  };
   B.oeffnen = function (url) { if (N) N.oeffnen(url); else window.open(url, '_blank'); };
-  /* ---------- Offline-Navi (Organic Maps / OsmAnd mit heruntergeladener Deutschland-Karte) ---------- */
-  B.OFFLINE_APPS = { 'app.organicmaps': 'Organic Maps', 'net.osmand': 'OsmAnd' };
-  B.appDa = function (paket) { if (N && N.appDa) { try { return !!N.appDa(paket); } catch (e) {} } return false; };
-  /** Ziel an die Offline-Navi übergeben. ziel = { lat, lon, name, adresse }. Gibt false zurück, wenn die App fehlt. */
-  B.offlineNavi = function (paket, ziel) {
-    var name = String(ziel.name || ziel.adresse || 'Ziel').replace(/[()]/g, ' '), u1, u2, o = letzterOrt;
-    if (ziel.lat != null && ziel.lon != null) {
-      var ll = (+ziel.lat).toFixed(6) + ',' + (+ziel.lon).toFixed(6);
-      u2 = 'geo:' + ll + '?q=' + ll + '(' + encodeURIComponent(name) + ')';
-      u1 = (paket === 'app.organicmaps' && o) ? 'om://route?sll=' + o.lat.toFixed(6) + ',' + o.lon.toFixed(6) + '&saddr=' + encodeURIComponent('Mein Standort') + '&dll=' + ll + '&daddr=' + encodeURIComponent(name) + '&type=vehicle' : u2;
-    } else { u1 = u2 = 'geo:0,0?q=' + encodeURIComponent(ziel.adresse || name); }   // ohne Koordinaten: Adresse in der Offline-Suche
-    if (N && N.appMitZiel) { try { return !!N.appMitZiel(paket, u1, u2); } catch (e) { return false; } }
-    window.open(u2, '_blank'); return true;
+  B.appDa = function (paket) {
+    if (B.hatExtra()) { var r = B.extra('appDa', { paket: paket }); if (r) return !!r.ok; }
+    if (N && N.appDa) { try { return !!N.appDa(paket); } catch (e) {} } return false;
   };
   B.appLaden = function (paket) { B.oeffnen('https://play.google.com/store/apps/details?id=' + paket); };
   B.appStarten = function (paket, ersatzUrl) { if (N) return N.appStarten(paket, ersatzUrl || ''); if (ersatzUrl) window.open(ersatzUrl, '_blank'); return false; };

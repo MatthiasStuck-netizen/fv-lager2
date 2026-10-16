@@ -243,6 +243,51 @@
     });
   }
 
+  /* ---------- Verkehrsfunk: alle Meldungen rund um einen Ort (nicht nur auf der Route) ----------
+   * Autobahnen im Umkreis (aus OpenStreetMap) → Autobahn GmbH; mit TomTom-Schlüssel zusätzlich alle Straßen im Umkreis. */
+  var abNahMerker = null;
+  function autobahnenNahe(p, meter) {
+    if (abNahMerker && G.abstand(abNahMerker.p, p) < 15000) return Promise.resolve(abNahMerker.l);
+    var q = '[out:json][timeout:25];way(around:' + Math.round(meter) + ',' + p.lat.toFixed(4) + ',' + p.lon.toFixed(4) + ')[highway=motorway][ref];out tags 400;';
+    return V.osm(q, 7 * 86400).then(function (j) {
+      var n = {};
+      (j.elements || []).forEach(function (e) { String(e.tags && e.tags.ref || '').split(/\s*;\s*/).forEach(function (r) { var m = /^A\s?(\d+)$/.exec(r.trim()); if (m) n['A' + m[1]] = (n['A' + m[1]] || 0) + 1; }); });
+      var l = Object.keys(n).sort(function (a, b) { return n[b] - n[a]; }).slice(0, 8);
+      abNahMerker = { p: p, l: l };
+      return l;
+    });
+  }
+  V.umgebung = function (p, meter) {
+    meter = meter || 60000;
+    var jobs = [autobahnenNahe(p, meter).then(function (l) { return Promise.all(l.map(function (nr) { return autobahn(nr).catch(function () { return []; }); })); }).then(function (x) { return [].concat.apply([], x); })];
+    var key = V.schluessel();
+    if (key) {
+      var d = Math.min(0.45, meter / 111000), dl = d / Math.max(0.3, Math.cos(p.lat * RAD));
+      var felder = '{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description},from,to,length,delay,roadNumbers,probabilityOfOccurrence}}}';
+      var u = V.DIENST.tomtom + '?key=' + encodeURIComponent(key) + '&bbox=' + [p.lon - dl, p.lat - d, p.lon + dl, p.lat + d].map(function (z) { return z.toFixed(4); }).join(',') + '&fields=' + encodeURIComponent(felder) + '&language=de-DE&timeValidityFilter=present';
+      jobs.push(B.json({ url: u, zeit: 15000 }).then(function (j) {
+        return (j.incidents || []).map(function (f) {
+          var pr = f.properties || {}, g = f.geometry || {}, pts = g.type === 'LineString' ? g.coordinates : g.type === 'Point' ? [g.coordinates] : null;
+          if (!pts || !pts.length) return null;
+          var art = TT_ART[pr.iconCategory] || 'gefahr'; if (art === 'stau' && (pr.magnitudeOfDelay || 0) <= 1) art = 'stockend';
+          return { id: 'tt:' + pr.id, quelle: 'tomtom', art: art, gesperrt: pr.iconCategory === 8, strasse: (pr.roadNumbers || []).join(', '), abschnitt: [pr.from, pr.to].filter(Boolean).join(' – '),
+            richtung: pr.to ? 'Richtung ' + pr.to : '', text: (pr.events || []).map(function (e) { return txt(e.description); }).filter(Boolean).join(', '), verzoegerung: +pr.delay || 0, lon: pts[0][0], lat: pts[0][1], punkte: pts };
+        }).filter(Boolean);
+      }).catch(function () { return []; }));
+    }
+    return Promise.all(jobs).then(function (t) {
+      var alle = [].concat.apply([], t), gesehen = {};
+      return alle.filter(function (m) {
+        if (gesehen[m.id]) return false; gesehen[m.id] = 1;
+        m.weit = G.abstand(p, m);
+        return m.weit <= meter * 1.2;
+      }).sort(function (a, b) {
+        function w(m) { return (m.gesperrt ? 0 : m.art === 'unfall' ? 1 : m.art === 'stau' ? 2 : m.art === 'stockend' ? 3 : m.art === 'baustelle' ? 6 : 4) * 100000 + m.weit / 10; }
+        return w(a) - w(b);
+      });
+    });
+  };
+
   /* ---------- Meldungen für eine Route holen ---------- */
   /** Alle Meldungen, die auf der Route liegen (ab = gefahrene Meter, davor liegende werden weggelassen). */
   V.laden = function (r, ab) {
@@ -303,7 +348,7 @@
       if (!hin.length || !von || !nach) return erg;
       var alteMeiden = r.meiden || [], meiden = alteMeiden.concat(meideFlaechen(r, hin)).slice(-60);
       var jetzt = kosten(r, liste, ab);
-      return G.routen(von, nach, { modus: 'auto', meiden: meiden, alternativen: 2 }).then(function (alts) {
+      return G.routen(von, nach, { modus: 'auto', meiden: meiden, alternativen: 2, art: r && r.art }).then(function (alts) {
         // Auch auf den Ausweichrouten können Meldungen liegen – die schon geladenen dagegen prüfen
         var alle = V.meldungen.slice(), beste = null, besteK = Infinity;
         alts.forEach(function (a) {

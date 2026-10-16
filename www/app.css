@@ -733,3 +733,118 @@ body.vollbild .reiseleiste { display: none; }
 .zl.akt { background: rgba(234,185,74,.12); border-radius: 0 8px 8px 0; }
 .zl[data-tun] { cursor: pointer; }
 html.hell .reiseleiste { background: #fff; }
+
+/* ===================== 4.4: Rahmen um das Fehnverleih-Bild ===================== */
+#banner { padding: 0; border-bottom: 0; background: #000; }
+#banner img { border: 2px solid #000; outline: 1px solid rgba(0,0,0,.9); outline-offset: -3px; }
+html.hell #banner { background: #000; }
+
+/* ---------- Startseite: kleine Knöpfe unter „Route starten“ / „Karte anzeigen“ ---------- */
+.minikacheln { flex: none; display: flex; gap: 6px; padding: 0 8px 8px; }
+.minikachel { flex: 1 1 0; min-width: 0; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 58px; padding: 6px 2px; border-radius: 10px; font-family: var(--schmal); font-size: 12.5px; font-weight: 600; color: #f3ead2; }
+.minikachel .sym { width: 26px; height: 26px; color: var(--gold); }
+.minikachel span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.zahl { position: absolute; top: 3px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #e2231a; color: #fff; font: 700 11px/18px var(--schmal); text-align: center; font-style: normal; }
+html.hell .minikachel { color: #1d1b17; } html.hell .minikachel .sym { color: #9a6a0c; }
+
+/* ---------- Kartenknöpfe: Online/Offline, Gelände, Musik, Nachrichten ---------- */
+.kartenwahl { position: absolute; z-index: 4; right: 10px; bottom: 172px; display: flex; flex-direction: column; gap: 8px; }
+.kwknopf { position: relative; width: 46px; height: 46px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; padding: 0; }
+.kwknopf .sym { width: 22px; height: 22px; }
+.kwknopf small { font: 600 9.5px/1.1 var(--schmal); letter-spacing: .1px; }
+.kwknopf.offline { border-color: #3fcf74; color: #3fcf74; }
+.kwknopf.an { background: linear-gradient(180deg, var(--gold-hell), var(--gold)); color: var(--tinte); border-color: var(--gold-dunkel); }
+.kwknopf .zahl { top: -6px; right: -6px; }
+.kartenwahl .kartenknopf { position: relative; }
+body.s-fahrt .kartenwahl { bottom: 132px; }
+body.s-vorschau .kartenwahl { bottom: 70px; right: auto; left: 8px; flex-direction: row; }
+body.s-vorschau .satknopf { bottom: 124px; }
+html.hell .kwknopf.offline { color: #1d7a3c; border-color: #1d7a3c; }
+
+/* ---------- Routenwahl: schnellste / sparsame / kürzeste ---------- */
+.artwahl { flex: none; display: flex; gap: 6px; padding: 6px 8px 0; }
+.artwahl button { flex: 1 1 0; min-width: 0; display: grid; grid-template-columns: 22px 1fr; grid-template-rows: auto auto auto; column-gap: 6px; align-items: center; text-align: left; padding: 6px 8px; border-radius: 10px; background: #0e131a; border: 1px solid #262b33; color: #e8e2d2; font-family: var(--schmal); }
+.artwahl button .sym { grid-row: 1 / span 3; width: 22px; height: 22px; color: var(--gold); }
+.artwahl button b { font-size: 14px; line-height: 1.1; } .artwahl button span { font-size: 15px; font-weight: 700; color: var(--gold-hell); line-height: 1.15; } .artwahl button small { font-size: 11px; color: var(--grau); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.artwahl button.akt { background: linear-gradient(180deg, var(--gold-hell), var(--gold)); border-color: var(--gold-dunkel); color: var(--tinte); }
+.artwahl button.akt .sym, .artwahl button.akt span, .artwahl button.akt small { color: var(--tinte); }
+.artwahl button[disabled] { opacity: .6; }
+html.hell .artwahl button { background: #fff; border-color: #ddd5c4; color: #1d1b17; } html.hell .artwahl button span { color: #8a5a00; } html.hell .artwahl button small { color: #6b665c; }
+html.hell .artwahl button.akt span, html.hell .artwahl button.akt small { color: var(--tinte); }
+
+/* ---------- Einblendung neuer Nachrichten (WhatsApp, E-Mail) über allem ---------- */
+.melder { position: fixed; left: 8px; right: 8px; top: calc(8px + var(--oben)); z-index: 55; background: rgba(8,12,17,.97); border: 2px solid #25d366; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.6); padding: 8px 10px 8px; font-family: var(--schrift); }
+.melder.mail { border-color: #6fb2ff; }
+.melder .mkopf { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--grau); }
+.melder .mkopf .sym { width: 20px; height: 20px; color: #25d366; } .melder.mail .mkopf .sym { color: #6fb2ff; }
+.melder .mkopf b { color: #fff; font-size: 13.5px; } .melder .mkopf button { margin-left: auto; color: var(--grau); }
+.melder .mtext { padding: 4px 0 6px; cursor: pointer; }
+.melder .mtext b { display: block; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.melder .mtext span { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 16px; line-height: 1.3; color: #ece6d6; }
+.melder .mtext small { display: block; color: var(--grau2); font-size: 12px; margin-top: 2px; }
+.melder .mknoepfe { display: flex; gap: 6px; }
+.melder .mknoepfe button { flex: 1 1 0; display: flex; align-items: center; justify-content: center; gap: 4px; min-height: 40px; border-radius: 9px; background: #151b23; border: 1px solid #2c333d; font: 600 14px var(--schmal); color: #fff; }
+.melder .mknoepfe .sym { width: 20px; height: 20px; color: var(--gold); }
+html.hell .melder { background: rgba(255,255,255,.98); color: #1d1b17; } html.hell .melder .mkopf b, html.hell .melder .mtext span { color: #1d1b17; } html.hell .melder .mknoepfe button { background: #f6f2e9; border-color: #ddd5c4; color: #1d1b17; }
+
+/* ---------- Nachrichten-Seite ---------- */
+.eintrag.nachricht { align-items: flex-start; }
+.eintrag.nachricht.neu { border-color: #25d366; }
+.eintrag.nachricht .ntext { white-space: normal !important; overflow: visible !important; color: #ece6d6 !important; font-size: 15px !important; margin: 2px 0; }
+.eintrag.nachricht small { display: block; font-size: 12px; } .eintrag.nachricht .txt b small { font-weight: 400; color: var(--grau); }
+.nknoepfe { display: flex; flex-direction: column; gap: 6px; }
+.nknoepfe .rund.klein { width: 38px; height: 38px; border: 1.5px solid var(--gold-dunkel); color: var(--gold); background: #0a0d11; }
+.nknoepfe .rund.klein .sym { width: 20px; height: 20px; }
+.schnellantw { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.schnellantw .knopf { justify-content: flex-start; text-align: left; }
+.eintrag.mail.neu .txt b { color: var(--gold-hell); }
+.eintrag.mail small { display: block; font-size: 12px; }
+.mailkopf { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--grau); font-size: 14px; }
+.mailkopf > .sym { color: #6fb2ff; width: 22px; height: 22px; } .mailkopf span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mailtext { white-space: normal; font-size: 15.5px; line-height: 1.4; background: #0e131a; border: 1px solid #20252d; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; max-height: 55vh; overflow-y: auto; -webkit-user-select: text; user-select: text; word-wrap: break-word; }
+html.hell .eintrag.nachricht .ntext { color: #1d1b17 !important; } html.hell .mailtext { background: #fff; border-color: #ddd5c4; } html.hell .nknoepfe .rund.klein { background: #fff; color: #8a5a00; }
+
+/* ---------- Telefon ---------- */
+.eintrag.telz.verpasst > .sym, .eintrag.telz.abgelehnt > .sym { color: #ff5a4f; }
+.eintrag.telz.ein > .sym { color: #3fcf74; } .eintrag.telz.aus > .sym { color: #6fb2ff; }
+.eintrag.telz.verpasst .txt b { color: #ff8a80; }
+.waehl { padding: 4px 4px 10px; }
+.wnummer { text-align: center; font: 700 32px/1.2 var(--schmal); letter-spacing: 2px; min-height: 46px; padding: 6px 0 12px; color: var(--gold-hell); word-break: break-all; }
+.wtasten { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px; }
+.wtasten button { height: 62px; border-radius: 14px; background: #0e131a; border: 1px solid #262b33; font: 600 28px var(--schmal); color: #fff; }
+.wtasten button:active { background: #1a212b; }
+html.hell .wtasten button { background: #fff; border-color: #ddd5c4; color: #1d1b17; } html.hell .wnummer { color: #8a5a00; }
+
+/* ---------- Musik ---------- */
+.musik { background: #0e131a; border: 1px solid #20252d; border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.mtitel { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.mtitel > .sym { width: 40px; height: 40px; color: #1ed760; flex: none; }
+.mtitel b { display: block; font-size: 18px; } .mtitel span { display: block; font-size: 14px; color: var(--grau); }
+.mtasten { display: flex; justify-content: center; align-items: center; gap: 22px; }
+.mtasten button { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #151b23; border: 1px solid #2c333d; color: #fff; }
+.mtasten button.gross { width: 72px; height: 72px; background: #1ed760; color: #04120a; border: 0; }
+.mtasten .sym { width: 30px; height: 30px; } .mtasten .gross .sym { width: 40px; height: 40px; }
+html.hell .musik { background: #fff; border-color: #ddd5c4; } html.hell .mtasten button { background: #f6f2e9; border-color: #ddd5c4; color: #1d1b17; } html.hell .mtasten button.gross { background: #1ed760; color: #04120a; }
+
+/* ---------- Verkehrsfunk ---------- */
+.eintrag.vmeld { align-items: flex-start; }
+.eintrag.vmeld > .sym { color: #ffbe3b; } .eintrag.vmeld.sperrung > .sym, .eintrag.vmeld.unfall > .sym, .eintrag.vmeld.stau > .sym { color: #ff5a4f; }
+.eintrag.vmeld .txt span { white-space: normal; } .eintrag.vmeld .txt small { display: block; font-size: 12.5px; color: var(--grau2); margin-top: 2px; }
+.eintrag.vmeld .ende { flex-direction: column; align-items: flex-end; gap: 2px; font-size: 12px; color: var(--grau); }
+
+/* ---------- Züge live: Halte ---------- */
+.halteliste { padding: 6px 10px; }
+.halteliste .halt { display: grid; grid-template-columns: 46px 34px 1fr auto; align-items: center; gap: 4px; padding: 5px 0; border-bottom: 1px solid #1c2128; font-family: var(--schmal); }
+.halteliste .halt:last-child { border-bottom: 0; }
+.halteliste .halt b { font-size: 15px; } .halteliste .halt span { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .halteliste .halt small { color: var(--grau); font-size: 12px; }
+.halteliste .halt.vorbei { opacity: .5; }
+.fzstrecke .fzorte > .sym.zbpfeil { transform: none; }
+
+/* ---------- Vollbild in der Zielführung: Uhrzeit, Abfahrt, Ankunft, Rest unten ---------- */
+.vollzeiten { display: none; position: absolute; z-index: 5; left: 70px; right: 62px; bottom: 12px; background: rgba(6,9,13,.95); border: 1.5px solid var(--gold-dunkel); border-radius: 12px; padding: 7px 8px; font-family: var(--schmal); gap: 4px; }
+.vollzeiten div { flex: 1 1 0; min-width: 0; text-align: center; }
+.vollzeiten b { display: block; font-size: 19px; white-space: nowrap; } .vollzeiten span { font-size: 11.5px; color: var(--grau); }
+body.vollbild .vollzeiten { display: flex; }
+body.vollbild .fahrinfo { display: none !important; }
+body.vollbild .schild { bottom: 78px; }
+html.hell .vollzeiten { background: rgba(255,255,255,.98); color: #1d1b17; box-shadow: 0 4px 14px rgba(0,0,0,.2); }

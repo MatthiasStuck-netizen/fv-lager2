@@ -198,7 +198,7 @@
   }
   function fertigeRoute(punkte, schritte, laenge, dauer, quelle, opt) {
     opt = opt || {};
-    var r = { punkte: punkte, kum: G.kumuliert(punkte), schritte: schritte, dauer: dauer, quelle: quelle, limits: [], pois: [], modus: G.modus(opt.modus), meiden: opt.meiden || null };
+    var r = { punkte: punkte, kum: G.kumuliert(punkte), schritte: schritte, dauer: dauer, quelle: quelle, limits: [], pois: [], modus: G.modus(opt.modus), meiden: opt.meiden || null, art: opt.art || 'schnell' };
     r.laenge = r.kum[r.kum.length - 1] || laenge;
     schritte.forEach(function (s) { s.ab = Math.min(s.ab, punkte.length - 1); s.weg = r.kum[s.ab]; });
     r.ueber = ueberText(schritte);
@@ -211,6 +211,9 @@
     var m = G.MODI[G.modus(opt.modus)];
     var body = { locations: [{ lat: von.lat, lon: von.lon }, { lat: nach.lat, lon: nach.lon }], costing: m.costing, units: 'kilometers', language: 'de-DE', directions_options: { units: 'kilometers', language: 'de-DE' } };
     if (m.opt) body.costing_options = m.opt;
+    // Routenart (nur Auto): schnellste (Standard), sparsame (gleichmäßig, ohne Raserei auf der Autobahn), kürzeste
+    if (m.costing === 'auto' && opt.art === 'kurz') body.costing_options = { auto: { shortest: true } };
+    if (m.costing === 'auto' && opt.art === 'sparsam') body.costing_options = { auto: { top_speed: 95, use_highways: 0.6, use_tolls: 0.5 } };
     if (opt.meiden && opt.meiden.length) body.exclude_polygons = opt.meiden;
     if (opt.alternativen) body.alternates = opt.alternativen;
     if (m.costing === 'auto' && von.kurs != null && von.kurs >= 0 && von.tempo > 3) { body.locations[0].heading = Math.round(von.kurs); body.locations[0].heading_tolerance = 60; }
@@ -278,6 +281,37 @@
   G.routen = function (von, nach, opt) {
     return valhalla(von, nach, opt).catch(function (e1) {
       return osrm(von, nach, opt).catch(function (e2) { throw new Error(/Keine Route/.test(e1.message + e2.message) ? 'Keine Route gefunden.' : 'Die Route konnte nicht berechnet werden. Bitte Internet prüfen.'); });
+    });
+  };
+  /* ---------- Routenarten zum Aussuchen: schnellste, sparsame, kürzeste ----------
+   * Sprit: Verbrauch je Abschnitt nach Durchschnittstempo (Luftwiderstand steigt mit dem Quadrat, Stadtverkehr kostet durch Anfahren).
+   * PKW: bei 50 km/h ≈ 6,5 l, 100 km/h ≈ 9 l, 130 km/h ≈ 12 l je 100 km · Transporter das 1,5-Fache. Nur zum Vergleichen, keine Messung. */
+  G.liter = function (r, transporter) {
+    var l = 0;
+    (r.schritte || []).forEach(function (s) {
+      var km = (s.laenge || 0) / 1000; if (km <= 0) return;
+      var v = s.dauer > 0 ? Math.max(8, Math.min(160, km / (s.dauer / 3600))) : 50;
+      l += km * (3 + 110 / v + 0.0005 * v * v) / 100;
+    });
+    if (!l && r.laenge) { var v0 = r.dauer > 0 ? Math.max(8, Math.min(160, r.laenge / 1000 / (r.dauer / 3600))) : 60; l = r.laenge / 1000 * (3 + 110 / v0 + 0.0005 * v0 * v0) / 100; }
+    return l * (transporter ? 1.5 : 1);
+  };
+  G.ARTEN = { schnell: 'Schnellste', sparsam: 'Sparsam', kurz: 'Kürzeste' };
+  /** Alle drei Arten auf einmal: { schnell, sparsam, kurz } – jede Art ist eine Route; gleiche Strecken werden geteilt */
+  G.routenArten = function (von, nach, opt) {
+    opt = opt || {};
+    var basis = { modus: 'auto', meiden: opt.meiden };
+    function holen(art, alt) { return G.routen(von, nach, Object.assign({}, basis, { art: art, alternativen: alt || 0 })).catch(function () { return []; }); }
+    return Promise.all([holen('schnell', 2), holen('sparsam', 1), holen('kurz', 0)]).then(function (x) {
+      var alle = x[0].concat(x[1], x[2]);
+      if (!alle.length) throw new Error('Keine Route gefunden.');
+      alle.forEach(function (r) { r.liter = G.liter(r, opt.transporter); });
+      var schnell = x[0][0] || alle.slice().sort(function (a, b) { return a.dauer - b.dauer; })[0];
+      // Sparsam: am wenigsten Sprit – aber höchstens 25 % länger unterwegs als die schnellste
+      var spar = alle.filter(function (r) { return r.dauer <= schnell.dauer * 1.25 + 300; }).sort(function (a, b) { return a.liter - b.liter || a.laenge - b.laenge; })[0] || schnell;
+      var kurz = alle.slice().sort(function (a, b) { return a.laenge - b.laenge || a.dauer - b.dauer; })[0];
+      function als(r, art) { var k = Object.assign({}, r); k.art = art; return k; }
+      return { schnell: als(schnell, 'schnell'), sparsam: als(spar, 'sparsam'), kurz: als(kurz, 'kurz') };
     });
   };
   /** Die beste Route. opt = { modus, meiden } (ohne opt: Auto wie bisher) */

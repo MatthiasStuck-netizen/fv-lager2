@@ -3,7 +3,7 @@
   'use strict';
   var B = FV.B, S = FV.S, G = FV.G, K = FV.K, F = FV.F;
   var $ = function (s, w) { return (w || document).querySelector(s); };
-  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, offlineApp: 'app.organicmaps', fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true, design: 'auto', bahnnetz: true, seewege: true, flugrouten: true, flugzeuge: false };
+  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true, design: 'auto', bahnnetz: true, seewege: true, flugrouten: true, flugzeuge: false, zuege: true, schiffe: true, nachrichtenAn: true, nachrichtenVorlesen: true, routenArt: 'schnell', gelaende: false, kartenQuelle: '' };
   var app = FV.app = { e: Object.assign({}, STD, B.lesen('einstellungen', {}) || {}), z: { reiter: 'auftraege', tag: G.iso(new Date()), auftraege: [], ziele: {}, stand: '', laedt: false, fehler: '' }, stapel: [] };
   B.stimmeWaehlen(app.e.stimme, app.e.tempo, app.e.hoehe);   // gewählte Stimme gleich beim Start setzen
   FV.esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -91,7 +91,8 @@
   app.aufraeumen = function (wer) {
     if (S.demo) return;
     try { app.fahrtEnde('ohne Ziel', wer); } catch (e) {}
-    ['auftraege', 'letzte', 'favoriten', 'geo', 'fahrt', 'einstellungen'].forEach(function (k) { B.schreiben(k, null); });
+    ['auftraege', 'letzte', 'favoriten', 'geo', 'fahrt', 'einstellungen', 'mailkonto', 'mail_bekannt', 'nachrichten_merk', 'nachrichten_gelesen'].forEach(function (k) { B.schreiben(k, null); });
+    if (B.hatExtra()) B.extra('nachrichtenLeeren', '');
     B.zaehlerNull();
     app.e = Object.assign({}, STD);
     var z = app.z;
@@ -227,6 +228,9 @@
     if (b.indexOf('demo') !== 0) return;
     if (!S.demo) app.demoStart();
     if (b === 'demo') return;
+    var seitenLink = { 'demo/telefon': 'telefon', 'demo/nachrichten': 'nachrichten', 'demo/verkehrsfunk': 'verkehrsfunk', 'demo/karte': 'uebersicht' }[b];
+    if (seitenLink) { setTimeout(function () { app.zeige(seitenLink, seitenLink === 'uebersicht' ? { tag: app.heute() } : {}); }, 1500); return; }
+    if (b === 'demo/musik') { setTimeout(function () { FV.Tun.musik(); }, 1500); return; }
     // demo/navi: Route zum ersten Auftrag zeigen · demo/fahrt: zusätzlich die Probefahrt starten
     var warte = 0, t = setInterval(function () {
       if (++warte > 60) return clearInterval(t);
