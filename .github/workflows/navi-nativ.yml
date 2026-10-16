@@ -20,10 +20,12 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
-      - uses: android-actions/setup-android@v3
       - name: Werkzeuge
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" | tee -a $GITHUB_ENV
+          SDK=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          ls $SDK/platforms $SDK/build-tools | tee -a protokoll.txt
+          yes | $SDK/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null || true
           curl -sSfL -o apktool.jar https://github.com/iBotPeaches/Apktool/releases/download/v2.10.0/apktool_2.10.0.jar
           java -jar apktool.jar --version
       - name: APK zerlegen
@@ -32,7 +34,7 @@ jobs:
           ls deko; ls deko/smali*/de/fehnverleih/navi/ | head -50
           B=$(ls deko/smali*/de/fehnverleih/navi/MainActivity\$Bruecke.smali)
           echo "BRUECKE=$B" >> $GITHUB_ENV
-          grep -nE "^\.(class|super|field|method)|JavascriptInterface" "$B" | head -80
+          grep -nE "^\.(class|super|field|method)|JavascriptInterface" "$B" | head -80 | tee -a protokoll.txt
       - name: Satelliten-Klasse übersetzen
         run: |
           JAR=$ANDROID_HOME/platforms/android-35/android.jar
@@ -66,7 +68,7 @@ jobs:
           open(p, 'w', encoding='utf-8').write(s)
           print('Feld:', feld)
           EOF
-          tail -15 "$BRUECKE"
+          tail -15 "$BRUECKE" | tee -a protokoll.txt
       - name: Wieder zusammensetzen
         run: |
           java -jar apktool.jar b deko -o unsigniert.apk
@@ -75,6 +77,14 @@ jobs:
           cp dexaus/classes.dex classes2.dex && zip -q unsigniert.apk classes2.dex
           unzip -l unsigniert.apk | grep -E 'classes|Manifest|resources.arsc'
           mkdir aus && cp unsigniert.apk aus/Navi-nativ-unsigniert.apk
+      - name: Protokoll bereitstellen (auch bei Fehler)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete navi-nativ-protokoll -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          touch protokoll.txt
+          gh release create navi-nativ-protokoll protokoll.txt -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi nativ: Protokoll" --notes "Bauprotokoll"
       - name: Bereitstellen
         env:
           GH_TOKEN: ${{ github.token }}
