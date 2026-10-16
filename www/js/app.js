@@ -3,7 +3,7 @@
   'use strict';
   var B = FV.B, S = FV.S, G = FV.G, K = FV.K, F = FV.F;
   var $ = function (s, w) { return (w || document).querySelector(s); };
-  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, offlineApp: 'app.organicmaps', fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, apotheke: true, arzt: true, flughafen: true };
+  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, offlineApp: 'app.organicmaps', fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true };
   var app = FV.app = { e: Object.assign({}, STD, B.lesen('einstellungen', {}) || {}), z: { reiter: 'auftraege', tag: G.iso(new Date()), auftraege: [], ziele: {}, stand: '', laedt: false, fehler: '' }, stapel: [] };
   B.stimmeWaehlen(app.e.stimme, app.e.tempo, app.e.hoehe);   // gewählte Stimme gleich beim Start setzen
   FV.esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };

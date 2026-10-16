@@ -3,7 +3,7 @@
   'use strict';
   var G = FV.G, B = FV.B, K = FV.K = { map: null, bereit: false, folgt: false };
   var STIL_URL = 'https://tiles.openfreemap.org/styles/liberty';
-  var feld = null, marken = {}, poiMarken = [], extraMarken = [], verkehrMarken = [], bahnMarken = [], apoMarken = [], arztMarken = [], flugMarken = [], warte = [], beiGeste = null, stilArt = '';
+  var feld = null, marken = {}, poiMarken = [], extraMarken = [], verkehrMarken = [], bahnMarken = [], apoMarken = [], arztMarken = [], flugMarken = [], busMarken = [], stadtMarken = [], netzMarken = [], netzDaten = null, warte = [], beiGeste = null, stilArt = '';
 
   /* ---------- Kartenstil dunkel einfärben ---------- */
   function strassenfarbe(id) {
@@ -112,6 +112,10 @@
     }
     eb('route-rand', 'route', '#0a3f96', 9); eb('route', 'route', '#2b93ff', 6); eb('gefahren', 'gefahren', '#7f8a96', 6);
     if (!map.getSource('verkehr')) map.addSource('verkehr', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    // Hamburger S-/U-Bahn-Netz: farbige Linien unter der Route
+    if (!map.getSource('netz')) map.addSource('netz', { type: 'geojson', data: netzDaten || { type: 'FeatureCollection', features: [] } });
+    if (!map.getLayer('netz-rand')) map.addLayer({ id: 'netz-rand', type: 'line', source: 'netz', layout: rund, paint: { 'line-color': '#ffffff', 'line-opacity': 0.55, 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 2.5, 13, 5, 16, 8] } }, map.getLayer('route-rand') ? 'route-rand' : vor);
+    if (!map.getLayer('netz')) map.addLayer({ id: 'netz', type: 'line', source: 'netz', layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 9, 1.6, 13, 3.4, 16, 6] } }, map.getLayer('route-rand') ? 'route-rand' : vor);
     if (!map.getLayer('verkehr')) map.addLayer({ id: 'verkehr', type: 'line', source: 'verkehr', layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 4, 13, 7, 17, 12], 'line-opacity': 0.95 } }, vor);
   }
 
@@ -213,6 +217,43 @@
   K.flughaefen = function (liste, beiTipp) {
     markenSetzen(flugMarken, liste, function (f) { return el(FV.sym('flug') + '<span>' + FV.esc(f.iata) + '</span>', 'm-flug'); }, beiTipp);
   };
+  /** Bushaltestellen: kleines lila Bus-Schild (Name ab Zoom 15) · U-/S-Bahn: grünes S bzw. blaues U mit Namen */
+  K.haltestellen = function (art, liste, beiTipp) {
+    markenSetzen(art === 'bus' ? busMarken : stadtMarken, liste, function (b) {
+      var name = FV.esc(String(b.name || '').replace(/\s*\(.*?\)\s*/g, ' ').trim());
+      if (art === 'bus') return el(FV.sym('bus') + '<span>' + name + '</span>', 'm-bus');
+      return el((b.sbahn ? '<b class="hs s">S</b>' : '') + (b.ubahn ? '<b class="hs u">U</b>' : '') + (!b.sbahn && !b.ubahn ? '<b class="hs s">S</b>' : '') + '<span>' + name + '</span>', 'm-stadt');
+    }, beiTipp);
+    zoomKlasse();
+  };
+  /** Namen der Bushaltestellen erst ab Zoom 15 zeigen, sonst wird die Karte unlesbar */
+  var zoomHoerer = false;
+  function zoomKlasse() {
+    if (!K.map) return;
+    var f = K.map.getContainer && K.map.getContainer(); if (f) f.classList.toggle('nah15', K.map.getZoom() >= 15);
+    if (!zoomHoerer || zoomHoerer !== K.map) { zoomHoerer = K.map; K.map.on('zoom', function () { var c = K.map.getContainer(); if (c) c.classList.toggle('nah15', K.map.getZoom() >= 15); }); }
+  }
+  /** Hamburger S-/U-Bahn-Netz: netz = Ergebnis von V.hhNetz() oder null; Linienschilder antippbar */
+  K.netz = function (netz, beiTipp) {
+    netzMarken.forEach(function (m) { m.remove(); }); netzMarken = [];
+    var feats = [];
+    (netz && netz.linien || []).forEach(function (l) {
+      feats.push({ type: 'Feature', geometry: { type: 'MultiLineString', coordinates: l.wege }, properties: { farbe: l.farbe, ref: l.ref } });
+    });
+    netzDaten = { type: 'FeatureCollection', features: feats };
+    K.wenn(function () {
+      var q = K.map.getSource('netz'); if (q) q.setData(netzDaten);
+      // je Linie ein Schild an einem Punkt in der Mitte des längsten Abschnitts (Schilder verschieben sich gegeneinander, damit sie sich nicht verdecken)
+      (netz && netz.linien || []).forEach(function (l, i) {
+        var lang = l.wege.reduce(function (m, w) { return w.length > m.length ? w : m; }, []); if (!lang.length) return;
+        var pt = lang[Math.floor(lang.length * (0.25 + (i % 4) * 0.15))] || lang[0];
+        var e = el('<b>' + FV.esc(l.ref) + '</b>', 'm-linie ' + (l.art === 'ubahn' ? 'u' : 's'));
+        e.style.background = l.farbe; if (l.ref === 'U3') e.style.color = '#1b1b1b';
+        e.addEventListener('click', function (ev) { ev.stopPropagation(); if (beiTipp) beiTipp(l); });
+        netzMarken.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat(pt).addTo(K.map));
+      });
+    });
+  };
   K.nummern = function (liste, beiTipp) {
     extraMarken.forEach(function (m) { m.remove(); }); extraMarken = [];
     if (!K.map) return;
@@ -266,5 +307,32 @@
     function weiter() { if (i >= liste.length) return; fetch(liste[i++]).then(function (x) { return x.arrayBuffer(); }).catch(function () {}).then(weiter); }
     weiter(); weiter(); weiter();
   };
-  K.leeren = function () { K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); };
+  /* ---------- Zug/Bus-Verbindung zeichnen: farbige Abschnitte je Verkehrsmittel, Fußwege gepunktet, Umstiege als Punkte ---------- */
+  var oevMarken = [];
+  function oevEbenen() {
+    var map = K.map, vor;
+    try { var ls = map.getStyle().layers; for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { vor = ls[i].id; break; } } catch (e) {}
+    if (!map.getSource('oev')) map.addSource('oev', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    var rund = { 'line-cap': 'round', 'line-join': 'round' }, breit = function (b) { return ['interpolate', ['linear'], ['zoom'], 6, b * 0.6, 12, b, 16, b * 1.7]; };
+    if (!map.getLayer('oev-rand')) map.addLayer({ id: 'oev-rand', type: 'line', source: 'oev', filter: ['!=', ['get', 'fuss'], true], layout: rund, paint: { 'line-color': '#05080b', 'line-width': breit(9) } }, vor);
+    if (!map.getLayer('oev')) map.addLayer({ id: 'oev', type: 'line', source: 'oev', filter: ['!=', ['get', 'fuss'], true], layout: rund, paint: { 'line-color': ['get', 'farbe'], 'line-width': breit(6) } }, vor);
+    if (!map.getLayer('oev-fuss')) map.addLayer({ id: 'oev-fuss', type: 'line', source: 'oev', filter: ['==', ['get', 'fuss'], true], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e9e4d6', 'line-width': breit(4), 'line-dasharray': [0.1, 1.8] } }, vor);
+  }
+  K.oev = function (f) {
+    oevMarken.forEach(function (m) { m.remove(); }); oevMarken = [];
+    K.wenn(function () {
+      oevEbenen();
+      var feats = [];
+      (f ? f.legs : []).forEach(function (l) { if (l.punkte && l.punkte.length >= 2) feats.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: l.punkte }, properties: { farbe: l.farbe, fuss: !!l.fuss } }); });
+      K.map.getSource('oev').setData({ type: 'FeatureCollection', features: feats });
+      if (!f) return;
+      // Umstiegs-Punkte: weißer Kreis mit Rand in der Farbe des nächsten Verkehrsmittels
+      f.legs.forEach(function (l, i) {
+        if (i === 0 || !l.punkte || !l.punkte.length || l.fuss) return;
+        var e = el('', 'm-halt'); e.style.borderColor = l.farbe; e.title = l.von;
+        oevMarken.push(new maplibregl.Marker({ element: e, anchor: 'center' }).setLngLat(l.punkte[0]).addTo(K.map));
+      });
+    });
+  };
+  K.leeren = function () { K.oev(null); K.route(null); K.ziel(null); K.start(null); K.auto(null); K.pois([]); K.nummern([]); K.verkehr([]); K.bahnhoefe([]); K.apotheken([]); K.aerzte([]); K.flughaefen([]); K.haltestellen('bus', []); K.haltestellen('stadt', []); K.netz(null); };
 })();

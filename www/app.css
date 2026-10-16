@@ -450,3 +450,98 @@ small.iata { font-weight: 700; color: var(--gold); font-size: .8em; }
 .offbalken i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #c9952c, var(--gold)); border-radius: 5px; transition: width .4s; }
 .offzwischen { display: flex; align-items: center; gap: 8px; margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid #20252d; font-size: 15px; font-weight: 600; }
 .offzwischen .sym { color: var(--gold); width: 20px; height: 20px; }
+
+/* ---------- Zug / Bus & Bahn: Ansicht wie bei Google Maps ---------- */
+.modi button .mdauer { font-size: 12px; font-weight: 700; line-height: 1; margin-top: 1px; white-space: nowrap; }
+.modi button:not(.akt) .mdauer { color: var(--gold-hell); }
+.kartenfeld.oevkarte { flex: none; height: 34vh; min-height: 190px; }
+.oevdauer { position: absolute; left: 10px; bottom: 18px; z-index: 4; display: flex; align-items: center; gap: 6px; background: #1a56c4; color: #fff; border: 2px solid #fff; border-radius: 8px; padding: 4px 10px 4px 7px; font-family: var(--schmal); font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.55); }
+.oevdauer .sym { width: 20px; height: 20px; }
+.m-halt { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3.5px solid #8c96a3; box-shadow: 0 0 0 1.5px #05080b; }
+.oevzeit { flex: none; display: flex; gap: 8px; padding: 8px 8px 2px; }
+.oevlos { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; background: #0e131a; border: 1px solid #2c323b; border-radius: 20px; padding: 7px 14px; color: #fff; font-family: var(--schmal); font-size: 15.5px; }
+.oevlos .sym { width: 20px; height: 20px; color: var(--gold); flex: none; }
+.oevlos span { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.oevlos b { color: var(--gold); font-size: 12px; }
+.oevneu { flex: none; width: 40px; height: 38px; border-radius: 50%; background: #0e131a; border: 1px solid #2c323b; color: var(--gold); display: flex; align-items: center; justify-content: center; }
+.oevneu .sym { width: 22px; height: 22px; }
+.oevliste { padding-top: 6px; }
+.ofahrt { display: block; width: 100%; text-align: left; background: #0b1016; border: 1px solid #20252d; border-left: 4px solid transparent; border-radius: 10px; padding: 10px 12px 10px 12px; margin-bottom: 8px; font-family: var(--schmal); cursor: pointer; }
+.ofahrt.gewaehlt { border-color: var(--gold-dunkel); border-left-color: var(--gold); background: linear-gradient(180deg, #141a22, #0b1016); }
+.ofahrt.faellt { opacity: .62; }
+.okopf { display: flex; align-items: center; gap: 8px; }
+.okopf > b { font-size: 23px; font-weight: 700; color: #fff; letter-spacing: .2px; }
+.okopf em { font-style: normal; font-size: 14px; }
+.odetail { margin-left: auto; display: flex; align-items: center; gap: 0; color: var(--gold); font-size: 14px; padding: 4px 0 4px 8px; }
+.odetail .sym { width: 20px; height: 20px; }
+.ozeit { font-size: 16.5px; color: #e9e4d6; margin-top: 1px; }
+.ozeit sup { font-size: 11px; color: var(--gold); margin-left: 1px; }
+.ozeit small { font-size: 14px; color: var(--grau2); }
+.okette { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 3px; margin: 8px 0 6px; }
+.okette > s { text-decoration: none; color: #6d737b; font-size: 15px; margin: 0 1px; }
+.kf { display: inline-flex; align-items: flex-end; color: #d9d4c7; }
+.kf .sym { width: 20px; height: 20px; }
+.kf sub { font-size: 11px; vertical-align: baseline; margin-left: -2px; color: var(--grau); }
+.kl { display: inline-flex; align-items: center; gap: 3px; font-style: normal; }
+.kl > .sym { width: 20px; height: 20px; color: var(--f); }
+.kl > i { font-style: normal; background: var(--f); color: #fff; border-radius: 5px; padding: 1px 6px; font-size: 14px; font-weight: 700; line-height: 1.35; white-space: nowrap; }
+.kl.weg > i { text-decoration: line-through; }
+.zl .kl > i { font-size: 14.5px; }
+.oplan { font-size: 14px; color: var(--grau); line-height: 1.3; }
+.oplan b { color: #e9e4d6; font-weight: 500; }
+.oplan em { font-style: normal; font-weight: 700; }
+.oauch { font-size: 13.5px; color: var(--grau2); margin-top: 3px; }
+#zzart button { flex: 1; padding: 10px 4px; font-family: var(--schmal); font-size: 15px; }
+#zzwann:disabled { opacity: .45; }
+
+/* ---------- Bushaltestellen, U-/S-Bahn, Hamburger Netz (3.9.7) ---------- */
+.m-bus, .m-stadt { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.m-bus .sym { width: 20px; height: 20px; padding: 3px; box-sizing: border-box; border-radius: 5px; background: #8e4fc7; color: #fff; border: 1.5px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.m-bus span { display: none; background: rgba(6,9,13,.85); color: #fff; font: 600 11px/1.2 var(--schmal); padding: 2px 5px; border-radius: 5px; white-space: nowrap; max-width: 130px; overflow: hidden; text-overflow: ellipsis; }
+.nah15 .m-bus span { display: block; }
+.m-stadt .hs { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; color: #fff; font: 800 13px/1 var(--schmal); border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.6); }
+.m-stadt .hs.s { background: #1d8a3c; } .m-stadt .hs.u { background: #0067b3; border-radius: 4px; }
+.m-stadt span { background: rgba(6,9,13,.85); color: #fff; font: 600 11.5px/1.2 var(--schmal); padding: 2px 6px; border-radius: 6px; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.m-linie { min-width: 30px; height: 22px; padding: 0 6px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 11px; color: #fff; font: 800 13px/1 var(--schmal); border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.6); cursor: pointer; }
+.m-linie.u { border-radius: 4px; }
+.lin.subway { background: #0067b3; } .lin.bus { background: #8e4fc7; } .lin.tram { background: #c0305e; } .lin.ferry { background: #1b9fc6; }
+.opreis { margin-left: auto; margin-right: 8px; color: var(--gold, #e8c25a); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.opreis small { font-weight: 400; font-size: 12px; opacity: .8; }
+.hhleg { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.hhleg button { border: 0; min-width: 40px; height: 30px; border-radius: 15px; color: #fff; font: 800 14px/1 var(--schmal); padding: 0 10px; cursor: pointer; }
+.hhleg button.u { border-radius: 5px; }
+.hsym { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+.hsym i { font-style: normal; display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; border-radius: 9px; color: #fff; font: 800 11px/1 var(--schmal); padding: 0 3px; }
+.hsym i.s { background: #1d8a3c; } .hsym i.u { background: #0067b3; border-radius: 3px; } .hsym i.b { background: #8e4fc7; border-radius: 3px; } .hsym i.t { background: #c0305e; border-radius: 3px; } .hsym i.z { background: #555d69; border-radius: 3px; }
+.tz.tippbar { cursor: pointer; }
+.tz.tippbar:active { background: rgba(234,185,74,.12); }
+.halteliste .eintrag .tzeit { display: flex; flex-direction: column; margin-right: 8px; }
+.halteliste .eintrag .tzeit em { font-style: normal; font-size: 12px; }
+.preistafel { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
+.ptarif { border: 1px solid rgba(255,255,255,.14); border-radius: 12px; padding: 10px 12px; background: rgba(255,255,255,.03); }
+.ptarif.guenstig { border-color: var(--gold); }
+.ptarif .pkopf { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.ptarif .pkopf b { font-size: 16px; color: #fff; }
+.ptarif .ppreis { font-size: 20px; font-weight: 800; color: var(--gold); white-space: nowrap; }
+.ptarif ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; opacity: .85; }
+.ptarif small { display: block; margin-top: 4px; }
+/* Sechs Reiter (Auto · Fahrrad · Bus · Zug · Flugzeug · zu Fuß): etwas enger */
+.modi.sechs { gap: 4px; padding: 0 6px 8px; }
+.modi.sechs button { font-size: 12px; padding: 6px 1px 5px; letter-spacing: -.1px; }
+.modi.sechs button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modi.sechs button .sym { width: 22px; height: 22px; }
+.modi.sechs button .mdauer { font-size: 11px; }
+/* Acht Reiter in zwei Reihen (Auto · Fahrrad · Bus · Zug / Schiff · Flugzeug · zu Fuß · Gesamtstrecke) */
+.modi.acht { flex-wrap: wrap; gap: 5px; padding: 0 8px 8px; }
+.modi.acht button { flex: 1 1 calc(25% - 5px); padding: 5px 2px 4px; font-size: 13px; gap: 1px; }
+.modi.acht button span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modi.acht button .sym { width: 21px; height: 21px; }
+.modi.acht button .mdauer { font-size: 11.5px; }
+.modi.acht button.gesamt:not(.akt) { border-color: var(--gold-dunkel); color: var(--gold-hell); }
+/* Kosten der Reise */
+.kosten .kzeile { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px solid #20252d; font-size: 14.5px; }
+.kosten .kzeile b { white-space: nowrap; color: var(--gold-hell); }
+.kosten .kzeile.summe { border-bottom: 0; font-weight: 700; font-size: 16px; }
+.kosten .wahl.klein button { font-size: 13px; padding: 7px 4px; }
+.modi.acht button.gesamt span { font-size: 11.5px; letter-spacing: -.3px; text-overflow: clip; }
+.oevliste .ofahrt .okopf > b { white-space: nowrap; }

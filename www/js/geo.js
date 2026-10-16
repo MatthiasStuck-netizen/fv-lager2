@@ -171,14 +171,18 @@
   };
 
   /* ---------- Route ---------- */
-  /** Fortbewegung: Auto (Standard), Fahrrad, zu Fuß. Der Zug hat eine eigene Verbindungssuche (verkehr.js). */
+  /** Fortbewegung: Auto (Standard), Fahrrad, zu Fuß. Zug und Bus haben eine eigene Verbindungssuche (verkehr.js), das Flugzeug eine eigene Seite (seiten.js). */
   G.MODI = {
     auto: { name: 'Auto', sym: 'auto', costing: 'auto' },
     rad: { name: 'Fahrrad', sym: 'fahrrad', costing: 'bicycle', opt: { bicycle: { bicycle_type: 'Hybrid', use_roads: 0.3, use_hills: 0.3 } } },
+    bus: { name: 'Bus', sym: 'bus' },
     zug: { name: 'Zug', sym: 'zug' },
-    fuss: { name: 'Zu Fuß', sym: 'fuss', costing: 'pedestrian' }
+    schiff: { name: 'Schiff', sym: 'schiff' },
+    flug: { name: 'Flugzeug', sym: 'flug' },
+    fuss: { name: 'Zu Fuß', sym: 'fuss', costing: 'pedestrian' },
+    gesamt: { name: 'Gesamtstrecke', sym: 'route' }
   };
-  G.modus = function (m) { return G.MODI[m] && m !== 'zug' ? m : 'auto'; };
+  G.modus = function (m) { return G.MODI[m] && G.MODI[m].costing ? m : 'auto'; };
   var V_SYM = { 1: 'a_gerade', 2: 'a_gerade', 3: 'a_gerade', 7: 'a_gerade', 8: 'a_gerade', 17: 'a_gerade', 22: 'a_gerade', 9: 'a_lrechts', 10: 'a_rechts', 11: 'a_srechts', 12: 'a_wenden', 13: 'a_wenden',
     14: 'a_slinks', 15: 'a_links', 16: 'a_llinks', 18: 'a_abfr', 20: 'a_abfr', 19: 'a_abfl', 21: 'a_abfl', 23: 'a_gabr', 24: 'a_gabl', 25: 'a_einf', 37: 'a_einf', 38: 'a_einf', 26: 'a_kreisel', 27: 'a_kreisel', 4: 'a_ziel', 5: 'a_ziel', 6: 'a_ziel' };
   function ueberText(schritte) {
