@@ -46,13 +46,16 @@ jobs:
 
       - name: Karte bauen (dauert)
         run: |
+          set -o pipefail
           java -Xmx11g -jar planetiler.jar \
             --osm-path=data/sources/iberien.osm.pbf \
             --download \
             --bounds=-31.6,27.4,4.6,44.0 \
             --output=spanien-portugal.pmtiles \
-            --nodemap-type=array --storage=mmap \
-            --force
+            --force 2>&1 | tee planetiler.log || {
+              df -h / | sed 's/^/::error::/'
+              grep -iE "error|exception|caused by|no space|memory" planetiler.log | head -8 | cut -c1-400 | sed 's/^/::error::/'
+              exit 1; }
           ls -lh spanien-portugal.pmtiles
 
       - name: Pruefen, ob die Datei zum Navi passt
