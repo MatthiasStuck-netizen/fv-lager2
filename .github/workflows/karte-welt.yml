@@ -1,0 +1,104 @@
+name: Weltkarte bauen
+
+# Baut die Offline-Weltkarte fuer das Fehnverleih Navi: PMTiles v3, Vektorkacheln im OpenMapTiles-Schema
+# (dasselbe Schema wie deutschland.pmtiles und die Online-Karte).
+# Quelle: die woechentliche Planet-Datei von OpenFreeMap (tiles.pmtiles, (c) OpenStreetMap-Mitwirkende).
+# Daraus werden nur die Zoomstufen bis "maxzoom" herausgeschnitten - die ganze Welt bis Zoom 14
+# waere ueber 90 GB gross und passt auf kein Handy. Fuer Strassen bis zur Hausnummer gibt es die Laenderkarten.
+# Ergebnis: Release "karte-welt" mit den Teilen welt-teil-00, -01, ... (je 1,9 GB)
+# Die Teile kommen unveraendert in den Ordner "karten" auf Strato.
+
+on:
+  workflow_dispatch:
+    inputs:
+      maxzoom:
+        description: 'Hoechste Zoomstufe (8 = Laender und Staedte, 10 = auch Landstrassen, 11 = mehr Strassen)'
+        default: '10'
+      grenze_gb:
+        description: 'Hoechstens so viele GB (wird es groesser, nimmt der Bau eine Zoomstufe weniger)'
+        default: '6'
+  push:
+    branches: [karte-welt]
+    paths: [.github/workflows/karte-welt.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  karte:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      MAXZOOM: ${{ github.event.inputs.maxzoom || '10' }}
+      GRENZE_GB: ${{ github.event.inputs.grenze_gb || '6' }}
+    steps:
+      - name: Speicherplatz freiraeumen
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune --all --force || true
+          df -h /
+
+      - name: Werkzeug pmtiles
+        run: |
+          curl -sSfL -o pmtiles.tgz https://github.com/protomaps/go-pmtiles/releases/download/v1.28.0/go-pmtiles_1.28.0_Linux_x86_64.tar.gz \
+            || curl -sSfL -o pmtiles.tgz https://github.com/protomaps/go-pmtiles/releases/download/v1.22.3/go-pmtiles_1.22.3_Linux_x86_64.tar.gz
+          tar xzf pmtiles.tgz pmtiles && ./pmtiles version || true
+
+      - name: Neueste Planet-Datei von OpenFreeMap finden
+        run: |
+          curl -sSfL -A "Fehnverleih-Navi-Kartenbau (github.com/MatthiasStuck-netizen)" https://btrfs.openfreemap.com/files.txt -o files.txt
+          # nur fertige Laeufe (Datei "done" vorhanden), davon der neueste mit tiles.pmtiles
+          STAND=$(grep -E '^areas/planet/[^/]+/done$' files.txt | sed -E 's#^areas/planet/([^/]+)/done$#\1#' | sort | while read v; do grep -qx "areas/planet/$v/tiles.pmtiles" files.txt && echo "$v"; done | tail -1)
+          test -n "$STAND" || { echo "::error::Keine fertige Planet-Datei gefunden"; tail -20 files.txt; exit 1; }
+          echo "QUELLE=https://btrfs.openfreemap.com/areas/planet/$STAND/tiles.pmtiles" >> $GITHUB_ENV
+          echo "STAND=$STAND" >> $GITHUB_ENV
+          echo "Planet-Stand: $STAND"
+          curl -sSfL "https://btrfs.openfreemap.com/areas/planet/$STAND/osm_date" || true
+
+      - name: Weltkarte herausschneiden (dauert)
+        run: |
+          set -o pipefail
+          GRENZE=$((GRENZE_GB * 1000000000))
+          Z=$MAXZOOM
+          while [ "$Z" -ge 6 ]; do
+            echo "== Versuch mit Zoom 0 bis $Z"
+            rm -f welt.pmtiles
+            ./pmtiles extract "$QUELLE" welt.pmtiles --maxzoom=$Z --download-threads=8 2>&1 | tail -20
+            G=$(stat -c %s welt.pmtiles)
+            echo "Groesse bei Zoom $Z: $G Bytes"
+            if [ "$G" -le "$GRENZE" ]; then break; fi
+            echo "Zu gross (Grenze $GRENZE_GB GB) - eine Zoomstufe weniger"
+            Z=$((Z - 1))
+          done
+          echo "ZOOM=$Z" >> $GITHUB_ENV
+          ls -lh welt.pmtiles
+
+      - name: Pruefen, ob die Datei zum Navi passt
+        run: |
+          python3 - <<'EOF'
+          import struct
+          d = open('welt.pmtiles', 'rb').read(127)
+          assert d[:7] == b'PMTiles' and d[7] == 3, 'kein PMTiles v3'
+          assert d[99] == 1, 'keine Vektorkacheln (MVT)'
+          minz, maxz = d[100], d[101]
+          w, s, o, n = [x / 1e7 for x in struct.unpack('<iiii', d[102:118])]
+          print('OK  Zoom', minz, '-', maxz, ' Bereich', w, s, o, n, ' innere Kompression', d[97], ' Kachel-Kompression', d[98])
+          assert d[97] in (1, 2) and d[98] in (1, 2), 'Kompression wird vom Navi nicht gelesen'
+          EOF
+          ./pmtiles show welt.pmtiles | head -30 || true
+
+      - name: In Teile zerlegen (je 1,9 GB)
+        run: |
+          mkdir aus
+          split -b 1900m -d -a 2 welt.pmtiles aus/welt-teil-
+          cd aus && sha256sum ../welt.pmtiles | sed 's#\.\./##' > PRUEFSUMME.txt && ls -l >> PRUEFSUMME.txt && cat PRUEFSUMME.txt
+
+      - name: Als Download bereitstellen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete karte-welt -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create karte-welt aus/* -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Offline-Weltkarte bis Zoom $ZOOM ($(date +%d.%m.%Y))" \
+            --notes "Alle Teile welt-teil-NN herunterladen und unveraendert in den Ordner karten auf Strato legen (neben deutschland und spanien-portugal). Im Navi: Einstellungen → Offline-Karten → Weltkarte. Stand der Daten: $STAND (OpenFreeMap). Daten: (c) OpenStreetMap-Mitwirkende, ODbL. Kacheln: OpenFreeMap / OpenMapTiles."
