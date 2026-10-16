@@ -1,10 +1,17 @@
-# Fehnverleih Navi 3.9.x – Oberfläche und Bauwerkzeuge
+# Fehnverleih Navi 3.9.x / 4.1.x – Oberfläche und Bauwerkzeuge
 
 Dieser Zweig enthält die Oberfläche der installierten Navi-App ab **3.9.3** (aus der APK zurückgeholt)
 und die Änderungen ab **3.9.4**. Der Android-Teil (Kotlin) von 3.9.x liegt nur kompiliert in der APK vor;
 gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und neu unterschrieben wird.
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
+
+## Neu in 4.1.1: mehrere Länder offline
+- Einstellungen → Offline-Karten: je Land ein eigener Knopf (Deutschland, Spanien + Portugal). Es lädt immer nur eine Karte gleichzeitig.
+- Spanien + Portugal: `spanien-portugal.pmtiles` oder die Teile `spanien-portugal-teil-00`, `-01`, … im selben Ordner `karten`.
+  Gebaut vom Auftrag `.github/workflows/karte-spanien.yml` (Zweig `karte-spanien`), Download als Release `karte-spanien-portugal`.
+- Jede weitere Karte bekommt im Kartenstil eine eigene Quelle (`openmaptiles_es`), ihre Ebenen liegen direkt hinter denen der ersten.
+- Neue Länder: Eintrag in `KARTEN` in `www/js/offline.js`.
 
 ## Neu in 3.9.4: Offline-Karte vom eigenen Server
 - Einstellungen → Offline-Karten → **„Offline-Karte laden“**

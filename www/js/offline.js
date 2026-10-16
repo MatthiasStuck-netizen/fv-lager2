@@ -1,22 +1,35 @@
-/* Offline-Karte vom Fehnverleih-Server.
- * Lädt deutschland.pmtiles (oder die Teile teil-00, teil-01, …) aus dem Ordner "karten" auf www.fehnverleih.de
- * in den Speicher dieser App und liest daraus die Kartenkacheln. Dann zeigt die Karte auch ohne Internet alles an.
+/* Offline-Karten vom Fehnverleih-Server.
+ * Lädt die Kartendateien (z. B. deutschland.pmtiles oder ihre Teile teil-00, teil-01, …) aus dem Ordner "karten"
+ * auf www.fehnverleih.de in den Speicher dieser App und liest daraus die Kartenkacheln. Dann zeigt die Karte
+ * auch ohne Internet alles an. Mehrere Länder sind möglich (Deutschland, Spanien + Portugal), jedes einzeln.
  * Format: PMTiles Version 3, Vektorkacheln im OpenMapTiles-Schema (dasselbe wie die Online-Karte). */
 window.FV = window.FV || {};
 (function () {
   'use strict';
   var O = FV.O = {};
-  var DATEI = 'deutschland.pmtiles';
+  /* id: Kurzname · datei: Name auf dem Handy und auf dem Server · teil: Anfang der Teile auf dem Server · merker: Speicherplatz für den Stand */
+  var KARTEN = [
+    { id: 'de', name: 'Deutschland', datei: 'deutschland.pmtiles', teil: 'teil-', merker: 'offkarte' },
+    { id: 'es', name: 'Spanien + Portugal', datei: 'spanien-portugal.pmtiles', teil: 'spanien-portugal-teil-', merker: 'offkarte-es' }
+  ];
   var QUELLEN = ['https://www.fehnverleih.de/karten/', 'https://www.fehnverleih.de/fehnverleih/karten/'];
   O.QUELLEN = QUELLEN;
-  O.DATEI = DATEI;
+  O.KARTEN = KARTEN;
+  O.DATEI = KARTEN[0].datei;
+  function karte(id) { for (var i = 0; i < KARTEN.length; i++) if (KARTEN[i].id === id) return KARTEN[i]; return KARTEN[0]; }
+  O.karte = karte;
 
   function B() { return FV.B; }
-  function stand() { var s = B() && B().lesen('offkarte', null); return s && typeof s === 'object' ? s : null; }
-  function standSetzen(s) { B().schreiben('offkarte', s); }
+  function stand(id) { var s = B() && B().lesen(karte(id).merker, null); return s && typeof s === 'object' ? s : null; }
+  function standSetzen(id, s) { B().schreiben(karte(id).merker, s); }
   O.stand = stand;
-  /** true, wenn eine vollständige, geprüfte Kartendatei auf dem Handy liegt */
-  O.aktiv = function () { var s = stand(); return !!(s && s.fertig && window.navigator && navigator.storage && navigator.storage.getDirectory); };
+  function kannSpeichern() { return !!(window.navigator && navigator.storage && navigator.storage.getDirectory); }
+  /** true, wenn diese Karte vollständig und geprüft auf dem Handy liegt */
+  O.fertig = function (id) { var s = stand(id); return !!(s && s.fertig && kannSpeichern()); };
+  /** Alle fertigen Karten (Kurznamen) */
+  O.fertige = function () { return KARTEN.filter(function (k) { return O.fertig(k.id); }).map(function (k) { return k.id; }); };
+  /** true, wenn mindestens eine Offline-Karte auf dem Handy liegt */
+  O.aktiv = function () { return O.fertige().length > 0; };
   O.gb = function (b) { return b >= 1e9 ? (b / 1e9).toFixed(1).replace('.', ',') + ' GB' : Math.max(1, Math.round(b / 1e6)) + ' MB'; };
 
   /* =================== PMTiles lesen =================== */
@@ -117,17 +130,21 @@ window.FV = window.FV || {};
 
   /* =================== Datei im App-Speicher =================== */
   function ordner() { return navigator.storage.getDirectory(); }
-  var leserP = null;
-  O.leser = function () {
-    if (!leserP) leserP = ordner().then(function (d) { return d.getFileHandle(DATEI); }).then(function (h) { return h.getFile(); }).then(function (f) { return new Leser(f); });
-    leserP.catch(function () { leserP = null; });
-    return leserP;
+  var leserP = {};
+  O.leser = function (id) {
+    id = karte(id).id;
+    if (!leserP[id]) {
+      leserP[id] = ordner().then(function (d) { return d.getFileHandle(karte(id).datei); }).then(function (h) { return h.getFile(); }).then(function (f) { return new Leser(f); });
+      leserP[id].catch(function () { leserP[id] = null; });
+    }
+    return leserP[id];
   };
-  O.loeschen = function () {
-    leserP = null;
-    standSetzen(null);
-    if (!navigator.storage || !navigator.storage.getDirectory) return Promise.resolve();
-    return ordner().then(function (d) { return d.removeEntry(DATEI); }).catch(function () {});
+  O.loeschen = function (id) {
+    id = karte(id).id;
+    leserP[id] = null;
+    standSetzen(id, null);
+    if (!kannSpeichern()) return Promise.resolve();
+    return ordner().then(function (d) { return d.removeEntry(karte(id).datei); }).catch(function () {});
   };
 
   /* =================== Karte: Kacheln aus der Datei =================== */
@@ -135,32 +152,55 @@ window.FV = window.FV || {};
     if (O._proto || !window.maplibregl) return;
     O._proto = true;
     maplibregl.addProtocol('fvkarte', function (p) {
-      var m = /^fvkarte:\/\/[^/]*\/(\d+)\/(\d+)\/(\d+)/.exec(p.url);
+      var m = /^fvkarte:\/\/([^/]*)\/(\d+)\/(\d+)\/(\d+)/.exec(p.url);
       if (!m) return Promise.reject(new Error('Falsche Kachel-Adresse'));
-      return O.leser().then(function (l) { return l.kachel(+m[1], +m[2], +m[3]); }).then(function (d) {
+      return O.leser(m[1]).then(function (l) { return l.kachel(+m[2], +m[3], +m[4]); }).then(function (d) {
         return { data: d ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : new ArrayBuffer(0) };
       });
     });
   };
-  var KACHELN = 'fvkarte://de/{z}/{x}/{y}';
-  /** Online-Stil auf die Datei umstellen: die Vektorquelle kommt vom Handy, andere Online-Quellen fallen weg */
+  function quelle(id) {
+    var s = stand(id) || {};
+    return { type: 'vector', tiles: ['fvkarte://' + id + '/{z}/{x}/{y}'], minzoom: 0, maxzoom: s.maxZ || 14, attribution: '© OpenStreetMap-Mitwirkende' };
+  }
+  /** Jede weitere Karte (anderes Land) bekommt eine eigene Quelle; ihre Ebenen werden direkt hinter die der ersten Karte gelegt. */
+  function laenderDazu(st, haupt) {
+    var ids = O.fertige();
+    if (!ids.length) ids = [KARTEN[0].id];
+    st.sources[haupt] = quelle(ids[0]);
+    if (ids.length < 2) return st;
+    var neu = [];
+    ids.slice(1).forEach(function (id) { st.sources[haupt + '_' + id] = quelle(id); });
+    (st.layers || []).forEach(function (l) {
+      neu.push(l);
+      if (l.source !== haupt) return;
+      ids.slice(1).forEach(function (id) {
+        var k = JSON.parse(JSON.stringify(l));
+        k.id = l.id + '~' + id; k.source = haupt + '_' + id;
+        neu.push(k);
+      });
+    });
+    st.layers = neu;
+    return st;
+  }
+  O._laenderDazu = laenderDazu;   // für Tests
+  /** Online-Stil auf die Dateien umstellen: die Vektorquellen kommen vom Handy, andere Online-Quellen fallen weg */
   O.stil = function (st) {
     st = JSON.parse(JSON.stringify(st));
-    var s = stand() || {}, haupt = null, weg = {};
+    var haupt = null, weg = {};
     Object.keys(st.sources || {}).forEach(function (n) {
       var q = st.sources[n];
       if (q.type === 'vector' && !haupt) haupt = n;
       else if (q.type !== 'geojson') weg[n] = 1;
     });
     if (!haupt) return O.grundstil();
-    st.sources[haupt] = { type: 'vector', tiles: [KACHELN], minzoom: 0, maxzoom: s.maxZ || 14, attribution: '© OpenStreetMap-Mitwirkende' };
     Object.keys(weg).forEach(function (n) { delete st.sources[n]; });
     st.layers = (st.layers || []).filter(function (l) { return !l.source || !weg[l.source]; });
-    return st;
+    return laenderDazu(st, haupt);
   };
   /** Einfacher Kartenstil, falls noch nie ein Online-Stil geladen wurde (erster Start ohne Internet). Ohne Ortsnamen. */
   O.grundstil = function () {
-    var s = stand() || {}, Q = 'openmaptiles';
+    var Q = 'openmaptiles', KACHELN = 'fvkarte://' + KARTEN[0].id + '/{z}/{x}/{y}', s = {};
     function f(id, sl, filter, extra) { var l = { id: id, type: 'fill', source: Q, 'source-layer': sl, paint: {} }; if (filter) l.filter = filter; return Object.assign(l, extra || {}); }
     function li(id, sl, filter, breite, extra) {
       var l = { id: id, type: 'line', source: Q, 'source-layer': sl, layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -168,7 +208,7 @@ window.FV = window.FV || {};
       if (filter) l.filter = filter; return Object.assign(l, extra || {});
     }
     function kl(werte) { return ['match', ['get', 'class'], werte, true, false]; }
-    return {
+    return laenderDazu({
       version: 8, sources: { openmaptiles: { type: 'vector', tiles: [KACHELN], minzoom: 0, maxzoom: s.maxZ || 14, attribution: '© OpenStreetMap-Mitwirkende' } },
       layers: [
         { id: 'background', type: 'background', paint: {} },
@@ -188,7 +228,7 @@ window.FV = window.FV || {};
         li('road-motorway', 'transportation', kl(['motorway']), 3.4),
         li('rail', 'transportation', kl(['rail']), 1, { minzoom: 10 })
       ]
-    };
+    }, Q);
   };
 
   /* =================== Herunterladen =================== */
@@ -273,8 +313,9 @@ window.FV = window.FV || {};
       return g > 0 ? g : -1;
     }, function () { return null; });
   }
-  /** Was liegt auf dem Server? Erst die ganze Datei, sonst die Teile teil-00, teil-01, … */
-  O.planen = async function () {
+  /** Was liegt auf dem Server? Erst die ganze Datei, sonst die Teile (z. B. teil-00, teil-01, …) */
+  O.planen = async function (id) {
+    var K = karte(id), DATEI = K.datei, TEIL = K.teil;
     var fehler = null, keineAntwort = 0;
     for (var q = 0; q < QUELLEN.length; q++) {
       var basis = QUELLEN[q];
@@ -282,13 +323,13 @@ window.FV = window.FV || {};
         var g = await groesseHolen(basis + DATEI);
         if (g === -1) throw new Error('Der Server nennt die Größe der Kartendatei nicht.');
         if (g > 0) return { basis: basis, teile: [{ name: DATEI, groesse: g }], gesamt: g };
-        var s0 = await groesseHolen(basis + 'teil-00');
+        var s0 = await groesseHolen(basis + TEIL + '00');
         if (s0 === null) { if (g === null) keineAntwort++; continue; }
-        if (s0 === -1) throw new Error('Der Server nennt die Größe von „teil-00“ nicht.');
+        if (s0 === -1) throw new Error('Der Server nennt die Größe von „' + TEIL + '00“ nicht.');
         if (s0 === 0) continue;
-        var teile = [{ name: 'teil-00', groesse: s0 }], gesamt = s0;
+        var teile = [{ name: TEIL + '00', groesse: s0 }], gesamt = s0;
         for (var i = 1; i < 100; i++) {
-          var name = 'teil-' + (i < 10 ? '0' : '') + i, s = await groesseHolen(basis + name);
+          var name = TEIL + (i < 10 ? '0' : '') + i, s = await groesseHolen(basis + name);
           if (s === -1) throw new Error('Der Server nennt die Größe von „' + name + '“ nicht.');
           if (!s) break;   // 0 oder keine Antwort: hier enden die Teile
           teile.push({ name: name, groesse: s }); gesamt += s;
@@ -298,35 +339,41 @@ window.FV = window.FV || {};
     }
     if (fehler) throw fehler;
     if (keineAntwort) throw new Error('Keine Verbindung zum Kartenordner auf www.fehnverleih.de. Internet prüfen. Auf dem Server muss im Ordner „karten“ die Datei „.htaccess“ liegen.');
-    throw new Error('Im Ordner „karten“ auf www.fehnverleih.de wurde keine Kartendatei gefunden (deutschland.pmtiles oder teil-00, teil-01 …).');
+    throw new Error('Im Ordner „karten“ auf www.fehnverleih.de wurde die Karte ' + K.name + ' nicht gefunden (' + DATEI + ' oder ' + TEIL + '00, ' + TEIL + '01 …).');
   };
 
-  var arbeit = null, planung = false;
-  O.laeuft = function () { return !!arbeit || planung; };
+  var arbeit = null, planung = false, dran = null;
+  /** Lädt gerade eine Karte? Mit Kurzname: genau diese? (Es lädt immer nur eine Karte gleichzeitig.) */
+  O.laeuft = function (id) { var l = !!arbeit || planung; return id ? l && dran === karte(id).id : l; };
+  O.dran = function () { return O.laeuft() ? dran : null; };
   O.letzterFehler = '';
+  O.fehlerBei = null;
   /** Karte laden bzw. fortsetzen. melde(pos, gesamt, text). Ergebnis: 'fertig', 'halt' oder 'aktuell'. */
-  O.laden = async function (melde) {
+  O.laden = async function (id, melde) {
+    if (typeof id === 'function') { melde = id; id = null; }
+    id = karte(id).id;
     if (O.laeuft()) return 'laeuft';
     melde = melde || function () {};
-    O.letzterFehler = '';
-    planung = true;
+    O.letzterFehler = ''; O.fehlerBei = id;
+    planung = true; dran = id;
+    var DATEI = karte(id).datei;
     var s, plan;
     try {
       if (!window.Worker || !navigator.storage || !navigator.storage.getDirectory || !window.DecompressionStream)
         throw new Error('Dieses Handy kann noch keine Offline-Karte speichern. Bitte im Play Store „Android System WebView“ aktualisieren.');
       melde(0, 0, 'Verbinde mit www.fehnverleih.de …');
-      plan = await O.planen();
-      s = stand() || {};
+      plan = await O.planen(id);
+      s = stand(id) || {};
       var gleich = s.plan && s.plan.basis === plan.basis && JSON.stringify(s.plan.teile) === JSON.stringify(plan.teile);
       if (gleich && s.fertig) { planung = false; return 'aktuell'; }
-      if (!gleich) { await O.loeschen(); s = {}; }
+      if (!gleich) { await O.loeschen(id); s = {}; }
       var schon = Math.min(s.pos || 0, plan.gesamt);
       try {
         var est = await navigator.storage.estimate(), frei = (est.quota || 0) - (est.usage || 0), noetig = plan.gesamt - schon + 300e6;
         if (est.quota && frei < noetig) throw new Error('Zu wenig Speicherplatz auf dem Handy: Es fehlen etwa ' + O.gb(noetig - frei) + '.');
       } catch (e) { if (/Speicherplatz/.test(e.message)) throw e; }
       try { if (navigator.storage.persist) await navigator.storage.persist(); } catch (e) {}
-      s.plan = plan; s.fertig = false; s.pos = schon; standSetzen(s);
+      s.plan = plan; s.fertig = false; s.pos = schon; standSetzen(id, s);
     } catch (e) { planung = false; O.letzterFehler = e.message; throw e; }
 
     return new Promise(function (ok, fehl) {
@@ -340,7 +387,7 @@ window.FV = window.FV || {};
         try { w.terminate(); } catch (e) {}
         URL.revokeObjectURL(url);
         try { B().wach(false); } catch (e) {}
-        standSetzen(s);
+        standSetzen(id, s);
         return true;
       }
       O._halt = function () { if (!ende()) return; ok('halt'); };
@@ -348,22 +395,22 @@ window.FV = window.FV || {};
         var m = ev.data;
         if (m.typ === 'stand') {
           s.pos = m.pos; melde(m.pos, plan.gesamt);
-          if (Date.now() - gespeichert > 4000) { gespeichert = Date.now(); standSetzen(s); }
+          if (Date.now() - gespeichert > 4000) { gespeichert = Date.now(); standSetzen(id, s); }
         } else if (m.typ === 'info') melde(s.pos, plan.gesamt, m.text);
         else if (m.typ === 'halt') { s.pos = m.pos; if (ende()) ok('halt'); }
         else if (m.typ === 'fehler') { O.letzterFehler = m.text; if (ende()) fehl(new Error(m.text)); }
         else if (m.typ === 'fertig') {
           s.pos = m.pos; ende();
           melde(m.pos, plan.gesamt, 'Karte wird geprüft …');
-          leserP = null;
-          O.leser().then(function (l) {
+          leserP[id] = null;
+          O.leser(id).then(function (l) {
             if (l.f.size !== plan.gesamt) throw new Error('Die Kartendatei hat die falsche Größe.');
             return l.pruefen();
           }).then(function (k) {
-            s.fertig = true; s.maxZ = k.maxZ; s.datum = Date.now(); standSetzen(s); ok('fertig');
+            s.fertig = true; s.maxZ = k.maxZ; s.datum = Date.now(); standSetzen(id, s); ok('fertig');
           }).catch(function (e) {
             O.letzterFehler = e.message + ' Die Datei wurde gelöscht – bitte die Teile auf dem Server prüfen.';
-            O.loeschen().then(function () { fehl(new Error(O.letzterFehler)); });
+            O.loeschen(id).then(function () { fehl(new Error(O.letzterFehler)); });
           });
         }
       };

@@ -1976,53 +1976,61 @@
       '<p class="klein2" style="margin:0 0 8px">Für Route und Abbiege-Ansagen ohne Internet gibt es zusätzlich eine Offline-Navi-App. Das ist freiwillig – jeder entscheidet auf seinem Handy selbst.</p>' +
       '<div class="wahl" id="offwahl">' + Object.keys(B.OFFLINE_APPS).map(function (k) { return '<button data-tun="offline-app" data-p="' + k + '"' + (k === p ? ' class="akt"' : '') + '>' + h(B.OFFLINE_APPS[k]) + '</button>'; }).join('') + '</div>' +
       '<div class="detailzeile" style="margin-top:10px">' + sym(da ? 'haken' : 'info') + '<div><small>Offline-Navi</small>' + h(name) + (da ? ' ist installiert' : ' ist noch nicht installiert') + '</div></div>' +
-      '<ol class="offschritte"><li' + (da ? ' class="fertig"' : '') + '>' + h(name) + ' installieren (kostenlos)</li><li>Dort die Karten herunterladen: Deutschland bzw. alle Bundesländer. Das sind mehrere Gigabyte – am besten im WLAN. Die Karten liegen dann in einem eigenen Ordner dieser App und lassen sich dort auch wieder löschen.</li><li>Fertig: Fehlt unterwegs das Internet, erscheint bei der Route der Knopf „Offline-Navi“. Die Fahrt geht dann mit Karte, Route und deutscher Sprachansage ohne Internet weiter.</li></ol>' +
+      '<ol class="offschritte"><li' + (da ? ' class="fertig"' : '') + '>' + h(name) + ' installieren (kostenlos)</li><li>Dort die Karten herunterladen: Deutschland bzw. alle Bundesländer, für Fahrten in den Süden auch Spanien und Portugal. Das sind mehrere Gigabyte – am besten im WLAN. Die Karten liegen dann in einem eigenen Ordner dieser App und lassen sich dort auch wieder löschen.</li><li>Fertig: Fehlt unterwegs das Internet, erscheint bei der Route der Knopf „Offline-Navi“. Die Fahrt geht dann mit Karte, Route und deutscher Sprachansage ohne Internet weiter.</li></ol>' +
       (da ? '<div class="zweier"><button class="gold knopf" data-tun="offline-oeffnen">' + sym('extern') + 'Karten verwalten</button><button class="rand knopf" data-tun="offline-test">' + sym('navi') + 'Testen</button></div>'
           : '<button class="gold knopf breit" data-tun="offline-laden">' + sym('extern') + h(name) + ' installieren</button>') + '</div>';
   }
   function offlineNeu() { var b = $('#offblock'); if (b) b.outerHTML = offlineBlock(); }
-  /* Karte vom Fehnverleih-Server (Ordner „karten“ auf www.fehnverleih.de) aufs Handy laden */
+  /* Karten vom Fehnverleih-Server (Ordner „karten“ auf www.fehnverleih.de) aufs Handy laden – je Land eine */
   function karteTeil() {
-    var O = FV.O, s = O.stand() || {}, laeuft = O.laeuft(), ges = (s.plan && s.plan.gesamt) || 0, pos = Math.min(s.pos || 0, ges || 0), proz = ges ? Math.floor(pos * 100 / ges) : 0;
+    var O = FV.O;
+    return O.KARTEN.map(function (K) { return karteZeile(K); }).join('<div class="offzwischen" style="margin:12px 0 8px"></div>') +
+      (O.aktiv() ? '<p class="klein2" style="margin:8px 0 0">Das Navi zeigt Straßen, Orte, Wasser und Wald der geladenen Länder jetzt auch ohne Internet. Ortsnamen und Route brauchen weiter Internet – oder die Offline-Navi unten.</p>' : '');
+  }
+  function karteZeile(K) {
+    var O = FV.O, k = K.id, s = O.stand(k) || {}, laeuft = O.laeuft(k), anderer = O.laeuft() && !laeuft;
+    var ges = (s.plan && s.plan.gesamt) || 0, pos = Math.min(s.pos || 0, ges || 0), proz = ges ? Math.floor(pos * 100 / ges) : 0;
     var text = s.fertig ? 'Geladen · ' + O.gb(ges) + (s.datum ? ' · Stand ' + new Date(s.datum).toLocaleDateString('de-DE') : '')
       : laeuft ? (ges ? proz + ' % · ' + O.gb(pos) + ' von ' + O.gb(ges) : 'Verbinde mit www.fehnverleih.de …')
       : pos > 0 ? 'Angehalten bei ' + proz + ' % (' + O.gb(pos) + ' von ' + O.gb(ges) + ')' : 'Noch nicht auf diesem Handy';
-    var html = '<div class="detailzeile">' + sym(s.fertig ? 'haken' : 'info') + '<div><small>Offline-Karte im Navi</small><span id="offtext">' + h(text) + '</span></div></div>';
-    if (laeuft || (pos > 0 && !s.fertig)) html += '<div class="offbalken"><i id="offbalken" style="width:' + proz + '%"></i></div>';
-    if (O.letzterFehler && !laeuft) html += '<div class="fehler" style="margin-top:8px">' + h(O.letzterFehler) + '</div>';
-    html += '<p class="klein2" style="margin:8px 0">' + (s.fertig
-      ? 'Die Deutschland-Karte liegt auf diesem Handy. Das Navi zeigt Straßen, Orte, Wasser und Wald jetzt auch ohne Internet. Ortsnamen und Route brauchen weiter Internet – oder die Offline-Navi unten.'
-      : 'Lädt die Deutschland-Karte aus dem Ordner „karten“ auf www.fehnverleih.de auf dieses Handy' + (ges ? ' (' + O.gb(ges) + ')' : ' (mehrere GB)') + '. Am besten im WLAN, mit Ladekabel und bei offener App. Nach einer Unterbrechung geht es an derselben Stelle weiter.') + '</p>';
-    if (laeuft) html += '<button class="rand knopf breit" data-tun="karte-halt">' + sym('zu') + 'Anhalten</button>';
-    else if (s.fertig) html += '<div class="zweier"><button class="rand knopf" data-tun="karte-laden">' + sym('neu') + 'Neue Karte?</button><button class="rand knopf" data-tun="karte-loeschen">' + sym('muell') + 'Löschen</button></div>';
-    else if (pos > 0) html += '<div class="zweier"><button class="gold knopf" data-tun="karte-laden">' + sym('ab') + 'Weiter laden</button><button class="rand knopf" data-tun="karte-loeschen">' + sym('muell') + 'Löschen</button></div>';
-    else html += '<button class="gold knopf breit" data-tun="karte-laden">' + sym('ab') + 'Offline-Karte laden</button>';
+    var dk = ' data-k="' + k + '"';
+    var html = '<div class="detailzeile">' + sym(s.fertig ? 'haken' : 'info') + '<div><small>Offline-Karte ' + h(K.name) + '</small><span id="offtext-' + k + '">' + h(text) + '</span></div></div>';
+    if (laeuft || (pos > 0 && !s.fertig)) html += '<div class="offbalken"><i id="offbalken-' + k + '" style="width:' + proz + '%"></i></div>';
+    if (O.letzterFehler && O.fehlerBei === k && !laeuft) html += '<div class="fehler" style="margin-top:8px">' + h(O.letzterFehler) + '</div>';
+    if (!s.fertig) html += '<p class="klein2" style="margin:8px 0">Lädt die Karte ' + h(K.name) + ' aus dem Ordner „karten“ auf www.fehnverleih.de auf dieses Handy' + (ges ? ' (' + O.gb(ges) + ')' : ' (mehrere GB)') + '. Am besten im WLAN, mit Ladekabel und bei offener App. Nach einer Unterbrechung geht es an derselben Stelle weiter.</p>';
+    else html += '<div style="height:8px"></div>';
+    if (laeuft) html += '<button class="rand knopf breit" data-tun="karte-halt"' + dk + '>' + sym('zu') + 'Anhalten</button>';
+    else if (anderer) html += '<p class="klein2" style="margin:0">Wartet, bis die andere Karte fertig geladen ist.</p>';
+    else if (s.fertig) html += '<div class="zweier"><button class="rand knopf" data-tun="karte-laden"' + dk + '>' + sym('neu') + 'Neue Karte?</button><button class="rand knopf" data-tun="karte-loeschen"' + dk + '>' + sym('muell') + 'Löschen</button></div>';
+    else if (pos > 0) html += '<div class="zweier"><button class="gold knopf" data-tun="karte-laden"' + dk + '>' + sym('ab') + 'Weiter laden</button><button class="rand knopf" data-tun="karte-loeschen"' + dk + '>' + sym('muell') + 'Löschen</button></div>';
+    else html += '<button class="gold knopf breit" data-tun="karte-laden"' + dk + '>' + sym('ab') + h(K.name) + ' laden</button>';
     return html;
   }
   function karteFortschritt(pos, ges, text) {
-    var t = $('#offtext'), b = $('#offbalken'), p = ges ? Math.floor(pos * 100 / ges) : 0;
+    var k = FV.O.dran() || 'de', t = $('#offtext-' + k), b = $('#offbalken-' + k), p = ges ? Math.floor(pos * 100 / ges) : 0;
     if (t) t.textContent = text || (ges ? p + ' % · ' + FV.O.gb(pos) + ' von ' + FV.O.gb(ges) : 'Verbinde mit www.fehnverleih.de …');
     if (b) b.style.width = p + '%';
   }
-  Tun['karte-laden'] = function () {
-    var O = FV.O; if (O.laeuft()) return;
-    var lauf = O.laden(karteFortschritt);
+  function kId(el) { return (el && el.getAttribute && el.getAttribute('data-k')) || 'de'; }
+  Tun['karte-laden'] = function (el) {
+    var O = FV.O, k = kId(el), K = O.karte(k); if (O.laeuft()) return;
+    var lauf = O.laden(k, karteFortschritt);
     offlineNeu();
     lauf.then(function (r) {
       offlineNeu();
-      if (r === 'aktuell') A().toast('Die Offline-Karte ist schon auf dem neuesten Stand.', 4000);
+      if (r === 'aktuell') A().toast('Die Karte ' + K.name + ' ist schon auf dem neuesten Stand.', 4000);
       else if (r === 'halt') A().toast('Angehalten. „Weiter laden“ macht später an derselben Stelle weiter.', 4500);
-      else if (r === 'fertig') A().frage('Die Offline-Karte ist geladen.\nDamit die Karte sie benutzt, startet das Navi einmal kurz neu.', 'Jetzt neu starten', 'Später').then(function (ja) { if (ja) location.reload(); });
+      else if (r === 'fertig') A().frage('Die Karte ' + K.name + ' ist geladen.\nDamit die Karte sie benutzt, startet das Navi einmal kurz neu.', 'Jetzt neu starten', 'Später').then(function (ja) { if (ja) location.reload(); });
     }).catch(function () { offlineNeu(); });
   };
   Tun['karte-halt'] = function () { FV.O.halt(); A().toast('Wird angehalten …'); };
-  Tun['karte-loeschen'] = function () {
-    var s = FV.O.stand() || {}, g = s.plan ? FV.O.gb(Math.min(s.pos || 0, s.plan.gesamt)) : '';
-    A().frage('Offline-Karte von diesem Handy löschen?' + (g ? '\nDas macht ' + g + ' Speicher frei. Laden lässt sie sich jederzeit wieder.' : ''), 'Löschen').then(function (ja) {
+  Tun['karte-loeschen'] = function (el) {
+    var k = kId(el), K = FV.O.karte(k), s = FV.O.stand(k) || {}, g = s.plan ? FV.O.gb(Math.min(s.pos || 0, s.plan.gesamt)) : '';
+    A().frage('Karte ' + K.name + ' von diesem Handy löschen?' + (g ? '\nDas macht ' + g + ' Speicher frei. Laden lässt sie sich jederzeit wieder.' : ''), 'Löschen').then(function (ja) {
       if (!ja) return;
       var warAktiv = s.fertig;
-      FV.O.letzterFehler = '';
-      FV.O.loeschen().then(function () { offlineNeu(); A().toast('Offline-Karte gelöscht.'); if (warAktiv) setTimeout(function () { location.reload(); }, 900); });
+      if (FV.O.fehlerBei === k) FV.O.letzterFehler = '';
+      FV.O.loeschen(k).then(function () { offlineNeu(); A().toast('Karte ' + K.name + ' gelöscht.'); if (warAktiv) setTimeout(function () { location.reload(); }, 900); });
     });
   };
   Tun['offline-app'] = function (el) { A().e.offlineApp = el.getAttribute('data-p'); A().speichern(); offlineNeu(); };
