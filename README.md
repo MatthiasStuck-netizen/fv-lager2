@@ -6,6 +6,14 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.3.0: Navigation für Zug, Bus, Schiff, Flug und Gesamtstrecke
+- Bei jeder Verbindung „Start“ / „Navigation starten“ (Zug, Bus, Schiff, Flugzeug, Gesamtstrecke). Die Reise läuft Abschnitt für Abschnitt:
+  Auto/Rad/zu Fuß mit echter Zielführung bis Bahnhof/Hafen/Flughafen, Bus/Bahn/Schiff auf der Linie (GPS, sonst Fahrplan),
+  Flug nach Flugplan; „Einsteigen“ und rechtzeitig „Aussteigen“ als Ansage, danach automatisch der nächste Abschnitt.
+- Reise-Leiste oben in der Zielführung (‹ › zum Springen, antippen = alle Abschnitte). Fahrtenbuch zählt nur die Auto-Abschnitte.
+- `fuehrung.js`: Routen mit `oev: true` werden nicht neu berechnet, Fortschritt nach `zeitAb`/`zeitAn`, `nurZeit` für Flüge.
+- Test: `test/test_reise.py`.
+
 ## Neu in 4.2.1: Satelliten-Knopf auf der Karte
 - Kleiner Knopf unten links auf jeder Karte: verbundene (für den Standort genutzte) / gesehene Satelliten, Farbe nach Güte; antippen → Einzelheiten je System (GPS, Galileo, GLONASS, BeiDou …), Signalstärke, Genauigkeit.
 - Dafür gibt es erstmals eine Änderung im Android-Teil: Zweig `navi-nativ` (Klasse `Satelliten.java` als `classes2.dex`, Methode `satelliten()` in `MainActivity$Bruecke`). Der Auftrag dort baut die unsignierte Grund-APK (Release `navi-nativ`) und testet sie im Emulator (Release `navi-nativ-test`).

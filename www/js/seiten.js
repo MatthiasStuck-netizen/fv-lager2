@@ -953,7 +953,7 @@
     b.innerHTML = gruppen.map(function (g) {
       var f = z.zug[g.i], st = f.faellt ? '<em class="spaet">fällt aus</em>' : f.verz >= 1 ? '<em class="spaet">+' + f.verz + ' Min.</em>' : '';
       return '<div class="ofahrt' + (g.i === z.zugWahl ? ' gewaehlt' : '') + (f.faellt ? ' faellt' : '') + '" data-tun="zug-zeigen" data-i="' + g.i + '">' +
-        '<div class="okopf"><b>' + dauerLang(f.dauer) + '</b>' + st + (f.preis ? '<span class="opreis"><small>ab </small>' + preisText(f.preis) + '</span>' : '') + '<button class="odetail" data-tun="zug-wahl" data-i="' + g.i + '">Details' + sym('rechts') + '</button></div>' +
+        '<div class="okopf"><b>' + dauerLang(f.dauer) + '</b>' + st + (f.preis ? '<span class="opreis"><small>ab </small>' + preisText(f.preis) + '</span>' : '') + '<button class="ostart" data-tun="zug-los" data-i="' + g.i + '"' + (f.faellt ? ' disabled' : '') + '>' + sym('navi') + 'Start</button><button class="odetail" data-tun="zug-wahl" data-i="' + g.i + '">Details' + sym('rechts') + '</button></div>' +
         '<div class="ozeit">' + G.uhr(f.ab) + ' – ' + G.uhr(f.an) + (f.an && f.ab && f.an.toDateString() !== f.ab.toDateString() ? '<sup>+1</sup>' : '') + '<small> · ' + (f.umstiege ? f.umstiege + ' Umstieg' + (f.umstiege > 1 ? 'e' : '') : 'direkt') + '</small></div>' +
         '<div class="okette">' + oevKette(f) + '</div>' +
         '<div class="oplan">' + oevPlan(f) + '</div>' +
@@ -1047,7 +1047,8 @@
       html += '<div class="zweier"><button class="gold knopf" data-tun="zum-bahnhof" data-m="' + (nah ? 'fuss' : 'auto') + '">' + sym(nah ? 'fuss' : 'auto') + '<span>' + (nah ? 'Zu Fuß zur Haltestelle' : 'Mit dem Auto hin') + km + '</span></button>' +
         '<button class="rand knopf" data-tun="zum-bahnhof" data-m="rad">' + sym('fahrrad') + '<span>Mit dem Rad' + km + '</span></button></div><div style="height:8px"></div>';
     }
-    html += '<button class="gold knopf breit" data-tun="ticket" data-i="' + i + '">' + sym('zug') + 'Ticket kaufen' + (f.preis ? ' · ab ' + preisText(f.preis) : '') + '</button><p class="klein2" style="text-align:center;margin:4px 0 8px">Öffnet genau diese Verbindung bei der Deutschen Bahn – dort bezahlen, Ticket kommt in die DB-App.</p>';
+    html += '<button class="gold knopf breit gross" data-tun="zug-los" data-i="' + i + '"' + (f.faellt ? ' disabled' : '') + '>' + sym('navi') + 'Navigation starten</button><div style="height:8px"></div>';
+    html += '<button class="rand knopf breit" data-tun="ticket" data-i="' + i + '">' + sym('zug') + 'Ticket kaufen' + (f.preis ? ' · ab ' + preisText(f.preis) : '') + '</button><p class="klein2" style="text-align:center;margin:4px 0 8px">Öffnet genau diese Verbindung bei der Deutschen Bahn – dort bezahlen, Ticket kommt in die DB-App.</p>';
     if (f.preis && f.preis.teil) html += '<p class="klein2">Teilpreis: Für einen Teil der Strecke (z. B. Bus im Verbund) wird ein eigenes Ticket gebraucht.</p>';
     if (f.legs.some(function (l) { return l.vonOrt && FV.V.beiHamburg(l.vonOrt) && /^(S|U)\d/.test(l.kurz || ''); })) html += '<button class="rand knopf breit" data-tun="hvv-ticket">' + sym('tram') + 'HVV-Ticket (S-Bahn/U-Bahn Hamburg)</button><div style="height:8px"></div>';
     html += '<button class="rand knopf breit" data-tun="db-navigator">' + sym('zug') + 'Im DB Navigator öffnen</button>';
@@ -1133,7 +1134,8 @@
         '<div class="ozeit">' + h(A1.name) + ' → ' + h(B1.name) + '</div>' +
         '<div class="okette"><span class="kf">' + sym('auto') + '<sub>' + Math.max(5, Math.round(flugAnfahrt(A1.weit) / 60)) + '</sub></span><s>›</s><span class="kl" style="--f:#1a73e8">' + sym('flug') + '<i>' + h(A1.iata) + '–' + h(B1.iata) + '</i></span><s>›</s><span class="kf">' + sym('auto') + '<sub>' + Math.max(5, Math.round(flugAnfahrt(B1.weit) / 60)) + '</sub></span></div>' +
         '<div class="oplan">' + G.km(luftF) + ' Luftlinie · von Tür zu Tür ca. ' + dauerLang(ges) + ' (mit 2 Std. vorher am Flughafen)</div></div>' +
-        '<button class="gold knopf breit" data-tun="flug-suchen" data-q="google">' + sym('suche') + 'Flüge ' + h(A1.iata) + ' → ' + h(B1.iata) + ' suchen</button><div style="height:8px"></div>' +
+        '<button class="gold knopf breit gross" data-tun="flug-los">' + sym('navi') + 'Navigation starten</button><p class="klein2" style="text-align:center;margin:4px 0 8px">Auto zum Flughafen ' + h(A1.iata) + ' → Flug → weiter zum Ziel, alles am Stück.</p>' +
+        '<button class="rand knopf breit" data-tun="flug-suchen" data-q="google">' + sym('suche') + 'Flüge ' + h(A1.iata) + ' → ' + h(B1.iata) + ' suchen</button><div style="height:8px"></div>' +
         '<div class="zweier"><button class="rand knopf" data-tun="flug-suchen" data-q="sky">' + sym('flug') + 'Skyscanner</button><button class="rand knopf" data-tun="flug-tafel">' + sym('uhr') + 'Abflüge ' + h(A1.iata) + '</button></div><div style="height:8px"></div>' +
         '<button class="rand knopf breit" data-tun="flug-hin">' + sym('auto') + 'Zum Flughafen ' + h(A1.name) + ' fahren<small>' + G.km(A1.weit) + '</small></button>' +
         '<p class="klein2">Flugzeiten sind geschätzt (Luftlinie, ca. 800 km/h). Ob und wann geflogen wird und was es kostet, steht bei der Flugsuche.</p>';
@@ -1405,7 +1407,7 @@
           return '<div class="detailzeile">' + sym('schiff') + '<div><small>' + h(fl.linie || 'Fähre') + (f.preis ? ' · ab ' + preisText(f.preis) : '') + '</small>' + G.uhr(fl.ab) + ' ab ' + h(fl.von) + ' → ' + G.uhr(fl.an) + ' an ' + h(fl.nach) + '</div></div>';
         }).join('') + '</div>';
       }
-      html += '<button class="gold knopf breit" data-tun="reise-los" data-i="0">' + sym('auto') + (pl.hin ? 'Navigation zum Hafen ' + h(hafenName(pl.festland, l)) : 'Navigation ab Hafen') + '</button><div style="height:8px"></div>' +
+      html += '<button class="gold knopf breit gross" data-tun="reise-los" data-i="0">' + sym('navi') + 'Navigation starten</button><p class="klein2" style="text-align:center;margin:4px 0 8px">' + (pl.hin ? 'Auto bis ' + h(hafenName(pl.festland, l)) + ' → Schiff → Ziel' : 'Schiff → ab Hafen mit dem Auto') + ', alles am Stück.</p>' +
         '<div class="zweier"><button class="rand knopf" data-tun="reise-reederei" data-i="0">' + sym('schiff') + 'Reederei · Tickets</button><button class="rand knopf" data-tun="reise-detail" data-i="0">' + sym('info') + 'Alle Einzelheiten</button></div>';
       if (z.faehrPlaene.length > 1) html += '<h3 class="ueber">' + sym('schiff') + 'Anderer Hafen</h3>' + z.faehrPlaene.map(function (q, j) {
         return '<button class="eintrag' + (j === i ? ' zielbf' : '') + '" data-tun="schiff-plan" data-i="' + j + '">' + sym('schiff') + '<div class="txt"><b>' + h(hafenName(q.festland, q.linie)) + ' ↔ ' + h(hafenName(q.insel, q.linie)) + '</b><span>' + G.km(q.weg) + ' Luftlinie bis zum Hafen' + (q.linie.auto ? ' · Autofähre' : '') + '</span></div><div class="ende">' + sym(j === i ? 'rechts' : 'plus') + '</div></button>';
@@ -1462,7 +1464,7 @@
     var k = reiseKosten(v), l0 = v.legs[0], ln = v.legs[v.legs.length - 1];
     return '<div class="ofahrt' + (gewaehlt ? ' gewaehlt' : '') + '" data-tun="reise-zeigen" data-i="' + i + '">' +
       '<div class="okopf"><b>' + dauerLang(v.dauer) + '</b>' + (schnell ? '<em class="puenktlich">schnellste</em>' : '') + (k.summe > 0 ? '<span class="opreis"><small>' + (k.offen ? 'ab ' : 'ca. ') + '</small>' + euro(k.summe) + '</span>' : '') +
-        '<button class="odetail" data-tun="reise-detail" data-i="' + i + '">Details' + sym('rechts') + '</button></div>' +
+        '<button class="ostart" data-tun="reise-los" data-i="' + i + '">' + sym('navi') + 'Start</button><button class="odetail" data-tun="reise-detail" data-i="' + i + '">Details' + sym('rechts') + '</button></div>' +
       '<div class="ozeit">' + G.uhr(new Date(Math.max(Date.now(), l0.ab || Date.now()))) + ' – ' + (ln.an ? G.uhr(ln.an) : '?') + (ln.an && ln.an.toDateString() !== new Date().toDateString() ? '<sup>+1</sup>' : '') + '<small> · ' + h(v.titel) + '</small></div>' +
       '<div class="okette">' + reiseKette(v) + '</div>' +
       (v.legs.some(function (l) { return l.geschaetzt; }) ? '<div class="oplan">Zeiten teilweise geschätzt</div>' : '') + '</div>';
@@ -1525,20 +1527,16 @@
         (l.hinweise || []).map(function (x) { return '<small class="spaet">' + h(x) + '</small>'; }).join('') + '</div></div>';
     });
     html += '</div>' + reiseKostenHtml(reiseKosten(v)) + (v.hinweise || []).map(function (x) { return '<p class="klein2" style="margin:4px 2px">' + h(x) + '</p>'; }).join('');
-    var a = v.legs.filter(function (l) { return l.art === 'auto' && !l.geschaetzt; })[0];
-    if (a) html += '<button class="gold knopf breit" data-tun="reise-los" data-i="' + i + '">' + sym('auto') + 'Navigation: Auto bis ' + h(a.nach) + '</button><div style="height:8px"></div>';
+    html += '<button class="gold knopf breit gross" data-tun="reise-los" data-i="' + i + '">' + sym('navi') + 'Navigation starten</button><div style="height:8px"></div>';
     if (v.mitFaehre) html += '<button class="rand knopf breit" data-tun="reise-reederei" data-i="' + i + '">' + sym('schiff') + 'Reederei: Fahrplan und Tickets</button><div style="height:8px"></div>';
     if (v.db) html += '<button class="rand knopf breit" data-tun="db-navigator">' + sym('zug') + 'Fahrkarte im DB Navigator</button><div style="height:8px"></div>';
     if (v.flug) html += '<button class="rand knopf breit" data-tun="reise-flug" data-i="' + i + '">' + sym('flug') + 'Flüge ' + h(v.flug.a.iata) + ' → ' + h(v.flug.b.iata) + ' suchen</button>';
     A().blatt(html);
   };
-  /** Navigation für den Auto-Teil starten (bis zum Hafen / Bahnhof / Flughafen bzw. ab Hafen zum Ziel) */
+  /** Ganze Reise als Navigation starten: alle Abschnitte nacheinander (Auto, Bahn, Schiff, Flug …) */
   Tun['reise-los'] = function (el) {
-    var z = A().z, v = z.reisen[+el.getAttribute('data-i')]; if (!v) return;
-    var a = v.legs.filter(function (l) { return l.art === 'auto' && !l.geschaetzt; })[0]; if (!a) return;
-    A().blattZu();
-    var ziel = a.nach === 'Ziel' || a === v.legs[v.legs.length - 1] ? z.nav.ziel : { name: a.nach, adresse: a.nach, lat: a.nachOrt.lat, lon: a.nachOrt.lon, art: 'frei' };
-    A().zeige('vorschau', { ziel: ziel, modus: 'auto' });
+    var z = A().z, v = z.reisen[+el.getAttribute('data-i')]; if (!v || !z.nav || !z.nav.nach) return;
+    A().blattZu(); reiseStarten(v, z.nav);
   };
   Tun['reise-reederei'] = function (el) {
     var z = A().z, v = z.reisen[+el.getAttribute('data-i')]; if (!v) return;
@@ -1667,7 +1665,8 @@
   Se.fahrt = function () {
     var z = A().z, n = z.lauf, e = A().e; if (!n || !n.route) { A().stapel = []; A().zeige('auftraege', {}, 'reiter'); return; }
     // Kein Zurück-Pfeil: Aus der Zielführung führt nur das X (mit Rückfrage). Andere Seiten bleiben über die Leiste unten erreichbar.
-    seite('<div class="zeile"><button class="xknopf" data-tun="fahrt-ende" aria-label="Navigation beenden">' + sym('zu') + '</button><h1>Route</h1><button class="rand knopf klein" data-tun="fahrt-ueber">' + sym('karte') + 'Übersicht</button></div>' +
+    seite('<div class="zeile"><button class="xknopf" data-tun="fahrt-ende" aria-label="Navigation beenden">' + sym('zu') + '</button><h1>' + (n.reise ? 'Reise' : 'Route') + '</h1><button class="rand knopf klein" data-tun="fahrt-ueber">' + sym('karte') + 'Übersicht</button></div>' +
+      (n.reise ? '<div class="reiseleiste" id="rleiste">' + reiseLeisteHtml(n) + '</div>' : '') +
       kartenfeld('<div class="abbiegen" id="abb">' + sym('a_gerade') + '<div class="txt"><b>…</b><span>Position wird gesucht</span></div></div>' +
         '<button class="fahrknopf xknopf xvoll" data-tun="fahrt-ende" aria-label="Navigation beenden">' + sym('zu') + '</button>' +
         '<button class="vchip" id="vchip" data-tun="verkehr-liste" hidden></button>' +
@@ -1684,7 +1683,7 @@
     F.sicht(true);
     K.setzen($('#kfeld')).then(function () {
       if (A().oben() !== 'fahrt') return;
-      K.start(null); K.route(F.route || n.route); if (!K.hat('ziel')) K.ziel(n.nach); poisZeigen(F.route || n.route); verkehrKarte(F.route || n.route);
+      K.start(null); if (n.reise) { K.oev({ legs: n.reise.legs }); K.routeNachOben(); } K.route(F.route || n.route); if (!K.hat('ziel')) K.ziel(n.nach); poisZeigen(F.route || n.route); verkehrKarte(F.route || n.route);
       var o0 = B.ort(); bfAuf.um = o0; umgebungKarte([o0, n.nach]);
       if (A().e.bahnhof !== false && n.nach) zielBahnhofZeigen('zbchip', n.nach);
       F.sicht(true);   // nach der Rückkehr von einer anderen Seite: Auto und Kartenausschnitt sofort wieder richtig
@@ -1706,15 +1705,21 @@
         else vc.hidden = true;
       }
     }
-    if (!F.aktiv) {
-      F.start(n.route, n.nach, { beiStand: stand, beiPois: function () { if (A().oben() === 'fahrt') poisZeigen(F.route); }, beiNeu: function (r) { n.route = r; if (A().oben() === 'fahrt') verkehrKarte(r); },
-        beiVerkehr: function () { if (A().oben() === 'fahrt') verkehrKarte(F.route); },
-        beiUmleitung: function (u) { A().toast('Umleitung: ' + FV.V.sprache(u.grund) + (u.grund.gesperrt ? ' (gesperrt)' : ' · spart ' + G.minuten(u.spart)), 6000); },
-        beiFolgen: function (an) { var k = $('#mitteknopf'); if (k) k.hidden = an; }, beiZiel: angekommen });
-    }
+    fahrtStand = stand;
+    if (!F.aktiv) fStart(n);
     clearInterval(uhrTimer); uhrTimer = setInterval(function () { var u = $('#fuhr'); if (u) u.textContent = G.uhr(); else clearInterval(uhrTimer); }, 15000);
     if (F.stand) stand(F.stand);
   };
+  var fahrtStand = null;
+  /** Zielführung starten (Route n.route bis n.legNach bzw. n.nach) */
+  function fStart(n) {
+    {
+      F.start(n.route, n.legNach || n.nach, { beiStand: function (s) { if (fahrtStand) fahrtStand(s); if (n.reise) reiseLeisteNeu(); }, beiPois: function () { if (A().oben() === 'fahrt') poisZeigen(F.route); }, beiNeu: function (r) { n.route = r; if (A().oben() === 'fahrt') verkehrKarte(r); },
+        beiVerkehr: function () { if (A().oben() === 'fahrt') verkehrKarte(F.route); },
+        beiUmleitung: function (u) { A().toast('Umleitung: ' + FV.V.sprache(u.grund) + (u.grund.gesperrt ? ' (gesperrt)' : ' · spart ' + G.minuten(u.spart)), 6000); },
+        beiFolgen: function (an) { var k = $('#mitteknopf'); if (k) k.hidden = an; }, beiZiel: n.reise ? reiseAbschnittFertig : angekommen });
+    }
+  }
   function auswahlZeichnen() {
     var e = A().e, f = $('#auswfeld'); if (!f) return;
     f.innerHTML = '<button data-tun="fahrt-schalter" data-k="wc" class="' + (e.wc !== false ? 'an' : '') + '">' + sym('wc') + 'Parkplätze mit WC<i></i></button>' +
@@ -1747,6 +1752,136 @@
     A().naviAus();
     A().stapel = []; A().zeige('auftraege', {}, 'reiter'); A().ladeAuftraege();
   }
+  /* ====================== Reise-Navigation: alle Abschnitte nacheinander (zu Fuß, Rad, Auto, Bus, Bahn, Schiff, Flugzeug) ======================
+   * Auto, Rad und zu Fuß: echte Zielführung mit Abbiege-Ansagen bis zum Ende des Abschnitts (Bahnhof, Hafen, Flughafen).
+   * Bus, Bahn, Schiff, Flugzeug: das Navi läuft auf der Strecke mit (GPS, sonst nach Fahrplan; im Flugzeug immer nach Flugplan),
+   * sagt „Einsteigen“, rechtzeitig „Aussteigen“ an und schaltet am Ende von selbst auf den nächsten Abschnitt. */
+  var RSYM = { fern: 'zug', regio: 'zug', sbahn: 'zug', ubahn: 'tram', tram: 'tram', bus: 'bus', faehre: 'schiff', flug: 'flug', auto: 'auto', rad: 'fahrrad', fuss: 'fuss' };
+  function legArt(l) { return l.fuss ? 'fuss' : l.art || 'regio'; }
+  function legEnde(l, i, v) {
+    if (i === v.legs.length - 1 && v.nach) return { lat: v.nach.lat, lon: v.nach.lon, name: v.ziel && v.ziel.name || l.nach };
+    var o = l.nachOrt || (l.punkte && l.punkte.length ? { lat: l.punkte[l.punkte.length - 1][1], lon: l.punkte[l.punkte.length - 1][0] } : null);
+    return o ? { lat: o.lat, lon: o.lon, name: l.nach } : null;
+  }
+  function legStart(l) { return l.vonOrt || (l.punkte && l.punkte.length ? { lat: l.punkte[0][1], lon: l.punkte[0][0] } : null); }
+  function linienText(l) { var a = legArt(l); return a === 'flug' ? (l.linie || 'Flug') : a === 'faehre' ? (l.linie && l.linie !== 'Fähre' ? 'Fähre ' + l.linie : 'Fähre') : (l.linie || l.kurz || (FV.V.OEV[a] || {}).name || 'Zug'); }
+  /** Strecke eines Abschnitts mit Bus, Bahn, Schiff oder Flugzeug als „Route“ für die Zielführung */
+  function oevRoute(l, ende) {
+    var pk = (l.punkte || []).filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]); }), a = legArt(l);
+    var s0 = legStart(l);
+    if (pk.length < 2 && s0 && ende) pk = a === 'flug' ? K.grosskreis(s0, ende, 48) : [[s0.lon, s0.lat], [ende.lon, ende.lat]];
+    if (ende && pk.length && G.abstand({ lat: pk[pk.length - 1][1], lon: pk[pk.length - 1][0] }, ende) > 30) pk = pk.concat([[ende.lon, ende.lat]]);
+    var kum = G.kumuliert(pk), laenge = kum[kum.length - 1] || 1;
+    var ab = l.ab ? new Date(l.ab) : new Date(), an = l.an ? new Date(l.an) : new Date(ab.getTime() + (l.dauer || laenge / 15) * 1000);
+    if (a === 'flug' && ab < Date.now()) { var d0 = an - ab; ab = new Date(); an = new Date(ab.getTime() + d0); }   // geschätzter Flug: ab jetzt
+    var lin = linienText(l), wohin = l.richtung ? ' Richtung ' + l.richtung : '';
+    var ein = (a === 'flug' ? 'Flug ' + (l.kurz || '') + ' ab ' + l.von : a === 'faehre' ? 'An Bord: ' + lin + ' ab ' + l.von : 'Einsteigen: ' + lin + wohin) + (l.ab ? ', Abfahrt ' + G.uhr(ab) : '') + (l.gleis ? ', Gleis ' + l.gleis : '');
+    var aus = a === 'flug' ? 'Landung in ' + l.nach : 'Aussteigen: ' + l.nach + (l.gleisAn ? ' (Gleis ' + l.gleisAn + ')' : '');
+    return { punkte: pk, kum: kum, laenge: laenge, dauer: Math.max(60, (an - ab) / 1000), quelle: 'fahrplan', limits: [], pois: [], modus: 'oev', oev: true, nurZeit: a === 'flug', zeitAb: ab, zeitAn: an, zielName: l.nach,
+      schritte: [{ ab: 0, bis: 0, weg: 0, text: ein, ansage: ein + '.', hinweis: ein, art: RSYM[a] || 'zug', laenge: laenge, dauer: Math.max(60, (an - ab) / 1000) },
+        { ab: pk.length - 1, bis: pk.length - 1, weg: laenge, text: aus, ansage: a === 'flug' ? 'Landung in ' + l.nach + '.' : 'Bitte jetzt aussteigen: ' + l.nach + '.', hinweis: a === 'flug' ? 'landen Sie in ' + l.nach : 'aussteigen: ' + l.nach, art: 'a_ziel', ziel: true, laenge: 0, dauer: 0 }],
+      ueber: lin };
+  }
+  /** Route für Abschnitt i: Auto/Rad/zu Fuß mit echter Zielführung ab dem Standort, sonst die Strecke des Verkehrsmittels */
+  function abschnittRoute(v, i) {
+    var l = v.legs[i], a = legArt(l), ende = legEnde(l, i, v);
+    if (!ende) return Promise.reject(new Error('Abschnitt ohne Ziel'));
+    if (a === 'fuss' || a === 'auto' || a === 'rad') {
+      var o = B.ort(), von = o && Date.now() - (o.zeit || 0) < 180000 ? { lat: o.lat, lon: o.lon, kurs: o.kurs, tempo: o.tempo } : legStart(l);
+      if (!von) return Promise.reject(new Error('Kein Standort'));
+      return G.route(von, ende, { modus: a }).then(function (r) { if (i < v.legs.length - 1) r.zielName = l.nach; return r; }, function () {
+        var g = oevRoute(Object.assign({}, l, { punkte: [[von.lon, von.lat], [ende.lon, ende.lat]] }), ende);   // ohne Router: gerade Linie, mitlaufen nach GPS
+        var t = (a === 'fuss' ? 'Zu Fuß' : a === 'rad' ? 'Mit dem Rad' : 'Mit dem Auto') + ' bis ' + (l.nach === 'Ziel' && v.ziel ? v.ziel.name : l.nach), s0 = g.schritte[0];
+        s0.text = t; s0.ansage = t + '.'; s0.hinweis = t; s0.art = 'a_gerade'; g.schritte[1].text = 'Ankunft: ' + l.nach; g.schritte[1].ansage = 'Sie erreichen gleich ' + l.nach + '.';
+        g.oev = false; g.modus = a; g.zeitAb = null; g.zeitAn = null; return g;
+      });
+    }
+    return Promise.resolve(oevRoute(l, ende));
+  }
+  /** Reise starten: v = { legs, titel }, n = z.nav (von, nach, ziel) */
+  function reiseStarten(v, n) {
+    if (!v || !v.legs || !v.legs.length) return;
+    var z = A().z, lauf2 = { reise: { legs: v.legs, i: -1, titel: v.titel || '' }, ziel: n.ziel, nach: n.nach, von: n.von, route: null };
+    if (F.aktiv) F.stopp(true);
+    if ((B.zaehler().meter || 0) >= 1000) A().fahrtEnde('ohne Ziel'); else A().fahrtNeu();   // was vorher gefahren wurde, gehört nicht zur Reise
+    if (n.ziel && n.nach) letzteMerken(n.ziel, n.nach);
+    z.lauf = lauf2; z.reiter = 'karte';
+    A().toast('Reise startet: ' + v.legs.length + ' Abschnitt' + (v.legs.length > 1 ? 'e' : '') + '.', 2500);
+    reiseAbschnitt(0, true);
+  }
+  function reiseAbschnitt(i, ersterStart) {
+    var z = A().z, n = z.lauf; if (!n || !n.reise) return;
+    var v = { legs: n.reise.legs, nach: n.nach, ziel: n.ziel }, l = v.legs[i]; if (!l) return;
+    var vorher = n.reise.legs[n.reise.i];
+    if (vorher && legArt(vorher) === 'auto') A().fahrtEnde(vorher.nach);   // Autofahrt bis Bahnhof/Hafen/Flughafen ins Fahrtenbuch
+    n.reise.i = i; n.reise.laedt = true;
+    if (F.aktiv) F.stopp(true);
+    reiseLeisteNeu();
+    abschnittRoute(v, i).then(function (r) {
+      if (z.lauf !== n || n.reise.i !== i) return;
+      n.reise.laedt = false; n.route = r; n.legNach = legEnde(l, i, v);
+      var a = legArt(l);
+      if (a === 'auto') { A().fahrtNeu(); A().fahrtZiel(l.nach + (i === v.legs.length - 1 && n.ziel && n.ziel.adresse ? ', ' + adr1(n.ziel.adresse) : ''), ''); }
+      else A().fahrtNeu();   // Bahn, Bus, Schiff, Flug, Rad, zu Fuß zählen nicht als Autofahrt
+      if (!ersterStart && A().e.ansage !== false) B.sprich('Nächster Abschnitt: ' + (r.oev ? r.schritte[0].text : (a === 'fuss' ? 'zu Fuß' : a === 'rad' ? 'mit dem Rad' : 'mit dem Auto') + ' bis ' + (l.nach === 'Ziel' && n.ziel ? n.ziel.name : l.nach)) + '.');
+      if (A().oben() === 'fahrt') { K.route(r); A().neu(); }
+      else if (ersterStart) { A().zeige('fahrt', {}, 'ersetzen'); A().stapel = A().stapel.slice(-1); }
+      else fStart(n);
+      if (S.demo && ersterStart) { F.probefahrt(r.oev ? 900 : 70); A().toast('Probefahrt: Die Demo fährt die Reise von selbst ab.', 4000); }
+    }).catch(function (e) {
+      if (z.lauf !== n) return;
+      n.reise.laedt = false; reiseLeisteNeu();
+      A().toast('Abschnitt ' + (i + 1) + ' konnte nicht berechnet werden' + (e && e.message ? ': ' + e.message : '') + '. Mit › zum nächsten.', 5000);
+      if (ersterStart && A().oben() !== 'fahrt') { n.route = oevRoute(l, legEnde(l, i, v) || n.nach); A().zeige('fahrt', {}, 'ersetzen'); A().stapel = A().stapel.slice(-1); }
+    });
+  }
+  /** Ende eines Abschnitts erreicht: nächster Abschnitt oder Ziel */
+  function reiseAbschnittFertig() {
+    var z = A().z, n = z.lauf; if (!n || !n.reise) return angekommen();
+    var i = n.reise.i + 1;
+    if (i >= n.reise.legs.length) { angekommen(); return; }
+    setTimeout(function () { if (z.lauf === n) reiseAbschnitt(i, false); }, 2500);
+  }
+  function reiseLeisteHtml(n) {
+    var r = n.reise, l = r.legs[r.i] || r.legs[0], a = legArt(l), nxt = r.legs[r.i + 1], st = F.stand;
+    var zeit = l.ab || l.an ? (l.ab ? G.uhr(new Date(Math.max(+l.ab, legArt(l) === 'auto' ? Date.now() : 0))) + ' ' : '') + '→ ' + (l.an ? G.uhr(l.an) : '') : '';
+    var titel = a === 'fuss' ? 'Zu Fuß bis ' + l.nach : a === 'auto' ? 'Auto bis ' + l.nach : a === 'rad' ? 'Rad bis ' + l.nach : linienText(l) + ' → ' + l.nach;
+    var rest = st && F.aktiv && F.route === n.route ? ' · noch ' + G.km(st.restM) + (st.ankunft ? ', an ' + G.uhr(st.ankunft) : '') : '';
+    return '<button class="rlknopf" data-tun="reise-schritt" data-n="-1"' + (r.i <= 0 ? ' disabled' : '') + ' aria-label="Abschnitt zurück">' + sym('links') + '</button>' +
+      '<div class="rltxt" data-tun="reise-uebersicht"><small>Abschnitt ' + (r.i + 1) + ' von ' + r.legs.length + (r.laedt ? ' · wird berechnet …' : '') + '</small>' +
+      '<b>' + sym(RSYM[a] || 'zug') + h(titel) + '</b><span>' + h([zeit, l.gleis ? 'Gleis ' + l.gleis : ''].filter(Boolean).join(' · ') + rest) + '</span>' +
+      (nxt ? '<em>danach: ' + h(legArt(nxt) === 'fuss' ? 'zu Fuß bis ' + (nxt.nach === 'Ziel' && n.ziel ? n.ziel.name : nxt.nach) : legArt(nxt) === 'auto' ? 'Auto bis ' + nxt.nach : linienText(nxt) + (nxt.ab ? ' um ' + G.uhr(nxt.ab) : '')) + '</em>' : '<em>danach: Ziel ' + h(n.ziel && n.ziel.name || '') + '</em>') + '</div>' +
+      '<button class="rlknopf" data-tun="reise-schritt" data-n="1"' + (r.i >= r.legs.length - 1 ? ' disabled' : '') + ' aria-label="Nächster Abschnitt">' + sym('rechts') + '</button>';
+  }
+  var rlZeit = 0;
+  function reiseLeisteNeu() { var b = $('#rleiste'), n = A().z.lauf; if (!b || !n || !n.reise) return; if (Date.now() - rlZeit < 1500 && !n.reise.laedt) return; rlZeit = Date.now(); b.innerHTML = reiseLeisteHtml(n); }
+  Tun['reise-schritt'] = function (el) {
+    var n = A().z.lauf; if (!n || !n.reise || el.disabled) return;
+    var i = n.reise.i + (+el.getAttribute('data-n')); if (i < 0 || i >= n.reise.legs.length) return;
+    rlZeit = 0; reiseAbschnitt(i, false);
+  };
+  Tun['reise-uebersicht'] = function () {
+    var n = A().z.lauf; if (!n || !n.reise) return;
+    A().blatt('<h2>' + sym('route') + 'Reise<button data-tun="blatt-zu">' + sym('zu') + '</button></h2><div class="zugweg">' + n.reise.legs.map(function (l, i) {
+      var a = legArt(l), o = oevArtInfo(a === 'fuss' ? 'fuss' : a), akt = i === n.reise.i;
+      return '<div class="zl zug' + (akt ? ' akt' : '') + '" style="border-left-color:' + (o.farbe || '#888') + '" data-tun="reise-gehe" data-i="' + i + '">' + sym(RSYM[a] || 'zug') + '<div><b>' + (akt ? '▶ ' : '') + h(a === 'fuss' ? 'Zu Fuß' : a === 'auto' ? 'Auto' : a === 'rad' ? 'Rad' : linienText(l)) + '</b>' +
+        '<span>' + (l.ab ? G.uhr(l.ab) + ' ' : '') + 'ab <b>' + h(l.von) + '</b>' + (l.gleis ? ' · Gleis ' + h(l.gleis) : '') + '</span><span>' + (l.an ? G.uhr(l.an) + ' ' : '') + 'an <b>' + h(l.nach) + '</b></span></div></div>';
+    }).join('') + '</div><p class="klein2">Abschnitt antippen: dorthin springen. Das Navi schaltet am Ende jedes Abschnitts von selbst weiter.</p>');
+  };
+  Tun['reise-gehe'] = function (el) { A().blattZu(); rlZeit = 0; reiseAbschnitt(+el.getAttribute('data-i'), false); };
+  Tun['zug-los'] = function (el) {
+    var z = A().z, f = (z.zug || [])[+el.getAttribute('data-i')]; if (!f || !z.nav || !z.nav.nach) return;
+    A().blattZu(); reiseStarten({ legs: f.legs, titel: 'Bus und Bahn' }, z.nav);
+  };
+  Tun['flug-los'] = function () {
+    var z = A().z, fl = z.flug, n = z.nav || {}, A1 = fl && fl.a[fl.ai], B1 = fl && fl.b[fl.bi]; if (!A1 || !B1 || !n.von || !n.nach) return;
+    var los = new Date(Date.now() + flugAnfahrt(A1.weit) * 1000 + 2 * 3600000), fz = flugZeit(G.abstand(A1, B1));
+    var legs = [
+      { art: 'auto', von: n.von.name || 'Start', nach: 'Flughafen ' + A1.name, vonOrt: { lat: n.von.lat, lon: n.von.lon }, nachOrt: { lat: A1.lat, lon: A1.lon }, punkte: [[n.von.lon, n.von.lat], [A1.lon, A1.lat]] },
+      { art: 'flug', kurz: A1.iata + '–' + B1.iata, linie: 'Flug ' + A1.iata + ' → ' + B1.iata, von: A1.name, nach: B1.name, vonOrt: { lat: A1.lat, lon: A1.lon }, nachOrt: { lat: B1.lat, lon: B1.lon }, punkte: K.grosskreis(A1, B1, 64), ab: los, an: new Date(los.getTime() + fz * 1000), geschaetzt: true, dauer: fz },
+      { art: 'auto', geschaetzt: true, von: B1.name, nach: n.ziel && n.ziel.name || 'Ziel', vonOrt: { lat: B1.lat, lon: B1.lon }, nachOrt: { lat: n.nach.lat, lon: n.nach.lon }, punkte: [[B1.lon, B1.lat], [n.nach.lon, n.nach.lat]] }];
+    reiseStarten({ legs: legs, titel: 'Flug' }, n);
+  };
   /* Die Fahrt-Seite wird verlassen (Lager, Aufträge, Einstellungen …): Die Zielführung läuft weiter, nur die Karte ruht. */
   Se.fahrt_weg = function () { F.sicht(false); clearInterval(uhrTimer); };
   function angekommen() {
