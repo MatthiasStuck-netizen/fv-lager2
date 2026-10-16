@@ -212,7 +212,7 @@
   function flugDaten(f) {
     var k = (f.id || '') + '|' + (f.name || '');
     if (flugMerker[k] && Date.now() - flugMerker[k].t < 600000) return Promise.resolve(flugMerker[k].d);
-    if (!FV.S || !FV.S.angemeldet() || FV.S.demo) return Promise.resolve(null);
+    if (!FV.S || !(FV.S.angemeldet() || FV.S.demo)) return Promise.resolve(null);
     return FV.S.ruf('flug', { hex: f.id || '', cs: f.name || '', nr: f.nr || '' }, 25000).then(function (r) { var d = r && r.flug || null; flugMerker[k] = { t: Date.now(), d: d }; return d; }).catch(function () { flugMerker[k] = { t: Date.now(), d: null }; return null; });
   }
   FL.flugDaten = flugDaten;

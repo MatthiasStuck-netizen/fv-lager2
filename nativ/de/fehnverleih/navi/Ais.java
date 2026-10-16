@@ -31,6 +31,8 @@ public final class Ais {
         String name = "", rufz = "", ziel = "", imo = "", eta = ""; double tiefgang = 0; boolean klasseB;
     }
 
+    static String HOST = "stream.aisstream.io";   // im Test ersetzbar
+    static int PORT = 443;
     private static final Map<Long, Schiff> SCHIFFE = new HashMap<>();
     private static volatile String schluessel = "";
     private static volatile double[] box = null;        // s, w, n, o
@@ -111,10 +113,7 @@ public final class Ais {
     }
 
     private static void verbinden() throws Exception {
-        SSLSocket s = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
-        s.connect(new InetSocketAddress("stream.aisstream.io", 443), 15000);
-        s.setSoTimeout(30000);
-        s.startHandshake();
+        SSLSocket s = Post.tls(HOST, PORT, 30000);
         sock = s;
         ausgang = null;
         InputStream in = new BufferedInputStream(s.getInputStream());

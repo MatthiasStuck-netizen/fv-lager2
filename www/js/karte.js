@@ -122,7 +122,7 @@
       var map = K.map;
       return new Promise(function (ok) {
         map.once('style.load', function () {
-          try { ebenen(); bilder(); gelaende(); liveEbenen(); } catch (e) { console.error(e); }
+          try { ebenen(); gelaende(); liveEbenen(); K.live(liveListe); } catch (e) { console.error(e); }
           ok();
         });
         map.setStyle(st, { diff: false, transformStyle: function (alt, neu) {
@@ -330,34 +330,36 @@
   /* ---------- Züge und Schiffe live: Symbole mit Kennung, antippbar ----------
    * Quelle „live“: Punkte mit { art: zug|fern|sbahn|bus|tram|faehre|schiff, farbe, kurs (Grad oder -1), name, id } */
   var liveTipp = null, liveGehoert = null, liveDaten = { type: 'FeatureCollection', features: [] };
-  function pfeilBild(groesse, form) {
-    var c = document.createElement('canvas'); c.width = c.height = groesse;
-    var g = c.getContext('2d'), m = groesse / 2;
-    g.fillStyle = '#000';
+  /** Farbiges Symbol (Pfeil = fährt in diese Richtung, Kreis = Richtung unbekannt) mit dunklem Rand, als Bild für die Karte */
+  function pfeilBild(groesse, form, farbe) {
+    var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'), n = groesse * r; c.width = c.height = n;
+    var g = c.getContext('2d'), m = n / 2;
     g.beginPath();
-    if (form === 'schiff') { g.moveTo(m, 2); g.lineTo(groesse - 7, groesse - 4); g.lineTo(m, groesse - 10); g.lineTo(7, groesse - 4); }
-    else if (form === 'zug') { g.moveTo(m, 1); g.lineTo(groesse - 5, m + 2); g.lineTo(groesse - 5, groesse - 3); g.lineTo(5, groesse - 3); g.lineTo(5, m + 2); }
-    else { g.arc(m, m, m - 4, 0, Math.PI * 2); }
-    g.closePath(); g.fill();
-    var d = g.getImageData(0, 0, groesse, groesse);
-    return { width: groesse, height: groesse, data: new Uint8Array(d.data.buffer) };
+    if (form === 'schiff') { g.moveTo(m, n * 0.06); g.lineTo(n * 0.78, n * 0.62); g.lineTo(n * 0.7, n * 0.92); g.lineTo(n * 0.3, n * 0.92); g.lineTo(n * 0.22, n * 0.62); }
+    else if (form === 'zug') { g.moveTo(m, n * 0.05); g.lineTo(n * 0.86, n * 0.5); g.lineTo(n * 0.86, n * 0.92); g.lineTo(n * 0.14, n * 0.92); g.lineTo(n * 0.14, n * 0.5); }
+    else { g.arc(m, m, n * 0.36, 0, Math.PI * 2); }
+    g.closePath();
+    g.fillStyle = farbe; g.fill();
+    g.lineWidth = 2.2 * r; g.strokeStyle = K.hell() ? '#ffffff' : '#05080b'; g.stroke();
+    if (form !== 'punkt') { g.beginPath(); g.arc(m, n * (form === 'schiff' ? 0.62 : 0.6), n * 0.09, 0, Math.PI * 2); g.fillStyle = K.hell() ? '#ffffff' : '#05080b'; g.fill(); }
+    var d = g.getImageData(0, 0, n, n);
+    return { bild: { width: n, height: n, data: new Uint8Array(d.data.buffer) }, r: r };
   }
-  function bilder() {
-    var map = K.map; if (!map || !document.createElement('canvas').getContext) return;
-    try {
-      if (!map.hasImage('fv-schiff')) map.addImage('fv-schiff', pfeilBild(28, 'schiff'), { sdf: true });
-      if (!map.hasImage('fv-zug')) map.addImage('fv-zug', pfeilBild(28, 'zug'), { sdf: true });
-      if (!map.hasImage('fv-punkt')) map.addImage('fv-punkt', pfeilBild(28, 'punkt'), { sdf: true });
-    } catch (e) {}
+  var bildFarben = {};
+  function bild(form, farbe) {
+    var id = 'fv-' + form + '-' + farbe + (K.hell() ? '-h' : '');
+    if (K.map && !K.map.hasImage(id)) { try { var b = pfeilBild(form === 'punkt' ? 20 : 30, form, farbe); K.map.addImage(id, b.bild, { pixelRatio: b.r }); } catch (e) {} }
+    return id;
   }
+  function bilder() {}
   function liveEbenen() {
     var map = K.map; if (!map) return;
     var hell = K.hell(), glyphen = !!map.getStyle().glyphs, font = schrift(map);
     if (!map.getSource('live')) map.addSource('live', { type: 'geojson', data: liveDaten });
     if (!map.getLayer('live-symbol')) map.addLayer({ id: 'live-symbol', type: 'symbol', source: 'live',
-      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 6, 0.55, 11, 0.8, 15, 1], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
+      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 9, 0.85, 13, 1.1], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
         'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'] },
-      paint: { 'icon-color': ['get', 'farbe'], 'icon-halo-color': hell ? '#ffffff' : '#05080b', 'icon-halo-width': 2 } });
+      paint: {} });
     if (glyphen && font && !map.getLayer('live-name')) map.addLayer({ id: 'live-name', type: 'symbol', source: 'live', minzoom: 8.5,
       layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.25], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
       paint: { 'text-color': ['get', 'farbe'], 'text-halo-color': hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)', 'text-halo-width': 1.6 } });
@@ -372,19 +374,23 @@
   }
   function liveFarben() {
     var map = K.map, hell = K.hell(); if (!map) return;
-    try { map.setPaintProperty('live-symbol', 'icon-halo-color', hell ? '#ffffff' : '#05080b'); } catch (e) {}
+    K.live(liveListe);   // Symbole mit passendem Rand neu
     try { map.setPaintProperty('live-name', 'text-halo-color', hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)'); } catch (e) {}
   }
   /** Live-Punkte setzen. liste = [{ typ: 'zug'|'schiff', id, lat, lon, kurs, art, farbe, name, rang }] · beiTipp(typ, id) */
+  var liveListe = [];
   K.live = function (liste, beiTipp) {
     if (beiTipp) liveTipp = beiTipp;
-    liveDaten = { type: 'FeatureCollection', features: (liste || []).map(function (x) {
-      var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null;
-      return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] },
-        properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: x.farbe || '#1b9fc6', dreh: kurs == null ? 0 : kurs, rang: x.rang || 0,
-          bild: kurs == null ? 'fv-punkt' : x.typ === 'schiff' ? 'fv-schiff' : 'fv-zug' } };
-    }) };
-    K.wenn(function () { var q = K.map.getSource('live'); if (q) q.setData(liveDaten); });
+    liveListe = liste || [];
+    K.wenn(function () {
+      liveDaten = { type: 'FeatureCollection', features: liveListe.map(function (x) {
+        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6';
+        return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] },
+          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, rang: x.rang || 0,
+            bild: bild(kurs == null ? 'punkt' : x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff' : 'zug', farbe) } };
+      }) };
+      var q = K.map.getSource('live'); if (q) q.setData(liveDaten);
+    });
   };
   K.sichtbar = function () { return !!(K.map && K.map.getContainer && K.map.getContainer().isConnected); };
 

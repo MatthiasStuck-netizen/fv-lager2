@@ -29,7 +29,7 @@ public final class Post {
     private Post() {}
 
     private static volatile boolean laeuft = false;
-    private static volatile String ergebnis = "{\"ok\":true,\"laeuft\":false}";
+    private static volatile String ergebnis = "{\"ok\":true}";
     private static volatile long auftrag = 0;
 
     static String stand() {
@@ -57,10 +57,7 @@ public final class Post {
     private static final class Imap {
         SSLSocket s; InputStream in; OutputStream out; int tag = 0;
         Imap(String host, int port) throws Exception {
-            s = (SSLSocket) SSLSocketFactory.getDefault().createSocket();
-            s.connect(new InetSocketAddress(host, port), 15000);
-            s.setSoTimeout(30000);
-            s.startHandshake();
+            s = Post.tls(host, port, 30000);
             in = new BufferedInputStream(s.getInputStream());
             out = s.getOutputStream();
             zeile();   // Begrüßung
@@ -112,6 +109,19 @@ public final class Post {
         void zu() { try { befehl("LOGOUT"); } catch (Throwable ignored) {} try { s.close(); } catch (Throwable ignored) {} }
     }
     private static final Pattern LIT = Pattern.compile("\\{(\\d+)\\}$");
+
+    /** Verschlüsselte Verbindung mit Servername (SNI) und Prüfung, ob das Zertifikat zum Server passt */
+    static SSLSocket tls(String host, int port, int zeit) throws Exception {
+        java.net.Socket roh = new java.net.Socket();
+        roh.connect(new InetSocketAddress(host, port), 15000);
+        SSLSocket s = (SSLSocket) ((SSLSocketFactory) SSLSocketFactory.getDefault()).createSocket(roh, host, port, true);
+        javax.net.ssl.SSLParameters p = s.getSSLParameters();
+        p.setEndpointIdentificationAlgorithm("HTTPS");
+        s.setSSLParameters(p);
+        s.setSoTimeout(zeit);
+        s.startHandshake();
+        return s;
+    }
 
     private static String q(String s) { return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"") + "\""; }
 
