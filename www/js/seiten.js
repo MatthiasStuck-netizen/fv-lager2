@@ -199,7 +199,7 @@
     if (s.aus || s.alter < 0 || s.alter > 15000) return '0';
     return s.genutzt + '<small>/' + s.sichtbar + '</small>';
   }
-  function satGuete(s) { return !s || s.aus || s.alter < 0 || s.alter > 15000 ? 'kein' : s.genutzt >= 8 ? 'gut' : s.genutzt >= 4 ? 'mittel' : 'schlecht'; }
+  function satGuete(s) { return 'sq-' + (!s || s.aus || s.alter < 0 || s.alter > 15000 ? 'kein' : s.genutzt >= 8 ? 'gut' : s.genutzt >= 4 ? 'mittel' : 'schlecht'); }
   setInterval(function () {
     var k = document.querySelectorAll('.satknopf'); if (!k.length) return;
     var t = satText(), g = satGuete(B.satelliten());
