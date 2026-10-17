@@ -95,8 +95,9 @@
     var st = B.extra('aisStand', '');
     if (!st || !st.ok) return;
     aisStand = { zustand: st.zustand, fehler: st.fehler || '', zeit: Date.now(), nachrichten: st.nachrichten };
+    function ais(t) { return String(t || '').replace(/@+/g, ' ').replace(/\s+/g, ' ').trim(); }
     schiffe = (st.schiffe || []).map(function (x) {
-      return { mmsi: x[0], lat: x[1], lon: x[2], sog: x[3], cog: x[4], kurs: x[5], name: x[6] || '', rufz: x[7] || '', typ: x[8] || 0, ziel: x[9] || '', status: x[10], laenge: x[11], breite: x[12], imo: x[13] || '', tiefgang: x[14] || 0, eta: x[15] || '', zeit: x[16], klasseB: !!x[17] };
+      return { mmsi: x[0], lat: x[1], lon: x[2], sog: x[3], cog: x[4], kurs: x[5], name: ais(x[6]), rufz: ais(x[7]), typ: x[8] || 0, ziel: ais(x[9]), status: x[10], laenge: x[11], breite: x[12], imo: x[13] || '', tiefgang: x[14] || 0, eta: x[15] || '', zeit: x[16], klasseB: !!x[17] };
     });
     schiffNach = {}; schiffe.forEach(function (s) { schiffNach[s.mmsi] = s; });
     zeichnen();
@@ -136,13 +137,13 @@
       segmente.forEach(function (sg) {
         var p = position(sg, t); if (!p || gesehen[sg.id]) return;
         gesehen[sg.id] = 1; sg.jetzt = p;
-        var faehre = sg.art === 'faehre';
-        l.push({ typ: faehre ? 'faehre' : 'zug', id: sg.id, lat: p.lat, lon: p.lon, kurs: p.kurs, farbe: sg.farbe, name: sg.name + (sg.verz >= 3 ? ' +' + sg.verz : ''), rang: sg.art === 'fern' ? 3 : faehre ? 2 : 1 });
+        var faehre = sg.art === 'faehre', bild = faehre ? 'schiff' : sg.art === 'bus' ? 'bus' : sg.art === 'tram' || sg.art === 'ubahn' ? 'tram' : sg.art === 'flug' ? 'flug' : 'zug';
+        l.push({ typ: faehre ? 'faehre' : 'zug', sym: bild, id: sg.id, lat: p.lat, lon: p.lon, kurs: p.kurs, farbe: sg.farbe, name: sg.name + (sg.verz >= 3 ? ' +' + sg.verz : ''), rang: sg.art === 'fern' ? 3 : faehre ? 2 : 1 });
       });
     }
     if (schiffAn()) schiffe.forEach(function (s) {
       var k = s.kurs != null ? s.kurs : (s.sog > 0.5 && s.cog != null ? s.cog : null);
-      l.push({ typ: 'schiff', id: s.mmsi, lat: s.lat, lon: s.lon, kurs: k, farbe: schiffArt(s.typ)[1], name: s.name || ('MMSI ' + s.mmsi), rang: 1 });
+      l.push({ typ: 'schiff', sym: 'schiff', id: s.mmsi, lat: s.lat, lon: s.lon, kurs: k, farbe: schiffArt(s.typ)[1], name: s.name || ('MMSI ' + s.mmsi), rang: 1 });
     });
     K.live(l, tipp);
   }

@@ -330,25 +330,39 @@
   /* ---------- Züge und Schiffe live: Symbole mit Kennung, antippbar ----------
    * Quelle „live“: Punkte mit { art: zug|fern|sbahn|bus|tram|faehre|schiff, farbe, kurs (Grad oder -1), name, id } */
   var liveTipp = null, liveGehoert = null, liveDaten = { type: 'FeatureCollection', features: [] };
-  /** Farbiges Symbol (Pfeil = fährt in diese Richtung, Kreis = Richtung unbekannt) mit dunklem Rand, als Bild für die Karte */
-  function pfeilBild(groesse, form, farbe) {
-    var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'), n = groesse * r; c.width = c.height = n;
-    var g = c.getContext('2d'), m = n / 2;
-    g.beginPath();
-    if (form === 'schiff') { g.moveTo(m, n * 0.06); g.lineTo(n * 0.78, n * 0.62); g.lineTo(n * 0.7, n * 0.92); g.lineTo(n * 0.3, n * 0.92); g.lineTo(n * 0.22, n * 0.62); }
-    else if (form === 'zug') { g.moveTo(m, n * 0.05); g.lineTo(n * 0.86, n * 0.5); g.lineTo(n * 0.86, n * 0.92); g.lineTo(n * 0.14, n * 0.92); g.lineTo(n * 0.14, n * 0.5); }
-    else { g.arc(m, m, n * 0.36, 0, Math.PI * 2); }
-    g.closePath();
-    g.fillStyle = farbe; g.fill();
-    g.lineWidth = 2.2 * r; g.strokeStyle = K.hell() ? '#ffffff' : '#05080b'; g.stroke();
-    if (form !== 'punkt') { g.beginPath(); g.arc(m, n * (form === 'schiff' ? 0.62 : 0.6), n * 0.09, 0, Math.PI * 2); g.fillStyle = K.hell() ? '#ffffff' : '#05080b'; g.fill(); }
-    var d = g.getImageData(0, 0, n, n);
-    return { bild: { width: n, height: n, data: new Uint8Array(d.data.buffer) }, r: r };
+  /* Symbole für Züge, Busse, Straßenbahnen und Schiffe: runde Plakette in der Farbe der Linie bzw. des Schiffstyps mit
+   * weißem Bild (Zug, Bus, Bahn, Schiff) – das Bild steht immer aufrecht. Fährt das Fahrzeug, zeigt ein kleiner Pfeil am Rand die Richtung. */
+  var SYM_DATEN = {};
+  function symPfade(name) {
+    if (SYM_DATEN[name]) return SYM_DATEN[name];
+    var l = [], m, re = /\sd="([^"]+)"/g, t = (FV.SYMBOLE && FV.SYMBOLE[name]) || '';
+    while ((m = re.exec(t))) { try { l.push(new Path2D(m[1])); } catch (e) {} }
+    return (SYM_DATEN[name] = l);
   }
-  var bildFarben = {};
-  function bild(form, farbe) {
-    var id = 'fv-' + form + '-' + farbe + (K.hell() ? '-h' : '');
-    if (K.map && !K.map.hasImage(id)) { try { var b = pfeilBild(form === 'punkt' ? 20 : 30, form, farbe); K.map.addImage(id, b.bild, { pixelRatio: b.r }); } catch (e) {} }
+  function hellFarbe(f) { var c = /^#?([0-9a-f]{6})$/i.exec(f || ''); if (!c) return false; var n = parseInt(c[1], 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) > 175; }
+  function leinwand(groesse) { var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'); c.width = c.height = groesse * r; return { c: c, g: c.getContext('2d'), r: r, n: groesse * r }; }
+  function alsBild(l) { var d = l.g.getImageData(0, 0, l.n, l.n); return { bild: { width: l.n, height: l.n, data: new Uint8Array(d.data.buffer) }, r: l.r }; }
+  var PLAKETTE = 34, PFEILFELD = 54;
+  function plakette(sym, farbe) {
+    var l = leinwand(PLAKETTE), g = l.g, n = l.n, m = n / 2, rand = K.hell() ? '#ffffff' : '#05080b';
+    g.beginPath(); g.arc(m, m, n * 0.42, 0, Math.PI * 2); g.fillStyle = farbe; g.fill();
+    g.lineWidth = 2 * l.r; g.strokeStyle = rand; g.stroke();
+    var pf = symPfade(sym), gr = n * 0.56 / 24;
+    g.save(); g.translate(m - 12 * gr, m - 12 * gr); g.scale(gr, gr);
+    g.fillStyle = hellFarbe(farbe) ? '#0b0f15' : '#ffffff';
+    pf.forEach(function (p) { g.fill(p); });
+    g.restore();
+    return alsBild(l);
+  }
+  function pfeil(farbe) {
+    var l = leinwand(PFEILFELD), g = l.g, n = l.n, m = n / 2, r = l.r;
+    g.beginPath(); g.moveTo(m, 1.5 * r); g.lineTo(m + 8 * r, 12.5 * r); g.lineTo(m - 8 * r, 12.5 * r); g.closePath();
+    g.fillStyle = farbe; g.fill(); g.lineWidth = 1.6 * r; g.strokeStyle = K.hell() ? '#ffffff' : '#05080b'; g.stroke();
+    return alsBild(l);
+  }
+  function bild(art, sym, farbe) {
+    var id = 'fv-' + art + '-' + sym + '-' + farbe + (K.hell() ? '-h' : '');
+    if (K.map && !K.map.hasImage(id)) { try { var b = art === 'pfeil' ? pfeil(farbe) : plakette(sym, farbe); K.map.addImage(id, b.bild, { pixelRatio: b.r }); } catch (e) {} }
     return id;
   }
   function bilder() {}
@@ -356,12 +370,15 @@
     var map = K.map; if (!map) return;
     var hell = K.hell(), glyphen = !!map.getStyle().glyphs, font = schrift(map);
     if (!map.getSource('live')) map.addSource('live', { type: 'geojson', data: liveDaten });
+    var groesse = ['interpolate', ['linear'], ['zoom'], 5, 0.62, 9, 0.85, 13, 1.1];
+    if (!map.getLayer('live-richtung')) map.addLayer({ id: 'live-richtung', type: 'symbol', source: 'live', filter: ['==', ['get', 'hatKurs'], true],
+      layout: { 'icon-image': ['get', 'pfeil'], 'icon-size': groesse, 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'] }, paint: {} });
     if (!map.getLayer('live-symbol')) map.addLayer({ id: 'live-symbol', type: 'symbol', source: 'live',
-      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 9, 0.85, 13, 1.1], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
+      layout: { 'icon-image': ['get', 'bild'], 'icon-size': groesse, 'icon-rotation-alignment': 'viewport',
         'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'] },
       paint: {} });
     if (glyphen && font && !map.getLayer('live-name')) map.addLayer({ id: 'live-name', type: 'symbol', source: 'live', minzoom: 8.5,
-      layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.25], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
+      layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.15], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
       paint: { 'text-color': ['get', 'farbe'], 'text-halo-color': hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)', 'text-halo-width': 1.6 } });
     if (liveGehoert !== map) {
       liveGehoert = map;
@@ -384,10 +401,10 @@
     liveListe = liste || [];
     K.wenn(function () {
       liveDaten = { type: 'FeatureCollection', features: liveListe.map(function (x) {
-        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6';
+        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6', sym = x.sym || (x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff' : 'zug');
         return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] },
-          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, rang: x.rang || 0,
-            bild: bild(kurs == null ? 'punkt' : x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff' : 'zug', farbe) } };
+          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, hatKurs: kurs != null, rang: x.rang || 0,
+            bild: bild('plakette', sym, farbe), pfeil: kurs == null ? '' : bild('pfeil', '', farbe) } };
       }) };
       var q = K.map.getSource('live'); if (q) q.setData(liveDaten);
     });
@@ -418,15 +435,29 @@
     marke('start', p && p.lon, p && p.lat, el('', 'm-start'), { anchor: 'center' });
     marke('startschild', p && schild ? p.lon : null, p && p.lat, el(schild || '', 'm-schild'), { anchor: links ? 'right' : 'left', offset: [links ? -18 : 18, 0] });
   };
+  var TRANSPORTER = '<svg viewBox="0 0 44 66" width="44" height="66"><ellipse cx="22" cy="34" rx="20" ry="31" fill="#1a73e8" opacity=".28"/>' +
+    '<rect x="6.5" y="15.5" width="4.5" height="3.2" rx="1.2" fill="#1a56c4"/><rect x="33" y="15.5" width="4.5" height="3.2" rx="1.2" fill="#1a56c4"/>' +
+    '<path d="M10 13c0-6.5 4.5-10 12-10s12 3.5 12 10v46c0 3-2 5-5 5H15c-3 0-5-2-5-5z" fill="#ffffff" stroke="#1a56c4" stroke-width="2.2"/>' +
+    '<path d="M12.6 17.5c0-2.2 4-3.8 9.4-3.8s9.4 1.6 9.4 3.8l-1.4 5.3H14z" fill="#14315e"/>' +
+    '<path d="M11 26.5h22" stroke="#8d99ab" stroke-width="1.8"/><path d="M14 33.5h16M14 40.5h16M14 47.5h16M14 54.5h16" stroke="#cfd6e0" stroke-width="1.5" stroke-linecap="round"/>' +
+    '<rect x="12.8" y="6.3" width="5" height="2.6" rx="1.3" fill="#ffd95a"/><rect x="26.2" y="6.3" width="5" height="2.6" rx="1.3" fill="#ffd95a"/>' +
+    '<rect x="12" y="60.6" width="4.5" height="2" rx="1" fill="#e2231a"/><rect x="27.5" y="60.6" width="4.5" height="2" rx="1" fill="#e2231a"/></svg>';
+  /** Ist als Fahrzeug ein Transporter gewählt? (Name des Fahrzeugs bzw. Einstellung PKW/Transporter) */
+  K.istTransporter = function () {
+    var e = (FV.app && FV.app.e) || {};
+    if (e.kmArt === 'transporter') return true;
+    if (e.kmArt === 'pkw') return false;
+    return /transporter|sprinter|crafter|ducato|transit|movano|master|boxer|jumper|vito|kasten|lkw|daily|trafic|vivaro|jumpy|expert|proace/i.test(e.fahrzeugName || '');
+  };
   var PFEIL = '<svg viewBox="0 0 44 44" width="40" height="40"><circle cx="22" cy="22" r="20" fill="#1a73e8" opacity=".25"/><circle cx="22" cy="22" r="13" fill="#fff" stroke="#1a56c4" stroke-width="2"/><path d="M22 12l7 17-7-4-7 4z" fill="#1a56c4"/></svg>';
   var autoArt = '';
   K.auto = function (p, kurs) {
     if (!p) { marke('auto'); autoArt = ''; return; }
-    var art = FV.F && FV.F.aktiv && FV.F.modus && FV.F.modus() !== 'auto' ? 'pfeil' : 'auto';
+    var art = FV.F && FV.F.aktiv && FV.F.modus && FV.F.modus() !== 'auto' ? 'pfeil' : K.istTransporter() ? 'transporter' : 'auto';
     if (marken.auto && art !== autoArt) marke('auto');
     autoArt = art;
     if (marken.auto) { marken.auto.setLngLat([p.lon, p.lat]); marken.auto.setRotation(kurs || 0); return; }
-    var m = marke('auto', p.lon, p.lat, el(art === 'pfeil' ? PFEIL : AUTO, 'm-auto'), { anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'viewport' });
+    var m = marke('auto', p.lon, p.lat, el(art === 'pfeil' ? PFEIL : art === 'transporter' ? TRANSPORTER : AUTO, 'm-auto'), { anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'viewport' });
     if (m) m.setRotation(kurs || 0);
   };
   K.pois = function (liste, beiTipp) {
