@@ -369,7 +369,7 @@
   }
   var umgebungPunkte = [];
   function umgebungKarte(punkte) { umgebungPunkte = punkte; bahnhoefeKarte(punkte); apothekenKarte(punkte); aerzteKarte(punkte); flughafenKarte(punkte); haltKarte('bus', punkte); haltKarte('stadt', punkte); netzKarte(punkte); }
-  var EBENEN = [['zuege', 'zug', 'Züge live'], ['schiffe', 'schiff', 'Schiffe live (AIS)'], ['bahnnetz', 'zug', 'Bahnstrecken'], ['seewege', 'schiff', 'Schiffs- und Fährstrecken'], ['flugzeuge', 'flug', 'Flugzeuge live'], ['flugrouten', 'route', 'Flugstrecken'], ['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
+  var EBENEN = [['zuege', 'zug', 'Züge live'], ['schiffe', 'schiff', 'Schiffe live (AIS)'], ['bahnnetz', 'zug', 'Bahnstrecken'], ['seewege', 'schiff', 'Schiffs- und Fährstrecken'], ['flugzeuge', 'flug', 'Flugzeuge live'], ['flugrouten', 'route', 'Flugstrecken'], ['ebike', 'ebike', 'E-Bike-Stationen'], ['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
   function ebeneNeu(k) {
     var e = A().e, pk = umgebungPunkte.length ? umgebungPunkte : [B.ort(), F.ziel], an = e[k] !== false;
     if (k === 'bahnhof') { if (!an) K.bahnhoefe([]); else bahnhoefeKarte(pk); }
@@ -380,6 +380,7 @@
     if (k === 'hhnetz') { if (!an) K.netz(null); else netzKarte(pk, true); }
     if (k === 'bahnnetz' || k === 'seewege' || k === 'flugrouten') K.streckenNeu();
     if (k === 'flugzeuge' && FV.FL) FV.FL.live();
+    if (k === 'ebike' && FV.EB) FV.EB.neu(an);
     if ((k === 'zuege' || k === 'schiffe') && FV.LIVE) { FV.LIVE.neu(); if (k === 'schiffe' && an) schiffHinweis(); }
   }
   /** Schiffe live brauchen den Android-Teil 4.4 und einen aisstream-Schlüssel – sonst kurz sagen, warum keine kommen */
@@ -733,6 +734,7 @@
       '<button class="rand knopf" data-tun="haltestellen" data-art="bus">' + sym('bus') + '<span>Bushaltestellen<small>Abfahrten live</small></span></button>' +
       '<button class="rand knopf" data-tun="hhnetz">' + sym('zug') + '<span>Hamburg-Netz<small>S-Bahn und U-Bahn</small></span></button>' +
       '<button class="rand knopf" data-tun="apotheken">' + sym('apotheke') + '<span>Apotheken<small>mit Notdienst</small></span></button>' +
+      '<button class="rand knopf" data-tun="ebikes">' + sym('ebike') + '<span>E-Bike-Stationen<small>Laden und Verleih</small></span></button>' +
       '<button class="rand knopf" data-tun="aerzte">' + sym('arzt') + '<span>Ärzte<small>mit Notdienst</small></span></button>' +
       '<button class="rand knopf" data-tun="flughaefen">' + sym('flug') + '<span>Flughäfen<small>Flüge live</small></span></button></div>');
   };
@@ -1766,6 +1768,7 @@
     var e = A().e, f = $('#auswfeld'); if (!f) return;
     f.innerHTML = '<button data-tun="fahrt-schalter" data-k="wc" class="' + (e.wc !== false ? 'an' : '') + '">' + sym('wc') + 'Parkplätze mit WC<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="laden" class="' + (e.laden !== false ? 'an' : '') + '">' + sym('laden') + 'E-Ladesäulen<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="ebike" class="' + (e.ebike !== false ? 'an' : '') + '">' + sym('ebike') + 'E-Bike-Stationen<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="essen" class="' + (e.essen !== false ? 'an' : '') + '">' + sym('kaffee') + 'Bäcker und Café<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="tanken" class="' + (e.tanken !== false ? 'an' : '') + '">' + sym('tanken') + 'Tankstellen (Diesel)<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="bahnhof" class="' + (e.bahnhof !== false ? 'an' : '') + '">' + sym('zug') + 'Bahnhöfe<i></i></button>' +
@@ -1781,7 +1784,7 @@
       '<button data-tun="fahrt-schalter" data-k="ansage" class="' + (e.ansage !== false ? 'an' : '') + '">' + sym('ton') + 'Sprachansage<i></i></button>';
   }
   Tun['fahrt-auswahl'] = function () { var f = $('#auswfeld'); f.hidden = !f.hidden; };
-  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz|bahnnetz|seewege|flugrouten|flugzeuge)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
+  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz|bahnnetz|seewege|flugrouten|flugzeuge|ebike)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
   Tun['fahrt-info'] = function () { var f = $('#finfo'); f.hidden = !f.hidden; if (!f.hidden) $('#fuhr').textContent = G.uhr(); };
   Tun['fahrt-voll'] = function () { A().vollbild(!document.body.classList.contains('vollbild')); };
   Tun['fahrt-mitte'] = function () { F.zentrieren(); };
@@ -2153,9 +2156,10 @@
       '<div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('pieper', 'warnung', 'Warnpieper bei zu schnellem Fahren', 'kurzer Piepton ab 6 km/h über dem Tempolimit') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '<button class="schalter" data-tun="stimmen">' + sym('stimme') + '<span>Stimme auswählen<small>' + h(stimmeName(e.stimme)) + '</small></span>' + sym('rechts') + '</button></div>' +
       '<div class="block"><h2>' + sym('ampel') + 'Verkehr</h2>' + sch('verkehr', 'warnung', 'Verkehrsmeldungen', 'Stau, Unfall, Sperrung, Baustelle – mit Ansage') + sch('umleiten', 'umleitung', 'Automatisch umleiten', 'bei Sperrung, Unfall oder Stau die schnellste Umleitung') +
         '<p class="klein2" style="margin:6px 2px 0">Quellen: ' + h(FV.V.quellen()) + (FV.V.schluessel() ? ' – alle Straßen.' : ' – nur Autobahnen. Für Landstraßen und Orte trägt das Büro in der Verwaltung (Einstellungen → App) einen kostenlosen TomTom-Schlüssel ein.') + '</p></div>' +
-      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + sch('bahnhof', 'zug', 'Bahnhöfe', 'antippen: Live-Abfahrten mit Gleis und Verspätung') + sch('stadt', 'tram', 'U- und S-Bahn-Stationen', 'antippen: Abfahrten live') + sch('bus', 'bus', 'Bushaltestellen', 'Namen ab naher Ansicht · antippen: Abfahrten live') + sch('hhnetz', 'zug', 'Hamburger S-/U-Bahn-Netz', 'Linien farbig, sobald Start oder Ziel bei Hamburg liegt') + sch('apotheke', 'apotheke', 'Apotheken', 'grün = hat gerade Notdienst') + sch('arzt', 'arzt', 'Ärzte', 'rot = Notaufnahme / Bereitschaftspraxis') + sch('flughafen', 'flug', 'Flughäfen', 'antippen: Starts und Landungen live') +
+      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('ebike', 'ebike', 'E-Bike-Stationen', 'Laden und Verleih für E-Bikes · antippen: Details und Hinfahren') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + sch('bahnhof', 'zug', 'Bahnhöfe', 'antippen: Live-Abfahrten mit Gleis und Verspätung') + sch('stadt', 'tram', 'U- und S-Bahn-Stationen', 'antippen: Abfahrten live') + sch('bus', 'bus', 'Bushaltestellen', 'Namen ab naher Ansicht · antippen: Abfahrten live') + sch('hhnetz', 'zug', 'Hamburger S-/U-Bahn-Netz', 'Linien farbig, sobald Start oder Ziel bei Hamburg liegt') + sch('apotheke', 'apotheke', 'Apotheken', 'grün = hat gerade Notdienst') + sch('arzt', 'arzt', 'Ärzte', 'rot = Notaufnahme / Bereitschaftspraxis') + sch('flughafen', 'flug', 'Flughäfen', 'antippen: Starts und Landungen live') +
         sch('bahnnetz', 'zug', 'Bahnstrecken', 'Gleise aller Bahnlinien auf der Karte') + sch('seewege', 'schiff', 'Schiffs- und Fährstrecken', 'Fähren und Schiffslinien auf See, Flüssen und Seen') +
         sch('flugrouten', 'route', 'Flugstrecken', 'echte Flüge ab dem gewählten Flughafen bzw. des angetippten Flugzeugs') + sch('flugzeuge', 'flug', 'Flugzeuge live', 'Flugzeuge in der Luft über dem Kartenausschnitt (ADS-B)') +
+        '<button class="schalter" data-tun="ebikes">' + sym('ebike') + '<span>E-Bike-Stationen in der Nähe<small>Liste nach Entfernung</small></span>' + sym('rechts') + '</button>' +
         '<button class="schalter" data-tun="bahnhoefe">' + sym('zug') + '<span>Bahnhöfe in der Nähe<small>Abfahrtstafeln öffnen</small></span>' + sym('rechts') + '</button>' +
         '<button class="schalter" data-tun="haltestellen" data-art="stadt">' + sym('tram') + '<span>U- und S-Bahn in der Nähe<small>Abfahrten live</small></span>' + sym('rechts') + '</button>' +
         '<button class="schalter" data-tun="haltestellen" data-art="bus">' + sym('bus') + '<span>Bushaltestellen in der Nähe<small>Abfahrten live</small></span>' + sym('rechts') + '</button>' +
@@ -2278,6 +2282,7 @@
     var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); el.classList.toggle('an', e[k] !== false);
     if (/^(bahnnetz|seewege|flugrouten)$/.test(k)) K.streckenNeu();
     if (k === 'flugzeuge' && FV.FL) FV.FL.live();
+    if (k === 'ebike' && FV.EB) FV.EB.neu();
   };
   Tun.design = function (el) {
     A().e.design = el.getAttribute('data-d'); A().speichern();

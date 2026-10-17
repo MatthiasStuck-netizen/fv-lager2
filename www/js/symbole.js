@@ -125,3 +125,4 @@ FV.SYMBOLE.verpasst = '<path d="M19.59 7 12 14.59 6.41 9H11V7H3v8h2v-4.59l7 7 9-
 FV.SYMBOLE.blatt = '<path d="M6.05 8.05a7.007 7.007 0 0 0-.02 9.88c1.47-3.4 4.09-6.24 7.36-7.93A15.95 15.95 0 0 0 8.1 16.32c2.6 1.23 5.8.78 7.95-1.37C19.53 11.47 20 2 20 2S10.53 2.47 6.05 8.05"/>';
 FV.SYMBOLE.lineal = '<path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2m0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2z"/>';
 FV.SYMBOLE.antworten = '<path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11"/>';
+FV.SYMBOLE.ebike = FV.SYMBOLE.fahrrad.replace('"/>', 'M6 .5 2.2 5.6h2.4L3.7 9.5 7.8 4.1H5.3L6.4.5z"/>');

@@ -866,3 +866,11 @@ html.hell .vollzeiten { background: rgba(255,255,255,.98); color: #1d1b17; box-s
 #blatt h2 button[data-tun=sat-zurueck] { margin-left: auto; } #blatt h2 button[data-tun=sat-zurueck] + button { margin-left: 4px; }
 html.hell .himmel .hk-rand { fill: #eef3f8; stroke: #b9c3ce; } html.hell .himmel .hk-ring { stroke: #d3dae2; } html.hell .himmel .hk-sat text { fill: #1d1b17; } html.hell .himmel .hk-sat.an text { fill: #05080b; }
 html.hell .satsignal { background: linear-gradient(to top, #1d7a3c var(--s), #e1e6ec var(--s)); }
+
+/* E-Bike-Stationen: grün = Laden, blau = Verleih; Name ab naher Ansicht */
+.m-ebike { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.m-ebike .sym { width: 26px; height: 26px; padding: 3px; box-sizing: border-box; border-radius: 50%; background: #12a150; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.6); }
+.m-ebike.verleih .sym { background: #0b7bd6; }
+.m-ebike span { display: none; background: rgba(255,255,255,.92); color: #0d5c30; font: 700 11.5px/1.2 var(--schmal); padding: 2px 6px; border-radius: 6px; border: 1.5px solid #12a150; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.m-ebike.verleih span { color: #0b4f8a; border-color: #0b7bd6; }
+.ebnah .m-ebike span { display: block; }
