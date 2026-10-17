@@ -95,8 +95,9 @@
     var st = B.extra('aisStand', '');
     if (!st || !st.ok) return;
     aisStand = { zustand: st.zustand, fehler: st.fehler || '', zeit: Date.now(), nachrichten: st.nachrichten };
+    function ais(t) { return String(t || '').replace(/@+/g, ' ').replace(/\s+/g, ' ').trim(); }
     schiffe = (st.schiffe || []).map(function (x) {
-      return { mmsi: x[0], lat: x[1], lon: x[2], sog: x[3], cog: x[4], kurs: x[5], name: x[6] || '', rufz: x[7] || '', typ: x[8] || 0, ziel: x[9] || '', status: x[10], laenge: x[11], breite: x[12], imo: x[13] || '', tiefgang: x[14] || 0, eta: x[15] || '', zeit: x[16], klasseB: !!x[17] };
+      return { mmsi: x[0], lat: x[1], lon: x[2], sog: x[3], cog: x[4], kurs: x[5], name: ais(x[6]), rufz: ais(x[7]), typ: x[8] || 0, ziel: ais(x[9]), status: x[10], laenge: x[11], breite: x[12], imo: x[13] || '', tiefgang: x[14] || 0, eta: x[15] || '', zeit: x[16], klasseB: !!x[17] };
     });
     schiffNach = {}; schiffe.forEach(function (s) { schiffNach[s.mmsi] = s; });
     zeichnen();
@@ -120,6 +121,15 @@
     if (t >= 20 && t <= 29) return ['Bodeneffektfahrzeug', '#9aa3ad'];
     return ['Schiff', '#9fb3c8'];
   }
+  /** Welche Silhouette: Fähre/Passagierschiff, Frachter, Tanker, Segelboot, kleines Boot (Sport, Lotse, Schlepper, Fischer …), sonst Schiff */
+  function schiffForm(t) {
+    if (t >= 60 && t <= 69) return 'schiff-faehre';
+    if (t >= 70 && t <= 79) return 'schiff-fracht';
+    if (t >= 80 && t <= 89) return 'schiff-tanker';
+    if (t === 36) return 'schiff-segel';
+    if (t === 37 || t === 30 || t === 31 || t === 32 || t === 50 || t === 51 || t === 52 || t === 53 || t === 55 || (t >= 40 && t <= 49)) return 'schiff-klein';
+    return 'schiff-sonst';
+  }
   var STATUS = ['in Fahrt (Maschine)', 'vor Anker', 'manövrierunfähig', 'eingeschränkt manövrierfähig', 'tiefgangbehindert', 'festgemacht', 'auf Grund', 'beim Fischen', 'unter Segeln', '', '', 'schleppt', 'schiebt', '', 'AIS-SART (Notfall)', ''];
   var MID = { 211: 'Deutschland', 218: 'Deutschland', 244: 'Niederlande', 245: 'Niederlande', 246: 'Niederlande', 219: 'Dänemark', 220: 'Dänemark', 205: 'Belgien', 226: 'Frankreich', 227: 'Frankreich', 228: 'Frankreich',
     232: 'Großbritannien', 233: 'Großbritannien', 234: 'Großbritannien', 235: 'Großbritannien', 257: 'Norwegen', 258: 'Norwegen', 259: 'Norwegen', 265: 'Schweden', 266: 'Schweden', 230: 'Finnland', 261: 'Polen',
@@ -136,13 +146,13 @@
       segmente.forEach(function (sg) {
         var p = position(sg, t); if (!p || gesehen[sg.id]) return;
         gesehen[sg.id] = 1; sg.jetzt = p;
-        var faehre = sg.art === 'faehre';
-        l.push({ typ: faehre ? 'faehre' : 'zug', id: sg.id, lat: p.lat, lon: p.lon, kurs: p.kurs, farbe: sg.farbe, name: sg.name + (sg.verz >= 3 ? ' +' + sg.verz : ''), rang: sg.art === 'fern' ? 3 : faehre ? 2 : 1 });
+        var faehre = sg.art === 'faehre', bild = faehre ? 'schiff-faehre' : sg.art === 'bus' ? 'bus' : sg.art === 'tram' || sg.art === 'ubahn' ? 'tram' : sg.art === 'flug' ? 'flug' : 'zug';
+        l.push({ typ: faehre ? 'faehre' : 'zug', sym: bild, id: sg.id, lat: p.lat, lon: p.lon, kurs: p.kurs, farbe: sg.farbe, name: sg.name + (sg.verz >= 3 ? ' +' + sg.verz : ''), rang: sg.art === 'fern' ? 3 : faehre ? 2 : 1 });
       });
     }
     if (schiffAn()) schiffe.forEach(function (s) {
       var k = s.kurs != null ? s.kurs : (s.sog > 0.5 && s.cog != null ? s.cog : null);
-      l.push({ typ: 'schiff', id: s.mmsi, lat: s.lat, lon: s.lon, kurs: k, farbe: schiffArt(s.typ)[1], name: s.name || ('MMSI ' + s.mmsi), rang: 1 });
+      l.push({ typ: 'schiff', sym: schiffForm(s.typ), id: s.mmsi, lat: s.lat, lon: s.lon, kurs: k, farbe: schiffArt(s.typ)[1], name: s.name || ('MMSI ' + s.mmsi), rang: 1 });
     });
     K.live(l, tipp);
   }

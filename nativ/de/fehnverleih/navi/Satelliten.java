@@ -50,12 +50,19 @@ public final class Satelliten {
 
     private static void auswerten(GnssStatus g) {
         int n = g.getSatelliteCount(), genutzt = 0;
+        StringBuilder liste = new StringBuilder();   // je Satellit: [System, Nummer, genutzt, Signal dB-Hz, Höhe über Horizont °, Richtung °, Frequenz MHz]
         int[] sicht = new int[NAMEN.length], nutz = new int[NAMEN.length];
         float snrSumme = 0; int snrZahl = 0;
         for (int i = 0; i < n; i++) {
             int t = g.getConstellationType(i);
             if (t < 0 || t >= NAMEN.length) t = 0;
             sicht[t]++;
+            if (liste.length() > 0) liste.append(',');
+            float fq = 0;
+            if (Build.VERSION.SDK_INT >= 26 && g.hasCarrierFrequencyHz(i)) fq = g.getCarrierFrequencyHz(i) / 1e6f;
+            liste.append('[').append(t).append(',').append(g.getSvid(i)).append(',').append(g.usedInFix(i) ? 1 : 0).append(',')
+                 .append(Math.round(g.getCn0DbHz(i) * 10) / 10.0).append(',').append(Math.round(g.getElevationDegrees(i) * 10) / 10.0).append(',')
+                 .append(Math.round(g.getAzimuthDegrees(i) * 10) / 10.0).append(',').append(Math.round(fq * 100) / 100.0).append(']');
             if (g.usedInFix(i)) {
                 genutzt++; nutz[t]++;
                 float s = g.getCn0DbHz(i);
@@ -72,7 +79,7 @@ public final class Satelliten {
             erst = false;
             b.append('"').append(NAMEN[t]).append("\":[").append(nut(nutz, t)).append(',').append(sicht[t]).append(']');
         }
-        b.append("}}");
+        b.append("},\"liste\":[").append(liste).append("]}");
         stand = b.toString();
         zeit = System.currentTimeMillis();
     }

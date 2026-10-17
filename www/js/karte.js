@@ -330,25 +330,108 @@
   /* ---------- Züge und Schiffe live: Symbole mit Kennung, antippbar ----------
    * Quelle „live“: Punkte mit { art: zug|fern|sbahn|bus|tram|faehre|schiff, farbe, kurs (Grad oder -1), name, id } */
   var liveTipp = null, liveGehoert = null, liveDaten = { type: 'FeatureCollection', features: [] };
-  /** Farbiges Symbol (Pfeil = fährt in diese Richtung, Kreis = Richtung unbekannt) mit dunklem Rand, als Bild für die Karte */
-  function pfeilBild(groesse, form, farbe) {
-    var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'), n = groesse * r; c.width = c.height = n;
-    var g = c.getContext('2d'), m = n / 2;
-    g.beginPath();
-    if (form === 'schiff') { g.moveTo(m, n * 0.06); g.lineTo(n * 0.78, n * 0.62); g.lineTo(n * 0.7, n * 0.92); g.lineTo(n * 0.3, n * 0.92); g.lineTo(n * 0.22, n * 0.62); }
-    else if (form === 'zug') { g.moveTo(m, n * 0.05); g.lineTo(n * 0.86, n * 0.5); g.lineTo(n * 0.86, n * 0.92); g.lineTo(n * 0.14, n * 0.92); g.lineTo(n * 0.14, n * 0.5); }
-    else { g.arc(m, m, n * 0.36, 0, Math.PI * 2); }
+  /* Fahrzeuge von oben gesehen – wie Flugzeug und Auto: Bus, Zug, Straßenbahn und Schiffe (Fähre, Frachter, Tanker, Segelboot,
+   * kleines Boot). Die Spitze zeigt nach Norden; auf der Karte dreht sich das Bild in Fahrtrichtung. Farbe = Linie bzw. Schiffsart. */
+  var FELD = 56;
+  function rr(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.lineTo(x + w - r, y); g.quadraticCurveTo(x + w, y, x + w, y + r); g.lineTo(x + w, y + h - r); g.quadraticCurveTo(x + w, y + h, x + w - r, y + h); g.lineTo(x + r, y + h); g.quadraticCurveTo(x, y + h, x, y + h - r); g.lineTo(x, y + r); g.quadraticCurveTo(x, y, x + r, y); g.closePath(); }
+  function fuell(g, f) { g.fillStyle = f; g.fill(); }
+  function kontur(g, rand) { g.lineWidth = 1.5; g.strokeStyle = rand; g.stroke(); }
+  var GLAS = '#1b2b3d';
+  function rumpf(g, k) {   // Schiffsrumpf, Bug oben; k = Größe (1 = groß)
+    var w = 9 * k, top = 28 - 25 * k, unten = 28 + 25 * k, m = 28;
+    g.beginPath(); g.moveTo(m, top);
+    g.bezierCurveTo(m + w * 0.85, top + 10 * k, m + w, top + 17 * k, m + w, top + 24 * k);
+    g.lineTo(m + w, unten - 4 * k); g.quadraticCurveTo(m + w, unten, m + w - 4 * k, unten);
+    g.lineTo(m - w + 4 * k, unten); g.quadraticCurveTo(m - w, unten, m - w, unten - 4 * k);
+    g.lineTo(m - w, top + 24 * k); g.bezierCurveTo(m - w, top + 17 * k, m - w * 0.85, top + 10 * k, m, top);
     g.closePath();
-    g.fillStyle = farbe; g.fill();
-    g.lineWidth = 2.2 * r; g.strokeStyle = K.hell() ? '#ffffff' : '#05080b'; g.stroke();
-    if (form !== 'punkt') { g.beginPath(); g.arc(m, n * (form === 'schiff' ? 0.62 : 0.6), n * 0.09, 0, Math.PI * 2); g.fillStyle = K.hell() ? '#ffffff' : '#05080b'; g.fill(); }
-    var d = g.getImageData(0, 0, n, n);
-    return { bild: { width: n, height: n, data: new Uint8Array(d.data.buffer) }, r: r };
   }
-  var bildFarben = {};
-  function bild(form, farbe) {
-    var id = 'fv-' + form + '-' + farbe + (K.hell() ? '-h' : '');
-    if (K.map && !K.map.hasImage(id)) { try { var b = pfeilBild(form === 'punkt' ? 20 : 30, form, farbe); K.map.addImage(id, b.bild, { pixelRatio: b.r }); } catch (e) {} }
+  function zeichneFahrzeug(g, form, farbe, rand) {
+    if (form === 'bus') {
+      g.fillStyle = rand; g.fillRect(16.3, 8, 3, 2.4); g.fillRect(36.7, 8, 3, 2.4);   // Spiegel
+      rr(g, 19, 4, 18, 48, 4); fuell(g, farbe); kontur(g, rand);
+      rr(g, 20.6, 5.6, 14.8, 4.8, 2); fuell(g, GLAS);                                    // Frontscheibe
+      g.fillStyle = GLAS; g.fillRect(19.9, 12, 1.5, 34); g.fillRect(34.6, 12, 1.5, 34);  // Seitenfenster
+      rr(g, 22.6, 13, 10.8, 31, 2); fuell(g, 'rgba(255,255,255,.22)');                   // Dach
+      rr(g, 24, 16, 8, 6.5, 1.2); fuell(g, '#eef1f4'); rr(g, 24, 35, 8, 5, 1.2); fuell(g, '#eef1f4');   // Klimaanlage
+      rr(g, 21.2, 48.6, 13.6, 2.2, 1); fuell(g, GLAS);                                   // Heckscheibe
+      return;
+    }
+    if (form === 'tram') {
+      rr(g, 21, 3, 14, 50, 6); fuell(g, farbe); kontur(g, rand);
+      rr(g, 22.5, 4.5, 11, 4, 2); fuell(g, GLAS); rr(g, 22.5, 47.5, 11, 4, 2); fuell(g, GLAS);
+      g.fillStyle = rand; g.fillRect(21, 19.5, 14, 1.4); g.fillRect(21, 35.5, 14, 1.4);  // Gelenke
+      rr(g, 25, 10, 6, 6, 1); fuell(g, '#eef1f4'); rr(g, 25, 26, 6, 5, 1); fuell(g, '#eef1f4');
+      g.strokeStyle = rand; g.lineWidth = 1; g.beginPath(); g.moveTo(25, 40); g.lineTo(31, 44); g.moveTo(31, 40); g.lineTo(25, 44); g.stroke();   // Stromabnehmer
+      return;
+    }
+    if (form === 'zug') {
+      g.beginPath(); g.moveTo(22, 15); g.bezierCurveTo(22, 6, 25, 1.5, 28, 1.5); g.bezierCurveTo(31, 1.5, 34, 6, 34, 15);
+      g.lineTo(34, 52.5); g.quadraticCurveTo(34, 54.5, 32, 54.5); g.lineTo(24, 54.5); g.quadraticCurveTo(22, 54.5, 22, 52.5); g.closePath();
+      fuell(g, '#f3f5f7'); kontur(g, rand);
+      g.beginPath(); g.moveTo(23.5, 12.5); g.bezierCurveTo(24, 7.5, 26, 4.2, 28, 4.2); g.bezierCurveTo(30, 4.2, 32, 7.5, 32.5, 12.5); g.closePath(); fuell(g, GLAS);   // Führerstand
+      g.fillStyle = farbe; g.fillRect(22.7, 15, 1.6, 38.5); g.fillRect(31.7, 15, 1.6, 38.5); g.fillRect(22.7, 13.2, 10.6, 2.2);   // Streifen in Linienfarbe
+      g.fillStyle = '#9aa3ad'; g.fillRect(22, 33.6, 12, 1.2);                            // Wagenübergang
+      g.strokeStyle = '#4a525c'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(25.5, 20); g.lineTo(30.5, 26); g.moveTo(30.5, 20); g.lineTo(25.5, 26); g.stroke();   // Stromabnehmer
+      rr(g, 25.5, 40, 5, 8, 1); fuell(g, '#d5dae0');
+      // angehängte Wagen
+      for (var wy = 57; wy < 124; wy += 23) {
+        g.fillStyle = '#4a525c'; g.fillRect(26.5, wy - 2.5, 3, 2.5);                     // Kupplung
+        rr(g, 22, wy, 12, 21, 2); fuell(g, '#f3f5f7'); kontur(g, rand);
+        g.fillStyle = farbe; g.fillRect(22.7, wy + 1, 1.6, 19); g.fillRect(31.7, wy + 1, 1.6, 19);
+        g.fillStyle = GLAS; for (var fy = wy + 2.5; fy < wy + 19; fy += 4) { g.fillRect(24.6, fy, 1.4, 2.4); g.fillRect(30, fy, 1.4, 2.4); }
+        g.fillStyle = '#d5dae0'; g.fillRect(27, wy + 3, 2, 15);                         // Dachlinie
+      }
+      return;
+    }
+    // Schiffe
+    var art = form.replace('schiff-', '');
+    if (art === 'segel') {
+      rumpf(g, 0.62); fuell(g, '#f3f5f7'); kontur(g, rand);
+      g.beginPath(); g.moveTo(28, 18); g.lineTo(34, 37); g.lineTo(28, 37); g.closePath(); fuell(g, farbe); kontur(g, rand);   // Segel
+      g.fillStyle = rand; g.beginPath(); g.arc(28, 22, 1.3, 0, 7); g.fill();
+      rr(g, 25.5, 38, 5, 4, 1); fuell(g, GLAS);
+      return;
+    }
+    if (art === 'klein') {
+      rumpf(g, 0.58); fuell(g, farbe); kontur(g, rand);
+      rr(g, 24.5, 26, 7, 8, 2); fuell(g, '#f3f5f7'); rr(g, 25.3, 26.6, 5.4, 2.2, 1); fuell(g, GLAS);
+      return;
+    }
+    rumpf(g, 1); fuell(g, farbe); kontur(g, rand);
+    if (art === 'faehre') {
+      rr(g, 21.5, 11, 13, 39, 4); fuell(g, '#f3f5f7'); kontur(g, 'rgba(0,0,0,.35)');      // Aufbauten
+      rr(g, 22.5, 12.5, 11, 3.2, 1.5); fuell(g, GLAS);                                   // Brücke
+      g.fillStyle = GLAS; for (var y = 19; y < 47; y += 4) { g.fillRect(22.3, y, 1.4, 2.3); g.fillRect(32.3, y, 1.4, 2.3); }   // Fensterreihen
+      rr(g, 25, 34, 6, 7, 1.5); fuell(g, farbe); kontur(g, rand);                        // Schornstein
+      return;
+    }
+    rr(g, 21, 10, 14, 41, 2); fuell(g, art === 'tanker' ? '#7d2a24' : '#5b636c');       // Deck
+    if (art === 'fracht') {
+      var bunt = ['#c0392b', '#2e86c1', '#f1c40f', '#27ae60', '#e67e22', '#8e44ad'], i = 0;
+      for (var yy = 12; yy < 37; yy += 5) for (var xx = 21.8; xx < 33; xx += 4.2) { g.fillStyle = bunt[(i++ * 7 + Math.round(yy)) % bunt.length]; g.fillRect(xx, yy, 3.8, 4.4); }
+    } else if (art === 'tanker') {
+      g.strokeStyle = '#d6d0c4'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(28, 12); g.lineTo(28, 38); g.stroke();
+      g.fillStyle = '#d6d0c4'; [16, 24, 32].forEach(function (y) { g.fillRect(24, y, 8, 1.3); });
+    } else {
+      g.fillStyle = '#8a9199'; g.fillRect(23, 14, 10, 8); g.fillRect(23, 25, 10, 8);     // Luken
+    }
+    rr(g, 22, 39, 12, 9, 1.5); fuell(g, '#f3f5f7'); kontur(g, 'rgba(0,0,0,.35)');        // Brückenhaus hinten
+    rr(g, 22.8, 39.6, 10.4, 2.4, 1); fuell(g, GLAS);
+    g.fillStyle = farbe; g.beginPath(); g.arc(28, 45, 1.9, 0, 7); g.fill();               // Schornstein
+  }
+  function bild(art, form, farbe) {
+    var id = 'fv-fz-' + form + '-' + farbe + (K.hell() ? '-h' : '');
+    if (K.map && !K.map.hasImage(id)) {
+      try {
+        var r = window.devicePixelRatio > 1 ? 2 : 1, c = document.createElement('canvas'), n = FELD * r, hoch = (form === 'zug' ? 126 : FELD) * r; c.width = n; c.height = hoch;
+        var g = c.getContext('2d'); g.scale(r, r);
+        g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 3;
+        zeichneFahrzeug(g, form, farbe, K.hell() ? '#2a2d31' : '#05080b');
+        var d = g.getImageData(0, 0, n, hoch);
+        K.map.addImage(id, { width: n, height: hoch, data: new Uint8Array(d.data.buffer) }, { pixelRatio: r });
+      } catch (e) {}
+    }
     return id;
   }
   function bilder() {}
@@ -357,11 +440,12 @@
     var hell = K.hell(), glyphen = !!map.getStyle().glyphs, font = schrift(map);
     if (!map.getSource('live')) map.addSource('live', { type: 'geojson', data: liveDaten });
     if (!map.getLayer('live-symbol')) map.addLayer({ id: 'live-symbol', type: 'symbol', source: 'live',
-      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.6, 9, 0.85, 13, 1.1], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
-        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'] },
+      layout: { 'icon-image': ['get', 'bild'], 'icon-size': ['interpolate', ['linear'], ['zoom'], 5, 0.55, 9, 0.8, 13, 1.05, 16, 1.25], 'icon-rotate': ['get', 'dreh'], 'icon-rotation-alignment': 'map',
+        'icon-allow-overlap': true, 'icon-ignore-placement': true, 'symbol-sort-key': ['get', 'rang'],
+        'icon-offset': ['case', ['==', ['get', 'lang'], true], ['literal', [0, 52]], ['literal', [0, 0]]] },
       paint: {} });
     if (glyphen && font && !map.getLayer('live-name')) map.addLayer({ id: 'live-name', type: 'symbol', source: 'live', minzoom: 8.5,
-      layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.25], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
+      layout: { 'text-field': ['get', 'name'], 'text-font': font, 'text-size': ['interpolate', ['linear'], ['zoom'], 9, 10, 14, 12.5], 'text-offset': [0, 1.6], 'text-anchor': 'top', 'text-optional': true, 'text-max-width': 12 },
       paint: { 'text-color': ['get', 'farbe'], 'text-halo-color': hell ? 'rgba(255,255,255,.95)' : 'rgba(0,0,0,.9)', 'text-halo-width': 1.6 } });
     if (liveGehoert !== map) {
       liveGehoert = map;
@@ -384,10 +468,10 @@
     liveListe = liste || [];
     K.wenn(function () {
       liveDaten = { type: 'FeatureCollection', features: liveListe.map(function (x) {
-        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6';
+        var kurs = x.kurs != null && x.kurs >= 0 ? x.kurs : null, farbe = x.farbe || '#1b9fc6', sym = x.sym || (x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff-faehre' : 'zug');
         return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] },
-          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, rang: x.rang || 0,
-            bild: bild(kurs == null ? 'punkt' : x.typ === 'schiff' || x.typ === 'faehre' ? 'schiff' : 'zug', farbe) } };
+          properties: { typ: x.typ, id: String(x.id), name: x.name || '', farbe: farbe, dreh: kurs == null ? 0 : kurs, hatKurs: kurs != null, rang: x.rang || 0,
+            bild: bild('fz', sym, farbe), lang: sym === 'zug' } };
       }) };
       var q = K.map.getSource('live'); if (q) q.setData(liveDaten);
     });
@@ -418,15 +502,29 @@
     marke('start', p && p.lon, p && p.lat, el('', 'm-start'), { anchor: 'center' });
     marke('startschild', p && schild ? p.lon : null, p && p.lat, el(schild || '', 'm-schild'), { anchor: links ? 'right' : 'left', offset: [links ? -18 : 18, 0] });
   };
+  var TRANSPORTER = '<svg viewBox="0 0 44 66" width="44" height="66"><ellipse cx="22" cy="34" rx="20" ry="31" fill="#1a73e8" opacity=".28"/>' +
+    '<rect x="6.5" y="15.5" width="4.5" height="3.2" rx="1.2" fill="#1a56c4"/><rect x="33" y="15.5" width="4.5" height="3.2" rx="1.2" fill="#1a56c4"/>' +
+    '<path d="M10 13c0-6.5 4.5-10 12-10s12 3.5 12 10v46c0 3-2 5-5 5H15c-3 0-5-2-5-5z" fill="#ffffff" stroke="#1a56c4" stroke-width="2.2"/>' +
+    '<path d="M12.6 17.5c0-2.2 4-3.8 9.4-3.8s9.4 1.6 9.4 3.8l-1.4 5.3H14z" fill="#14315e"/>' +
+    '<path d="M11 26.5h22" stroke="#8d99ab" stroke-width="1.8"/><path d="M14 33.5h16M14 40.5h16M14 47.5h16M14 54.5h16" stroke="#cfd6e0" stroke-width="1.5" stroke-linecap="round"/>' +
+    '<rect x="12.8" y="6.3" width="5" height="2.6" rx="1.3" fill="#ffd95a"/><rect x="26.2" y="6.3" width="5" height="2.6" rx="1.3" fill="#ffd95a"/>' +
+    '<rect x="12" y="60.6" width="4.5" height="2" rx="1" fill="#e2231a"/><rect x="27.5" y="60.6" width="4.5" height="2" rx="1" fill="#e2231a"/></svg>';
+  /** Ist als Fahrzeug ein Transporter gewählt? (Name des Fahrzeugs bzw. Einstellung PKW/Transporter) */
+  K.istTransporter = function () {
+    var e = (FV.app && FV.app.e) || {};
+    if (e.kmArt === 'transporter') return true;
+    if (e.kmArt === 'pkw') return false;
+    return /transporter|sprinter|crafter|ducato|transit|movano|master|boxer|jumper|vito|kasten|lkw|daily|trafic|vivaro|jumpy|expert|proace/i.test(e.fahrzeugName || '');
+  };
   var PFEIL = '<svg viewBox="0 0 44 44" width="40" height="40"><circle cx="22" cy="22" r="20" fill="#1a73e8" opacity=".25"/><circle cx="22" cy="22" r="13" fill="#fff" stroke="#1a56c4" stroke-width="2"/><path d="M22 12l7 17-7-4-7 4z" fill="#1a56c4"/></svg>';
   var autoArt = '';
   K.auto = function (p, kurs) {
     if (!p) { marke('auto'); autoArt = ''; return; }
-    var art = FV.F && FV.F.aktiv && FV.F.modus && FV.F.modus() !== 'auto' ? 'pfeil' : 'auto';
+    var art = FV.F && FV.F.aktiv && FV.F.modus && FV.F.modus() !== 'auto' ? 'pfeil' : K.istTransporter() ? 'transporter' : 'auto';
     if (marken.auto && art !== autoArt) marke('auto');
     autoArt = art;
     if (marken.auto) { marken.auto.setLngLat([p.lon, p.lat]); marken.auto.setRotation(kurs || 0); return; }
-    var m = marke('auto', p.lon, p.lat, el(art === 'pfeil' ? PFEIL : AUTO, 'm-auto'), { anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'viewport' });
+    var m = marke('auto', p.lon, p.lat, el(art === 'pfeil' ? PFEIL : art === 'transporter' ? TRANSPORTER : AUTO, 'm-auto'), { anchor: 'center', rotationAlignment: 'map', pitchAlignment: 'viewport' });
     if (m) m.setRotation(kurs || 0);
   };
   K.pois = function (liste, beiTipp) {
