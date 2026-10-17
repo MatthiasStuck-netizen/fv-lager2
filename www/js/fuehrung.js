@@ -173,6 +173,41 @@
     var q = B.ort(); if (q) ort(q);
   }
 
+  /** gefahrene Meter auf der laufenden Route */
+  F.weg = function () { return zustand ? zustand.weg : 0; };
+  /**
+   * Selbst eingetragene Sperrung sp {lat, lon, name}: liegt sie vor uns auf der Route, sofort eine neue Route ohne diese Stelle
+   * (die Sperrung steckt schon in FV.SP.flaechen und damit in jeder Valhalla-Anfrage). Liefert { betroffen, mehr } oder wirft.
+   */
+  F.umfahren = function (sp) {
+    if (!F.aktiv || !F.route || F.route.oev) return Promise.resolve({ betroffen: false });
+    var r = F.route, z = zustand, s = G.einrasten(r, sp);
+    if (!s || s.entf > 25 || s.weg < z.weg - 15) return Promise.resolve({ betroffen: false });
+    var p = B.ort() || (z.letzter && z.letzter.pos);
+    if (!p) return Promise.reject(new Error('Kein Standort'));
+    z.rechnet = true; z.neuUm = Date.now();
+    var restAlt = r.dauer * Math.max(0, (r.laenge - z.weg) / Math.max(1, r.laenge));
+    var opt = { modus: F.modus(), meiden: r.meiden, art: r.art };
+    function frei(nr) { var t = G.einrasten(nr, sp); return !(t && t.entf < 12); }
+    // erst mit Fahrtrichtung; findet Valhalla so keinen Weg (Sperrung direkt vor uns), ohne – dann notfalls Wenden
+    return G.route({ lat: p.lat, lon: p.lon, kurs: p.kurs, tempo: p.tempo }, F.ziel, opt).then(function (nr) {
+      if (frei(nr)) return nr;
+      throw new Error('durch die Sperrung');
+    }).catch(function () {
+      return G.route({ lat: p.lat, lon: p.lon }, F.ziel, opt).then(function (nr) { if (!frei(nr)) throw new Error('Keine Umfahrung gefunden.'); return nr; });
+    }).then(function (nr) {
+      if (zustand === z) z.rechnet = false;
+      if (!F.aktiv || zustand !== z) return { betroffen: true, mehr: 0 };
+      var mehr = Math.round(nr.dauer - restAlt);
+      if (r.meiden) nr.meiden = r.meiden;
+      nr.umleitung = { grund: { art: 'sperrung', gesperrt: true, strasse: sp.name || '', eigen: true }, spart: Infinity, mehr: mehr, um: Date.now() };
+      tauschen(nr);
+      if (o.beiUmleitung) o.beiUmleitung(nr.umleitung, true);
+      if (nr.modus === 'auto' && FV.V) FV.V.laden(nr, 0).then(function () { if (F.route === nr && o.beiVerkehr) o.beiVerkehr(nr.verkehr); }).catch(function () {});
+      return { betroffen: true, mehr: mehr };
+    }, function (e) { if (zustand === z) { z.rechnet = false; z.neuUm = Date.now(); } throw e; });
+  };
+
   /* ---------- Verkehr: Meldungen holen, bei Sperrung/Unfall/Stau die beste Umleitung nehmen ---------- */
   var pruefLauf = false;
   function verkehrPruefen() {

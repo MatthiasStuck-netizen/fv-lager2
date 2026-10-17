@@ -214,7 +214,9 @@
     // Routenart (nur Auto): schnellste (Standard), sparsame (gleichmäßig, ohne Raserei auf der Autobahn), kürzeste
     if (m.costing === 'auto' && opt.art === 'kurz') body.costing_options = { auto: { shortest: true } };
     if (m.costing === 'auto' && opt.art === 'sparsam') body.costing_options = { auto: { top_speed: 95, use_highways: 0.6, use_tolls: 0.5 } };
-    if (opt.meiden && opt.meiden.length) body.exclude_polygons = opt.meiden;
+    var eigene = FV.SP && FV.SP.flaechen ? FV.SP.flaechen() : [];   // selbst eingetragene Sperrungen gelten für jede Route
+    var meiden = (opt.meiden || []).concat(eigene);
+    if (meiden.length) body.exclude_polygons = meiden;
     if (opt.alternativen) body.alternates = opt.alternativen;
     if (m.costing === 'auto' && von.kurs != null && von.kurs >= 0 && von.tempo > 3) { body.locations[0].heading = Math.round(von.kurs); body.locations[0].heading_tolerance = 60; }
     return B.json({ methode: 'POST', url: G.DIENST.valhalla + '/route', kopf: { 'Content-Type': 'application/json' }, daten: JSON.stringify(body), zeit: 20000 }).then(function (j) {
@@ -273,7 +275,7 @@
       });
       if (punkte.length < 2) throw new Error('Keine Route gefunden.');
       var fr = fertigeRoute(punkte, schritte, ro.distance, ro.duration, 'osrm', opt);
-      if (opt.meiden && opt.meiden.length) fr.meidetNicht = true;   // OSRM kann keine Sperrungen umfahren
+      if ((opt.meiden && opt.meiden.length) || (FV.SP && FV.SP.liste && FV.SP.liste().length)) fr.meidetNicht = true;   // OSRM kann keine Sperrungen umfahren
       return [fr];
     });
   }

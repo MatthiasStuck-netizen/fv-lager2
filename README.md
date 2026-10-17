@@ -6,6 +6,12 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.5.0
+- **Kostenlose Parkplätze** (`parken.js`, Ebene `parkenFrei`): alle Parkplätze aus OpenStreetMap mit `fee=no` – weltweit, in jeder Stadt, ab Zoom 12 im sichtbaren Ausschnitt (Kacheln 0,1°, 7 Tage gemerkt; ohne private/Kunden-/Anwohner-Parkplätze). Blaues „P“ mit grünem „0 €“, antippen → Art, Plätze, Höchstparkdauer, Parkscheibe, Zeiten, Durchfahrtshöhe, Lkw, Hinfahren/zu Fuß. Seite `parkfrei` (in der Nähe bzw. „am Ziel“ aus der Zielführung). Schalter in Ebenen, Zielführung und Einstellungen.
+- **Eigene Sperrung in der Zielführung** (`sperrung.js`, `F.umfahren` in `fuehrung.js`): Knopf „Sperrung“ links auf der Karte → auf die gesperrte Straße tippen (oder „Straße vor mir“). Die Stelle wird auf die Route bzw. per Valhalla `locate` auf die Straße gesetzt, ein Sperrungs-Schild erscheint, und es wird sofort ohne diese Stelle neu berechnet (Valhalla `exclude_polygons`, gilt 12 Std. für jede Route). Schild antippen → aufheben.
+- Test: `test/test_47.py`.
+- Aufbauend auf 4.4.3 (E-Bike-Stationen, aus der installierten APK übernommen).
+
 ## Neu in 4.4.2
 - **Fahrzeuge live von oben** (wie Flugzeug und Auto, drehen sich in Fahrtrichtung): Zug mit Lok und drei Wagen (Streifen in Linienfarbe), Bus, Straßenbahn, Schiffe als Fähre, Frachter (Container), Tanker, Segelboot, kleines Boot (`karte.js`, `zeichneFahrzeug`). Transporter als eigenes Fahrzeugsymbol (`K.istTransporter`). AIS-Füllzeichen „@“ entfernt.
 - **Satelliten im Detail** (`satelliten.js`): Android meldet jeden Satelliten (System, Nummer, genutzt, Signal, Höhe/Richtung am Himmel, Frequenz). Bahndaten CelesTrak `GROUP=gnss` (einmal am Tag), Kepler-Bahn mit J2 → Name, Höhe, Geschwindigkeit, Entfernung, Umlaufzeit. Zuordnung über PRN im Namen, sonst über die Stelle am Himmel (GLONASS). EGNOS/WAAS aus Tabelle. Himmelskarte, Liste verbunden/in Sicht, Einzelblatt.

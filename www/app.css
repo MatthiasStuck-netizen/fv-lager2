@@ -874,3 +874,31 @@ html.hell .satsignal { background: linear-gradient(to top, #1d7a3c var(--s), #e1
 .m-ebike span { display: none; background: rgba(255,255,255,.92); color: #0d5c30; font: 700 11.5px/1.2 var(--schmal); padding: 2px 6px; border-radius: 6px; border: 1.5px solid #12a150; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
 .m-ebike.verleih span { color: #0b4f8a; border-color: #0b7bd6; }
 .ebnah .m-ebike span { display: block; }
+
+/* Kostenlose Parkplätze: blaues P mit grünem „0 €“; Name ab naher Ansicht */
+.m-parkfrei { display: flex; align-items: center; gap: 4px; cursor: pointer; position: relative; }
+.m-parkfrei i { width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #1c56b4; color: #fff; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.6); font: 800 15px/20px var(--schmal); font-style: normal; text-align: center; }
+.m-parkfrei em { position: absolute; left: 13px; top: -9px; background: #12a150; color: #fff; font: 800 9px/1 var(--schmal); font-style: normal; padding: 2px 3px; border-radius: 5px; border: 1.5px solid #fff; white-space: nowrap; }
+.m-parkfrei.klein i { width: 20px; height: 20px; font-size: 13px; line-height: 16px; }
+.m-parkfrei span { display: none; background: rgba(255,255,255,.93); color: #0e3c80; font: 700 11.5px/1.2 var(--schmal); padding: 2px 6px; border-radius: 6px; border: 1.5px solid #1c56b4; white-space: nowrap; max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+.pknah .m-parkfrei span { display: block; }
+
+/* Eigene Sperrung: Schild „Durchfahrt verboten“ + rot-weiße Bake */
+.sperrsym { display: inline-flex; flex: none; }
+.sperrsym i { display: block; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 5px solid #d3221f; box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+h2 .sperrsym i { width: 30px; height: 30px; }
+.sperrknopf { left: 10px; top: 150px; width: 58px; height: 58px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: rgba(8,11,15,.9); border: 2px solid #d3221f; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.sperrknopf small { font: 700 10.5px/1 var(--schmal); letter-spacing: .2px; }
+.sperrknopf.wartet { background: #d3221f; border-color: #fff; animation: sperrpuls 1s ease-in-out infinite; }
+@keyframes sperrpuls { 50% { box-shadow: 0 0 0 7px rgba(211,34,31,.35); } }
+.sperrhinweis { position: absolute; z-index: 7; left: 76px; right: 10px; top: 150px; background: rgba(6,9,13,.96); border: 2px solid #d3221f; border-radius: 12px; padding: 10px; font-family: var(--schmal); }
+.sperrhinweis b { display: block; font-size: 17px; margin: 0 0 8px; color: #fff; }
+.sperrhinweis .knopf { min-height: 44px; font-size: 15px; }
+.sperrziel .maplibregl-canvas-container, .sperrziel canvas { cursor: crosshair; }
+.m-sperre { display: flex; flex-direction: column; align-items: center; cursor: pointer; filter: drop-shadow(0 2px 3px rgba(0,0,0,.6)); }
+.m-sperre i { display: block; width: 30px; height: 30px; box-sizing: border-box; border-radius: 50%; background: #fff; border: 6px solid #d3221f; }
+.m-sperre b { margin-top: 2px; background: #d3221f; color: #fff; font: 800 11px/1 var(--schmal); padding: 3px 6px; border-radius: 4px; border: 1.5px solid #fff; }
+.m-sperre::after { content: ""; display: block; width: 44px; height: 9px; margin-top: 2px; border: 1.5px solid #fff; border-radius: 2px; background: repeating-linear-gradient(-45deg, #d3221f 0 6px, #fff 6px 12px); }
+.auswahlfeld { max-height: calc(100% - 170px); overflow-y: auto; }
+.auswahlfeld button.link { color: var(--gold); justify-content: flex-start; border-top: 1px solid #262b33; border-radius: 0; margin-top: 4px; }
+.auswahlfeld button.link .sym { color: var(--gold); }
