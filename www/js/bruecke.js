@@ -74,6 +74,7 @@ window.FV = window.FV || {};
   B.ort = function () { return letzterOrt; };
   /** Satelliten (nur in der App): { sichtbar, genutzt, snr, alter, systeme: { GPS: [genutzt, sichtbar], … } } oder null */
   B.satelliten = function () {
+    if (window.FV_TEST && FV_TEST.satelliten) return FV_TEST.satelliten();
     if (!N || typeof N.satelliten !== 'function') return null;
     try { return JSON.parse(N.satelliten() || 'null'); } catch (e) { return null; }
   };

@@ -848,3 +848,21 @@ body.vollbild .vollzeiten { display: flex; }
 body.vollbild .fahrinfo { display: none !important; }
 body.vollbild .schild { bottom: 78px; }
 html.hell .vollzeiten { background: rgba(255,255,255,.98); color: #1d1b17; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+
+/* ---------- Satelliten im Detail ---------- */
+.himmelblock { padding: 10px 8px 8px; }
+.himmel { display: block; width: 100%; max-width: 300px; margin: 0 auto; font-family: var(--schmal); }
+.himmel .hk-rand { fill: #0a1420; stroke: #3d4652; stroke-width: 1.5; } .himmel .hk-ring { fill: none; stroke: #2a323c; stroke-width: 1; }
+.himmel text { fill: #8d97a3; font-size: 11px; text-anchor: middle; } .himmel .hk-n { fill: var(--gold); font-weight: 700; font-size: 12px; } .himmel .hk-g { text-anchor: start; font-size: 9px; }
+.himmel .hk-sat { cursor: pointer; } .himmel .hk-sat text { fill: #dfe5ec; font-size: 8.5px; font-weight: 700; } .himmel .hk-sat.an text { fill: #05080b; }
+.hk-legende { display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; margin-top: 6px; font-size: 12.5px; color: var(--grau); }
+.hk-legende i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.hk-legende .hk-hinweis { flex-basis: 100%; text-align: center; font-size: 11.5px; color: var(--grau2); }
+.eintrag.satz { padding-top: 8px; padding-bottom: 8px; }
+.eintrag.satz .txt b { font-size: 15.5px; } .eintrag.satz .txt span { font-size: 12.5px; }
+.satmarke { flex: none; width: 40px; height: 40px; border-radius: 50%; border: 2.5px solid; display: flex; align-items: center; justify-content: center; font: 700 13px var(--schmal); color: #05080b; }
+.satsignal { display: block; width: 8px; height: 34px; border-radius: 4px; background: linear-gradient(to top, #3fcf74 var(--s), #1e252e var(--s)); }
+.eintrag.satz:not(.an) .satsignal { background: linear-gradient(to top, #8d97a3 var(--s), #1e252e var(--s)); }
+#blatt h2 button[data-tun=sat-zurueck] { margin-left: auto; } #blatt h2 button[data-tun=sat-zurueck] + button { margin-left: 4px; }
+html.hell .himmel .hk-rand { fill: #eef3f8; stroke: #b9c3ce; } html.hell .himmel .hk-ring { stroke: #d3dae2; } html.hell .himmel .hk-sat text { fill: #1d1b17; } html.hell .himmel .hk-sat.an text { fill: #05080b; }
+html.hell .satsignal { background: linear-gradient(to top, #1d7a3c var(--s), #e1e6ec var(--s)); }

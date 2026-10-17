@@ -219,9 +219,10 @@
       return '<div class="satsys"><span>' + h(NAME[k] || k) + '</span><div class="offbalken"><i style="width:' + p + '%"></i></div><b>' + x[0] + '<small> / ' + x[1] + '</small></b></div>';
     }).join('');
     html += '<p class="klein2">Verbunden = für den Standort genutzt. Ab 4 ist der Standort brauchbar, ab 8 gut. In Tunneln, Parkhäusern und zwischen hohen Häusern werden es weniger.</p>';
+    if (aktuell && FV.SAT) html += FV.SAT.html() || '<p class="klein2">Namen, Höhe und Geschwindigkeit der einzelnen Satelliten zeigt die App ab Version 4.4.2.</p>';
     return html;
   }
-  Tun.satelliten = function () { A().blatt('<h2>' + sym('satellit') + 'Satelliten<button data-tun="blatt-zu">' + sym('zu') + '</button></h2><div id="satblatt">' + satDetails() + '</div>'); };
+  Tun.satelliten = function () { if (FV.SAT) FV.SAT.laden(false); A().blatt('<h2>' + sym('satellit') + 'Satelliten<button data-tun="blatt-zu">' + sym('zu') + '</button></h2><div id="satblatt">' + satDetails() + '</div>'); };
   function zielkarte(z) {
     return '<div class="ziel">' + sym(z.art === 'halle' ? 'halle' : z.art === 'frei' ? 'pin' : 'lkw') + '<div class="txt"><b>' + h(z.name) + '</b><div class="adr">' + sym('pin') + '<span>' + adr2(z.adresse) + '</span></div></div>' +
       (z.tel ? '<button class="rund" data-tun="anrufen" data-tel="' + h(z.tel) + '" aria-label="Anrufen">' + sym('telefon') + '</button>' : '') +

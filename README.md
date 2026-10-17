@@ -6,6 +6,11 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.4.2
+- **Fahrzeuge live von oben** (wie Flugzeug und Auto, drehen sich in Fahrtrichtung): Zug mit Lok und drei Wagen (Streifen in Linienfarbe), Bus, Straßenbahn, Schiffe als Fähre, Frachter (Container), Tanker, Segelboot, kleines Boot (`karte.js`, `zeichneFahrzeug`). Transporter als eigenes Fahrzeugsymbol (`K.istTransporter`). AIS-Füllzeichen „@“ entfernt.
+- **Satelliten im Detail** (`satelliten.js`): Android meldet jeden Satelliten (System, Nummer, genutzt, Signal, Höhe/Richtung am Himmel, Frequenz). Bahndaten CelesTrak `GROUP=gnss` (einmal am Tag), Kepler-Bahn mit J2 → Name, Höhe, Geschwindigkeit, Entfernung, Umlaufzeit. Zuordnung über PRN im Namen, sonst über die Stelle am Himmel (GLONASS). EGNOS/WAAS aus Tabelle. Himmelskarte, Liste verbunden/in Sicht, Einzelblatt.
+- Tests: `test/test_45.py` (Symbole, Transporter), `test/test_46.py` (Satelliten).
+
 ## Neu in 4.4.0
 - **Startseite:** unter „Route starten“ / „Karte anzeigen“ kleine Knöpfe Favoriten, Telefon, Spotify, Nachrichten, Verkehrsfunk. Dünner schwarzer Rahmen um das Fehnverleih-Bild.
 - **Telefon** (`extras.js`, Seite `telefon`): letzte Anrufe, Kontakte (mit Suche, Favoriten zuerst), Kunden heute, Wähltastatur. Anrufen direkt (CALL_PHONE), sonst Wähltastatur.

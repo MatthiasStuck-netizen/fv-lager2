@@ -75,7 +75,8 @@ with sync_playwright() as pw:
           [211234560, 53.33, 7.15, 12.4, 305, 300, 'OSTFRIESLAND', 'DFOS', 60, 'BORKUM', 0, 78, 13, '9330733', 3.2, '', Date.now(), 0],
           [244000111, 53.36, 7.05, 0.1, null, null, 'NOORDERLICHT', '', 37, '', 5, 15, 4, '', 0, '', Date.now(), 1],
           [244000222, 53.29, 7.22, 8.0, 120, null, '@@@@@@@@', '', 70, 'EMDEN@@@', 0, 120, 18, '', 0, '', Date.now(), 0],
-          [211000333, 53.31, 7.30, 0, null, null, 'TANKER EMS', '', 80, '', 1, 90, 15, '', 0, '', Date.now(), 0] ] };
+          [211000333, 53.31, 7.30, 0, null, 40, 'TANKER EMS', '', 80, '', 1, 90, 15, '', 0, '', Date.now(), 0],
+          [211000444, 53.325, 7.33, 5, 200, null, 'WINDSBRAUT', '', 36, '', 8, 12, 4, '', 0, '', Date.now(), 1] ] };
         if (b === 'zugriff') return { mitteilungen: true }; if (b === 'nachrichten') return { ok: true, bis: 0, liste: [] };
         return { ok: true }; } };""")
     p.goto(APP + '/index.html'); p.wait_for_timeout(700)
@@ -87,12 +88,12 @@ with sync_playwright() as pw:
     info = p.evaluate("FV.K.map.querySourceFeatures('live').map(f => f.properties.bild + ' | ' + f.properties.name + ' | ' + f.properties.hatKurs)")
     print('\n'.join(sorted(set(info))))
     alle = ' '.join(info)
-    for w in ['plakette-schiff', 'plakette-bus', 'plakette-zug']:
+    for w in ['fz-schiff-faehre', 'fz-schiff-fracht', 'fz-schiff-tanker', 'fz-schiff-klein', 'fz-bus', 'fz-zug']:
         if w not in alle: fehler.append(w + ' fehlt')
     if '@' in alle: fehler.append('@ im Namen')
     if not p.evaluate("FV.K.map.hasImage(FV.K.map.querySourceFeatures('live')[0].properties.bild)"): fehler.append('Bild fehlt in der Karte')
     schirm(p, '30-symbole-nacht')
-    p.evaluate("FV.K.map.jumpTo({center:[7.30,53.32], zoom: 11.5})"); p.wait_for_timeout(2500); schirm(p, '31-symbole-nah')
+    p.evaluate("(() => { var f = FV.K.map.querySourceFeatures('live').filter(x => x.properties.name.indexOf('ICE') === 0)[0]; FV.K.map.jumpTo({center: f.geometry.coordinates, zoom: 13}); })()"); p.wait_for_timeout(2500); schirm(p, '31-symbole-nah')
     p.evaluate("FV.app.e.design = 'tag'; FV.D.anwenden()"); p.wait_for_timeout(2500); schirm(p, '32-symbole-tag')
     p.evaluate("FV.app.e.design = 'nacht'; FV.D.anwenden()")
     # Transporter
