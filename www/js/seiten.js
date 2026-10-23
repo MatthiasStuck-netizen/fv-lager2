@@ -2583,10 +2583,25 @@
   Tun['stimme-zurueck'] = function () { var e = A().e; e.stimme = ''; e.tempo = 1; e.hoehe = 1; A().speichern(); B.stimmeWaehlen('', 1, 1); stimmenBlatt(); A().toast('Standardstimme eingestellt.'); };
   Tun['stimme-mehr'] = function () { if (B.nativ) B.sprachEinstellungen(); else A().toast('Nur in der App auf dem Handy möglich.'); };
   /* ---------- Offline-Karten ---------- */
-  function offlineBlock() {
-    return '<div class="block" id="offblock"><h2>' + sym('karte') + 'Offline-Karten</h2>' + karteTeil() + '</div>';
+  /* In den Einstellungen nur eine Zeile „Offline-Kartenmaterial“; antippen öffnet das Fenster mit allen Karten zum Auswählen */
+  function offlineKurz() {
+    var O = FV.O, f = O.fertige().map(function (id) { return O.karte(id).name; }), l = O.laeuft() ? O.karte(O.dran()).name : '';
+    var t = l ? l + ' wird geladen' : f.length ? 'Geladen: ' + f.join(', ') : 'Noch keine Karte auf diesem Handy – antippen zum Auswählen';
+    return t;
   }
-  function offlineNeu() { var b = $('#offblock'); if (b) b.outerHTML = offlineBlock(); }
+  function offlineBlock() {
+    return '<div class="block" id="offblock"><h2>' + sym('karte') + 'Offline-Karten</h2>' +
+      '<button class="schalter" data-tun="offkarten">' + sym('ab') + '<span>Offline-Kartenmaterial<small>' + h(offlineKurz()) + '</small></span>' + sym('rechts') + '</button></div>';
+  }
+  function offlineBlatt() {
+    return '<h2>' + sym('karte') + 'Offline-Kartenmaterial<button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+      '<p class="klein2" style="margin:0 0 10px">Bei der gewünschten Karte auf „laden“ drücken. Die Karten kommen aus dem Ordner „karten“ auf www.fehnverleih.de – am besten im WLAN, mit Ladekabel und bei offener App. Es lädt immer eine Karte nach der anderen; nach einer Unterbrechung geht es an derselben Stelle weiter.</p><div id="offblatt">' + karteTeil() + '</div>';
+  }
+  Tun.offkarten = function () { A().blatt(offlineBlatt()); };
+  function offlineNeu() {
+    var b = $('#offblock'); if (b) b.outerHTML = offlineBlock();
+    var w = $('#offblatt'); if (w) w.innerHTML = karteTeil();
+  }
   /* Karten vom Fehnverleih-Server (Ordner „karten“ auf www.fehnverleih.de) aufs Handy laden – je Land eine */
   function karteTeil() {
     var O = FV.O;
@@ -2604,8 +2619,7 @@
     if (laeuft || (pos > 0 && !s.fertig)) html += '<div class="offbalken"><i id="offbalken-' + k + '" style="width:' + proz + '%"></i></div>';
     if (O.letzterFehler && O.fehlerBei === k && !laeuft) html += '<div class="fehler" style="margin-top:8px">' + h(O.letzterFehler) + '</div>';
     if (K.uebersicht) html += '<p class="klein2" style="margin:8px 0 0">Die ganze Welt als Übersicht: Länder, Städte, Haupt- und Landstraßen, Bahn- und Schiffsstrecken. Für jede einzelne Straße die Länderkarten dazuladen – sie liegen dann darüber.</p>';
-    if (!s.fertig) html += '<p class="klein2" style="margin:8px 0">Lädt die Karte ' + h(K.name) + ' aus dem Ordner „karten“ auf www.fehnverleih.de auf dieses Handy' + (ges ? ' (' + O.gb(ges) + ')' : ' (mehrere GB)') + '. Am besten im WLAN, mit Ladekabel und bei offener App. Nach einer Unterbrechung geht es an derselben Stelle weiter.</p>';
-    else html += '<div style="height:8px"></div>';
+    html += '<div style="height:8px"></div>';
     if (laeuft) html += '<button class="rand knopf breit" data-tun="karte-halt"' + dk + '>' + sym('zu') + 'Anhalten</button>';
     else if (anderer) html += '<p class="klein2" style="margin:0">Wartet, bis die andere Karte fertig geladen ist.</p>';
     else if (s.fertig) html += '<div class="zweier"><button class="rand knopf" data-tun="karte-laden"' + dk + '>' + sym('neu') + 'Neue Karte?</button><button class="rand knopf" data-tun="karte-loeschen"' + dk + '>' + sym('muell') + 'Löschen</button></div>';
@@ -2634,10 +2648,10 @@
   Tun['karte-loeschen'] = function (el) {
     var k = kId(el), K = FV.O.karte(k), s = FV.O.stand(k) || {}, g = s.plan ? FV.O.gb(Math.min(s.pos || 0, s.plan.gesamt)) : '';
     A().frage('Karte ' + K.name + ' von diesem Handy löschen?' + (g ? '\nDas macht ' + g + ' Speicher frei. Laden lässt sie sich jederzeit wieder.' : ''), 'Löschen').then(function (ja) {
-      if (!ja) return;
+      if (!ja) { setTimeout(Tun.offkarten, 0); return; }
       var warAktiv = s.fertig;
       if (FV.O.fehlerBei === k) FV.O.letzterFehler = '';
-      FV.O.loeschen(k).then(function () { offlineNeu(); A().toast('Karte ' + K.name + ' gelöscht.'); if (warAktiv) setTimeout(function () { location.reload(); }, 900); });
+      FV.O.loeschen(k).then(function () { offlineNeu(); A().toast('Karte ' + K.name + ' gelöscht.'); if (warAktiv) setTimeout(function () { location.reload(); }, 900); else Tun.offkarten(); });
     });
   };
   Tun.schalter = function (el) {

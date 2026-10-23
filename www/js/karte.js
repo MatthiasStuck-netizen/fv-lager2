@@ -97,7 +97,7 @@
         return st;
       });
     }
-    /* Offline-Karte auf dem Handy: Kacheln kommen aus der Datei (Einstellungen → Offline-Karten) – außer, der Fahrer hat auf „Online“ geschaltet */
+    /* Offline-Karte auf dem Handy: Kacheln kommen aus der Datei (Einstellungen → Offline-Kartenmaterial) – außer, der Fahrer hat auf „Online“ geschaltet */
     if (K.quelle() === 'offline') {
       FV.O.protokoll(); stilArt = 'offline';
       if (merker && merker.layers) { netz().catch(function () {}); return Promise.resolve(einfaerben(FV.O.stil(merker))); }

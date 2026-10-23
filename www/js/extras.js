@@ -23,7 +23,7 @@
   Tun['karte-quelle'] = function (el) {
     var e = A().e, jetzt = K.quelle(), ziel = el && el.getAttribute('data-q') || (jetzt === 'offline' ? 'online' : 'offline');
     if (ziel === 'offline' && !K.offlineDa()) {
-      A().frage('Auf diesem Handy ist noch keine Offline-Karte geladen.\nUnter Einstellungen → Offline-Karten lässt sie sich laden (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Niederlande, Belgien, Luxemburg, Dänemark, Polen, Tschechien, Weltkarte).', 'Zu den Einstellungen', 'Abbrechen').then(function (ja) { if (ja) A().zeige('einstellungen', {}, 'reiter'); });
+      A().frage('Auf diesem Handy ist noch keine Offline-Karte geladen.\nUnter Einstellungen → Offline-Kartenmaterial lässt sie sich laden (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Niederlande, Belgien, Luxemburg, Dänemark, Polen, Tschechien, Weltkarte).', 'Zu den Einstellungen', 'Abbrechen').then(function (ja) { if (ja) A().zeige('einstellungen', {}, 'reiter'); });
       return;
     }
     e.kartenQuelle = ziel; A().speichern();
