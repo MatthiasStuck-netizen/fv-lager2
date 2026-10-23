@@ -1,7 +1,7 @@
 /* Offline-Karten vom Fehnverleih-Server.
  * Lädt die Kartendateien (z. B. deutschland.pmtiles oder ihre Teile teil-00, teil-01, …) aus dem Ordner "karten"
  * auf www.fehnverleih.de in den Speicher dieser App und liest daraus die Kartenkacheln. Dann zeigt die Karte
- * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Niederlande, Belgien, Luxemburg, Dänemark, Polen, Tschechien, Weltkarte), jede einzeln.
+ * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Niederlande, Belgien, Luxemburg, Dänemark, Polen, Tschechien, Großbritannien, Irland, Weltkarte), jede einzeln.
  * Format: PMTiles Version 3, Vektorkacheln im OpenMapTiles-Schema (dasselbe wie die Online-Karte). */
 window.FV = window.FV || {};
 (function () {
@@ -21,6 +21,8 @@ window.FV = window.FV || {};
     { id: 'dk', name: 'Dänemark', datei: 'daenemark.pmtiles', teil: 'daenemark-teil-', merker: 'offkarte-dk' },
     { id: 'pl', name: 'Polen', datei: 'polen.pmtiles', teil: 'polen-teil-', merker: 'offkarte-pl' },
     { id: 'cz', name: 'Tschechien', datei: 'tschechien.pmtiles', teil: 'tschechien-teil-', merker: 'offkarte-cz' },
+    { id: 'gb', name: 'Großbritannien (England, Schottland, Wales)', datei: 'grossbritannien.pmtiles', teil: 'grossbritannien-teil-', merker: 'offkarte-gb' },
+    { id: 'ie', name: 'Irland + Nordirland', datei: 'irland.pmtiles', teil: 'irland-teil-', merker: 'offkarte-ie' },
     { id: 'welt', name: 'Weltkarte', datei: 'welt.pmtiles', teil: 'welt-teil-', merker: 'offkarte-welt', uebersicht: true }
   ];
   var QUELLEN = ['https://www.fehnverleih.de/karten/', 'https://www.fehnverleih.de/fehnverleih/karten/'];

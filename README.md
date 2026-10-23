@@ -6,6 +6,9 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.8.1
+- Offline-Karten **Großbritannien** (England, Schottland, Wales) und **Irland + Nordirland** (`grossbritannien-teil-NN`, `irland-teil-NN`, Releases `karte-grossbritannien`, `karte-irland`).
+
 ## Neu in 4.8.0
 - Leiste unten: **Einstellungen** ganz rechts (nach Kosmos), `REITER` in `app.js`.
 
