@@ -175,7 +175,7 @@
   /* ---------- Karte anlegen / in eine Seite setzen ---------- */
   K.setzen = function (ziel) {
     if (!feld) { feld = document.createElement('div'); feld.id = 'karte'; }
-    if (feld.parentNode !== ziel) ziel.insertBefore(feld, ziel.firstChild);
+    if (feld.parentNode !== ziel) { ziel.insertBefore(feld, ziel.firstChild); if (K.map && K.map.getSource('esaeulen')) K.esaeulen(null); }
     if (K.map) { setTimeout(function () { if (K.map) K.map.resize(); }, 30); return Promise.resolve(K.map); }
     if (K._start) return K._start;
     if (!window.maplibregl) return Promise.reject(new Error('Karte nicht geladen'));
@@ -198,6 +198,34 @@
     return K._start;
   };
   K.wenn = function (f) { if (K.bereit) f(); else warte.push(f); };
+  /* ---------- E-Ladesäulen (Suche Nahverkehr → E-Säulen): grüne Punkte, bei vielen zu Gruppen mit Anzahl zusammengefasst ---------- */
+  var esTipp = null, esKlick = false;
+  K.esaeulen = function (liste, beiTipp) {
+    esTipp = beiTipp || null;
+    K.wenn(function () {
+      var map = K.map; if (!map) return;
+      var daten = { type: 'FeatureCollection', features: (liste || []).map(function (x, i) { return { type: 'Feature', geometry: { type: 'Point', coordinates: [x.lon, x.lat] }, properties: { i: i, schnell: x.schnell ? 1 : 0 } }; }) };
+      try {
+        if (!liste || !liste.length) { ['es-zahl', 'es-gruppe', 'es-punkt'].forEach(function (l) { if (map.getLayer(l)) map.removeLayer(l); }); if (map.getSource('esaeulen')) map.removeSource('esaeulen'); return; }
+        if (map.getSource('esaeulen')) { map.getSource('esaeulen').setData(daten); return; }
+        map.addSource('esaeulen', { type: 'geojson', data: daten, cluster: true, clusterRadius: 38, clusterMaxZoom: 15 });
+        map.addLayer({ id: 'es-gruppe', type: 'circle', source: 'esaeulen', filter: ['has', 'point_count'],
+          paint: { 'circle-color': '#1d7a3c', 'circle-opacity': 0.92, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2, 'circle-radius': ['step', ['get', 'point_count'], 14, 10, 18, 50, 23, 200, 28] } });
+        if ((map.getStyle() || {}).glyphs) map.addLayer({ id: 'es-zahl', type: 'symbol', source: 'esaeulen', filter: ['has', 'point_count'],
+          layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13, 'text-font': ['Noto Sans Bold'], 'text-allow-overlap': true }, paint: { 'text-color': '#ffffff' } });
+        map.addLayer({ id: 'es-punkt', type: 'circle', source: 'esaeulen', filter: ['!', ['has', 'point_count']],
+          paint: { 'circle-color': ['case', ['==', ['get', 'schnell'], 1], '#0b8f4a', '#1d7a3c'], 'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 15, 9], 'circle-stroke-color': ['case', ['==', ['get', 'schnell'], 1], '#ffd34d', '#ffffff'], 'circle-stroke-width': ['case', ['==', ['get', 'schnell'], 1], 3, 2] } });
+        if (!esKlick) {
+          esKlick = true;
+          map.on('click', 'es-punkt', function (e) { var f = e.features && e.features[0]; if (f && esTipp) esTipp(f.properties.i); });
+          map.on('click', 'es-gruppe', function (e) {
+            var f = e.features && e.features[0]; if (!f) return;
+            map.getSource('esaeulen').getClusterExpansionZoom(f.properties.cluster_id).then(function (z) { map.easeTo({ center: f.geometry.coordinates, zoom: z }); }).catch(function () {});
+          });
+        }
+      } catch (e) { console.error(e); }
+    });
+  };
   K.beiGeste = function (f) { beiGeste = f; };
   K.stilArt = function () { return stilArt; };
   function ebenen() {

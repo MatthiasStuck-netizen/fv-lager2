@@ -6,6 +6,10 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.7.9
+- **E-Säulen** in „Suche Nahverkehr“ (Knopf nach Dampfzüge, `nahverkehr.js` `esSuchen`/`esZeigen`/`esBlatt`): Ort eintippen → alle Ladesäulen für Autos im ganzen Gemeindegebiet (Overpass `area` aus der OSM-Grenze des Nominatim-Treffers, sonst Umkreis 3 km; leer = 5 km um den Standort). Karte oben (`K.esaeulen` in `karte.js`, GeoJSON mit Gruppen und Anzahl), Umschalter Alle/Schnelllader ab 50 kW, Liste (je 100), Fenster mit Steckern, kW, Betreiber, Kosten, Bezahlen, Hinfahren. Ohne E-Bike-Ladestellen und private Säulen.
+- `G.suche` liefert zusätzlich `box`, `osmTyp`, `osmId`.
+
 ## Neu in 4.7.8 (4.7.6/4.7.7 mit weniger Ländern)
 - Offline-Karten zusätzlich **Frankreich**, **Österreich**, **Schweiz**, **Italien**, **Niederlande**, **Belgien**, **Luxemburg**, **Dänemark**, **Polen**, **Tschechien** (`offline.js`, Liste `KARTEN`; Dateien `frankreich-teil-NN`, `oesterreich-teil-NN`, `schweiz-teil-NN`, `italien-teil-NN` usw. (`<land>-teil-NN`) aus den Releases `karte-<land>`, Zweig `karte-europa`).
 - Einstellungen: statt aller Karten nur eine Zeile **Offline-Kartenmaterial** (`Tun.offkarten`, `offlineBlatt` in `seiten.js`); antippen öffnet ein Fenster (`#blatt`, `#offblatt`) mit allen Karten zum Laden/Löschen; `offlineNeu()` aktualisiert Zeile und Fenster.

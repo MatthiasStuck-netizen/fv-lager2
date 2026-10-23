@@ -122,14 +122,18 @@
       return l.map(function (x) {
         var a = adresseAus(x.address || {}, x.name);
         var titel = x.name && x.name !== (x.address || {}).road && isNaN(parseInt(x.name, 10)) ? x.name : a.strasse;
-        return { name: titel || text, adresse: [titel && titel !== a.strasse ? a.strasse : '', a.ort].filter(Boolean).join(', ') || x.display_name, lat: +x.lat, lon: +x.lon };
+        var bb = Array.isArray(x.boundingbox) && x.boundingbox.length === 4 ? x.boundingbox.map(Number) : null;
+        return { name: titel || text, adresse: [titel && titel !== a.strasse ? a.strasse : '', a.ort].filter(Boolean).join(', ') || x.display_name, lat: +x.lat, lon: +x.lon,
+          box: bb ? { s: bb[0], n: bb[1], w: bb[2], o: bb[3] } : null, osmTyp: x.osm_type || '', osmId: x.osm_id || 0, klasse: x.category || x.class || '', typ: x.type || '' };
       });
     }).catch(function () {
       var u = G.DIENST.photon + '/api/?q=' + encodeURIComponent(text) + '&lang=de&limit=6' + (nahe ? '&lat=' + nahe.lat + '&lon=' + nahe.lon : '');
       return B.json({ url: u, zeit: 12000 }).then(function (j) {
         return (j.features || []).map(function (f) {
           var e = f.properties || {}, str = [e.street || '', e.housenumber || ''].join(' ').trim();
-          return { name: e.name || str || text, adresse: [e.name ? str : '', [e.postcode || '', e.city || e.town || e.village || ''].join(' ').trim()].filter(Boolean).join(', '), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0] };
+          var ex = Array.isArray(e.extent) && e.extent.length === 4 ? e.extent : null;
+          return { name: e.name || str || text, adresse: [e.name ? str : '', [e.postcode || '', e.city || e.town || e.village || ''].join(' ').trim()].filter(Boolean).join(', '), lat: f.geometry.coordinates[1], lon: f.geometry.coordinates[0],
+            box: ex ? { w: ex[0], n: ex[1], o: ex[2], s: ex[3] } : null, osmTyp: { R: 'relation', W: 'way', N: 'node' }[e.osm_type] || '', osmId: e.osm_id || 0, klasse: e.osm_key || '', typ: e.osm_value || '' };
         });
       });
     });

@@ -3,12 +3,12 @@
  * → die Abfahrtstafel des besten Treffers geht sofort auf. Die übrigen Treffer stehen darunter zum Antippen. */
 (function () {
   'use strict';
-  var B = FV.B, G = FV.G, sym = FV.sym, Se = FV.Seiten, Tun = FV.Tun, X = FV.SX, h = X.h;
+  var B = FV.B, G = FV.G, K = FV.K, sym = FV.sym, Se = FV.Seiten, Tun = FV.Tun, X = FV.SX, h = X.h;
   var $ = function (s, w) { return (w || document).querySelector(s); };
   function A() { return FV.app; }
 
-  var ARTEN = [['zug', 'zug', 'Züge'], ['ubahn', 'tram', 'U-Bahn'], ['tram', 'tram', 'Straßenbahn'], ['bus', 'bus', 'Busse'], ['schiff', 'schiff', 'Schiffe'], ['flug', 'flug', 'Flugzeuge'], ['dampf', 'dampf', 'Dampfzüge']];
-  var BEISPIEL = { zug: 'Bahnhof, z. B. Hamburg Hbf', ubahn: 'Station, z. B. Jungfernstieg', tram: 'Haltestelle, z. B. Bremen Domsheide', bus: 'Haltestelle, z. B. Leer Bahnhof', schiff: 'Anleger, z. B. Norddeich Mole', flug: 'Flughafen, z. B. Hamburg Airport', dampf: 'Ort, z. B. Norden – leer: in der Nähe' };
+  var ARTEN = [['zug', 'zug', 'Züge'], ['ubahn', 'tram', 'U-Bahn'], ['tram', 'tram', 'Straßenbahn'], ['bus', 'bus', 'Busse'], ['schiff', 'schiff', 'Schiffe'], ['flug', 'flug', 'Flugzeuge'], ['dampf', 'dampf', 'Dampfzüge'], ['esaeule', 'laden', 'E-Säulen']];
+  var BEISPIEL = { zug: 'Bahnhof, z. B. Hamburg Hbf', ubahn: 'Station, z. B. Jungfernstieg', tram: 'Haltestelle, z. B. Bremen Domsheide', bus: 'Haltestelle, z. B. Leer Bahnhof', schiff: 'Anleger, z. B. Norddeich Mole', flug: 'Flughafen, z. B. Hamburg Airport', dampf: 'Ort, z. B. Norden – leer: in der Nähe', esaeule: 'Ort, z. B. Hamburg – leer: in der Nähe' };
   var WAS = { dampf: 'Dampfzug', zug: 'Bahnhof', ubahn: 'U-Bahn-Station', tram: 'Straßenbahn-Haltestelle', bus: 'Haltestelle', schiff: 'Schiffsanleger', flug: 'Flughafen' };
   function zustand() { var z = A().z; return z.nv || (z.nv = { art: 'zug', text: '', liste: null, titel: '' }); }
   var lauf = 0;
@@ -21,6 +21,7 @@
       '<button class="gold knopf breit" style="margin-top:10px">' + sym('suche') + 'Suchen</button></form>' +
       '<div id="nvliste" style="margin-top:8px"></div><div style="height:10px"></div></div>');
     if (s.art === 'dampf' && s.dampf) dampfZeigen(s.dampf);
+    else if (s.art === 'esaeule' && s.es) esZeigen(s.es, true);
     else if (s.liste) zeigen(s.titel, s.liste);
   };
   Tun['nv-art'] = function (el) {
@@ -33,6 +34,7 @@
   Tun['nv-suchen'] = function () {
     var i = $('#nvtext'), t = ((i && i.value) || '').trim(), s = zustand(), art = s.art, box = $('#nvliste'), meins = ++lauf;
     if (art === 'dampf') { if (i) i.blur(); s.text = t; dampfSuchen(t, meins); return; }
+    if (art === 'esaeule') { if (i) i.blur(); s.text = t; esSuchen(t, meins); return; }
     if (!t) { A().toast('Bitte eintippen, wonach gesucht werden soll.'); if (i) i.focus(); return; }
     if (i) i.blur();   // Tastatur zu, damit die Tafel ganz zu sehen ist
     s.text = t; s.liste = null;
@@ -293,6 +295,138 @@
   Tun['dampf-hin'] = function () {
     var x = A().z.dampfWahl; if (!x) return; A().blattZu();
     A().zeige('vorschau', { ziel: { name: x.name, adresse: DAMPF_ART[x.art], lat: x.lat, lon: x.lon, art: 'frei' }, modus: 'auto' });
+  };
+  /* ---------- E-Säulen: alle Ladesäulen für Autos in einer Stadt oder einem Dorf (OpenStreetMap, weltweit) ----------
+   * Ort eintippen → ganzes Gemeindegebiet (OSM-Grenze), sonst Umkreis 3 km; leer → 5 km um den Standort.
+   * Oben eine Karte mit allen Säulen, darunter die Liste. Antippen → Einzelheiten (Stecker, kW, Betreiber, Kosten) im App-Fenster. */
+  var ES_SEITE = 100;
+  var STECKER = [['type2_combo', 'CCS'], ['chademo', 'CHAdeMO'], ['tesla_supercharger_ccs', 'Tesla (CCS)'], ['tesla_supercharger', 'Tesla Supercharger'], ['type2', 'Typ 2'], ['type2_cable', 'Typ 2 mit Kabel'],
+    ['type1_combo', 'CCS Typ 1'], ['type1', 'Typ 1'], ['schuko', 'Schuko'], ['cee_blue', 'CEE blau'], ['cee_red_16a', 'CEE rot 16 A'], ['cee_red_32a', 'CEE rot 32 A'], ['type3c', 'Typ 3']];
+  function esSuchen(text, meins) {
+    var s = zustand(), box = $('#nvliste'); s.es = null;
+    box.innerHTML = X.laedt('E-Ladesäulen werden gesucht …');
+    var wo = text ? frist(G.suche(text, B.ort(), true).then(function (l) { if (!l.length) throw new Error('leer'); return l[0]; }), 20000, null)
+      : X.startpunkt().then(function (p) { return { lat: p.lat, lon: p.lon, name: 'Ihrem Standort', nahe: true }; }, function () { return null; });
+    wo.then(function (p) {
+      if (meins !== lauf) return;
+      if (!p) { esFehler(text ? 'Der Ort „' + text + '“ wurde nicht gefunden.' : 'Der Standort ist gerade nicht bekannt. Bitte einen Ort eintippen.'); return; }
+      var ort = p.nahe ? 'Ihrem Standort' : (p.name || text);
+      var hinweis = setTimeout(function () { var b0 = $('#nvliste'); if (b0 && meins === lauf && !s.es) b0.innerHTML = X.laedt('E-Ladesäulen werden gesucht … (in großen Städten dauert das etwas länger)'); }, 10000);
+      esHolen(p).then(function (l) {
+        clearTimeout(hinweis); if (meins !== lauf) return;
+        s.es = { ort: ort, mitte: { lat: p.lat, lon: p.lon }, liste: l, zeigen: ES_SEITE, nurSchnell: false };
+        esZeigen(s.es);
+      }).catch(function (e) { clearTimeout(hinweis); if (meins === lauf) esFehler('Die Kartendaten (OpenStreetMap) antworten gerade nicht.', e && e.gruende); });
+    });
+  }
+  function esFehler(t, gruende) {
+    var b = $('#nvliste'); if (b) b.innerHTML = '<div class="fehler">' + h(t) + (gruende && gruende.length ? FV.V.grundHtml({ gruende: gruende }) : '') + '</div><button class="rand knopf breit" style="margin-top:10px" data-tun="nv-suchen">' + sym('neu') + 'Nochmal versuchen</button>';
+  }
+  /** Ganze Stadt/Gemeinde, wenn die Suche eine Grenze (Relation) geliefert hat – sonst Rechteck um den Ort */
+  function esHolen(p) {
+    var filter = '["amenity"="charging_station"]', q;
+    if (!p.nahe && p.osmTyp === 'relation' && p.osmId && p.box && (p.box.n - p.box.s) < 2.5) {
+      q = '[out:json][timeout:40];area(id:' + (3600000000 + +p.osmId) + ')->.a;nwr' + filter + '(area.a);out center tags;';
+    } else {
+      var r = p.nahe ? 5000 : 3000, dl = r / 111000, dn = dl / Math.max(0.2, Math.cos(p.lat * Math.PI / 180)), b = { s: p.lat - dl, n: p.lat + dl, w: p.lon - dn, o: p.lon + dn };
+      if (!p.nahe && p.box && (p.box.n - p.box.s) < 0.6 && (p.box.o - p.box.w) < 0.9) b = { s: Math.min(b.s, p.box.s), n: Math.max(b.n, p.box.n), w: Math.min(b.w, p.box.w), o: Math.max(b.o, p.box.o) };
+      q = '[out:json][timeout:40];nwr' + filter + '(' + [b.s, b.w, b.n, b.o].map(function (x) { return x.toFixed(4); }).join(',') + ');out center tags;';
+    }
+    return FV.V.osmSchnell(q, 86400, 45000).then(function (j) {
+      var l = (j.elements || []).map(function (e) { return esEintrag(e, p); }).filter(Boolean);
+      l.sort(function (a, b) { return a.abOrt - b.abOrt; });
+      return l;
+    });
+  }
+  function kw(t) { var m = /([\d.,]+)\s*(kw|w)?/i.exec(String(t || '')); if (!m) return 0; var v = parseFloat(m[1].replace(',', '.')); if (/^w$/i.test(m[2] || '') || v > 2000) v = v / 1000; return v > 0 && v < 2000 ? v : 0; }
+  function esEintrag(e, p) {
+    var t = e.tags || {}, c = e.center || (e.lat != null ? { lat: e.lat, lon: e.lon } : null); if (!c) return null;
+    if (/^(private|no)$/.test(t.access || '')) return null;
+    if (t.motorcar === 'no' || t.motor_vehicle === 'no') return null;
+    var stecker = [], maxKw = kw(t['charging_station:output'] || t.output || ''), autoStecker = false;
+    STECKER.forEach(function (st) {
+      var v = t['socket:' + st[0]]; if (!v || v === 'no') return;
+      var n = parseInt(v, 10), k = kw(t['socket:' + st[0] + ':output']);
+      if (k > maxKw) maxKw = k;
+      if (st[0] !== 'schuko') autoStecker = true;
+      stecker.push({ name: st[1], anzahl: n > 0 ? n : 0, kw: k });
+    });
+    // Ladestationen nur für Fahrräder (E-Bike) weglassen
+    if (/^(yes|designated|only)$/.test(t.bicycle || '') && !autoStecker && !/^(yes|designated)$/.test(t.motorcar || '')) return null;
+    var adresse = [[t['addr:street'] || '', t['addr:housenumber'] || ''].join(' ').trim(), [t['addr:postcode'] || '', t['addr:city'] || ''].join(' ').trim()].filter(Boolean).join(', ');
+    var name = t.name || t.brand || t.operator || t.network || 'E-Ladesäule';
+    return { name: name, lat: c.lat, lon: c.lon, betreiber: t.operator || t.network || t.brand || '', adresse: adresse, plaetze: parseInt(t.capacity, 10) || 0, stecker: stecker, kw: maxKw, schnell: maxKw >= 50,
+      kosten: t.fee === 'no' ? 'kostenlos' : t.fee === 'yes' ? 'kostenpflichtig' : '', preis: t.charge || '', parken: t['parking:fee'] === 'no' ? 'Parken kostenlos' : t['parking:fee'] === 'yes' ? 'Parken kostet extra' : '',
+      zeiten: t.opening_hours === '24/7' ? 'rund um die Uhr' : (t.opening_hours || ''), kunden: t.access === 'customers', bezahlen: esBezahlen(t), web: t.website || t['contact:website'] || '',
+      abOrt: Math.round(G.abstand(p, c)), weit: weitVonMir(c) };
+  }
+  function esBezahlen(t) {
+    var a = [], W = { app: 'App', nfc: 'Karte (NFC)', membership_card: 'Ladekarte', short_message: 'SMS', phone_call: 'Anruf', none: 'ohne Anmeldung' }, Z = { debit_cards: 'EC-Karte', credit_cards: 'Kreditkarte', contactless: 'kontaktlos', cash: 'bar' };
+    Object.keys(W).forEach(function (k) { if (t['authentication:' + k] === 'yes') a.push(W[k]); });
+    Object.keys(Z).forEach(function (k) { if (t['payment:' + k] === 'yes' && a.indexOf(Z[k]) < 0) a.push(Z[k]); });
+    return a.join(', ');
+  }
+  function esSichtbar(d) { return d.nurSchnell ? d.liste.filter(function (x) { return x.schnell; }) : d.liste; }
+  function esUnter(x) {
+    var st = x.stecker.map(function (s) { return s.name; }).filter(function (n, i, a) { return a.indexOf(n) === i; }).slice(0, 3).join(', ');
+    return [x.kw ? String(Math.round(x.kw)) + ' kW' : '', st, x.plaetze ? x.plaetze + ' Ladepunkt' + (x.plaetze === 1 ? '' : 'e') : '', x.kunden ? 'nur für Kunden' : '', x.abOrt > 300 ? G.km(x.abOrt) + ' vom Ort' : 'im Ort'].filter(Boolean).join(' · ');
+  }
+  function esZeigen(d, wieder) {
+    var box = $('#nvliste'); if (!box) return;
+    if (!d.liste.length) { box.innerHTML = '<div class="fehler">' + (d.ort === 'Ihrem Standort' ? 'In der Nähe' : 'In ' + h(d.ort)) + ' ist keine E-Ladesäule in OpenStreetMap eingetragen.</div>'; K.esaeulen(null); return; }
+    var l = esSichtbar(d), schnell = d.liste.filter(function (x) { return x.schnell; }).length;
+    box.innerHTML = '<h3 class="ueber">' + sym('laden') + d.liste.length + ' E-Ladesäule' + (d.liste.length === 1 ? '' : 'n') + (d.ort === 'Ihrem Standort' ? ' in der Nähe' : ' in ' + h(d.ort)) + '</h3>' +
+      '<div class="kartenfeld oevkarte" id="kfeld"><div class="quelle">© OpenStreetMap</div>' +
+        '<div class="zoom"><button data-tun="zoom" data-n="1" aria-label="Größer">' + sym('plus') + '</button><button data-tun="zoom" data-n="-1" aria-label="Kleiner">' + sym('minus') + '</button></div></div>' +
+      '<div class="modi" style="padding:10px 0 4px"><button data-tun="es-filter" data-s="0"' + (d.nurSchnell ? '' : ' class="akt"') + '><span>Alle (' + d.liste.length + ')</span></button>' +
+        '<button data-tun="es-filter" data-s="1"' + (d.nurSchnell ? ' class="akt"' : '') + '><span>Schnelllader ab 50 kW (' + schnell + ')</span></button></div>' +
+      '<div id="esliste">' + esListe(d) + '</div>';
+    K.setzen($('#kfeld')).then(function () {
+      if (zustand().es !== d || zustand().art !== 'esaeule') return;
+      K.leeren();
+      K.esaeulen(l, function (i) { esBlatt(l[i]); });
+      var pts = l.map(function (x) { return [x.lon, x.lat]; });
+      if (pts.length > 1) K.rahmen(pts, 30); else K.mitte(l[0] || d.mitte, 15);
+    }).catch(function () {});
+  }
+  function esListe(d) {
+    var l = esSichtbar(d);
+    if (!l.length) return '<div class="gut">Keine Schnelllader ab 50 kW eingetragen.</div>';
+    return l.slice(0, d.zeigen).map(function (x) {
+      return '<div class="eintrag tippbar" data-tun="es-oeffnen" data-i="' + d.liste.indexOf(x) + '">' + sym('laden') +
+        '<div class="txt"><b>' + h(x.name) + '</b><span>' + h(esUnter(x)) + '</span></div><div class="ende">' + sym('rechts') + '</div></div>';
+    }).join('') + (l.length > d.zeigen ? '<button class="rand knopf breit" style="margin-top:8px" data-tun="es-mehr">' + sym('ab') + 'Weitere ' + Math.min(ES_SEITE, l.length - d.zeigen) + ' von ' + (l.length - d.zeigen) + ' anzeigen</button>' : '') +
+      '<p class="klein2" style="text-align:center">E-Ladesäulen: © OpenStreetMap-Mitwirkende, ohne Gewähr. Ob eine Säule gerade frei ist, steht nicht in den Kartendaten.</p>';
+  }
+  Tun['es-filter'] = function (el) {
+    var d = zustand().es; if (!d) return;
+    d.nurSchnell = el.getAttribute('data-s') === '1'; d.zeigen = ES_SEITE;
+    [].forEach.call(document.querySelectorAll('[data-tun=es-filter]'), function (b) { b.classList.toggle('akt', b === el); });
+    var b = $('#esliste'); if (b) b.innerHTML = esListe(d);
+    var l = esSichtbar(d); K.esaeulen(l, function (i) { esBlatt(l[i]); });
+  };
+  Tun['es-mehr'] = function () { var d = zustand().es; if (!d) return; d.zeigen += ES_SEITE; var b = $('#esliste'); if (b) b.innerHTML = esListe(d); };
+  Tun['es-oeffnen'] = function (el) { var d = zustand().es, x = d && d.liste[+el.getAttribute('data-i')]; if (x) esBlatt(x); };
+  function esBlatt(x) {
+    if (!x) return;
+    A().z.esWahl = x;
+    function zeile(symb, k, t) { return t ? '<div class="detailzeile">' + sym(symb) + '<div><small>' + k + '</small>' + t + '</div></div>' : ''; }
+    var st = x.stecker.map(function (s) { return h((s.anzahl ? s.anzahl + ' × ' : '') + s.name + (s.kw ? ' · ' + String(Math.round(s.kw * 10) / 10).replace('.', ',') + ' kW' : '')); }).join('<br>');
+    A().blatt('<h2>' + sym('laden') + '<span>' + h(x.name) + '<br><small style="font-weight:400;font-size:13px">' + h([x.schnell ? 'Schnelllader' : 'E-Ladesäule', x.weit != null ? G.km(x.weit) + ' von hier' : ''].filter(Boolean).join(' · ')) + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+      zeile('ort', 'Adresse', h(x.adresse)) +
+      zeile('info', 'Betreiber', x.betreiber && x.betreiber !== x.name ? h(x.betreiber) : '') +
+      zeile('laden', 'Stecker', st || (x.kw ? 'bis ' + Math.round(x.kw) + ' kW' : 'nicht eingetragen')) +
+      zeile('info', 'Ladepunkte', x.plaetze ? String(x.plaetze) : '') +
+      zeile('uhr', 'Geöffnet', h(x.zeiten)) +
+      zeile('info', 'Kosten', h([x.kosten, x.preis, x.parken].filter(Boolean).join(' · '))) +
+      zeile('info', 'Bezahlen / Freischalten', h(x.bezahlen)) +
+      zeile('warnung', 'Zugang', x.kunden ? 'nur für Kunden (z. B. Hotel, Supermarkt)' : '') +
+      '<p class="klein2" style="margin:8px 2px">Ob die Säule gerade frei oder in Betrieb ist, zeigt meist die App oder Ladekarte des Betreibers.</p>' +
+      '<button class="gold knopf breit" data-tun="es-hin">' + sym('auto') + 'Hinfahren</button>');
+  }
+  Tun['es-hin'] = function () {
+    var x = A().z.esWahl; if (!x) return; A().blattZu();
+    A().zeige('vorschau', { ziel: { name: x.name, adresse: x.adresse || 'E-Ladesäule', lat: x.lat, lon: x.lon, art: 'frei' }, modus: 'auto' });
   };
   /* ---------- Hafen-Tafel: alle Schiffe per AIS (Schiffsfunk) – im Hafen, läuft ein, läuft aus ----------
    * Nutzt dieselbe AIS-Verbindung wie „Schiffe live“ auf der Karte (Android-Teil + aisstream-Schlüssel). */
