@@ -1,7 +1,7 @@
 /* Offline-Karten vom Fehnverleih-Server.
  * Lädt die Kartendateien (z. B. deutschland.pmtiles oder ihre Teile teil-00, teil-01, …) aus dem Ordner "karten"
  * auf www.fehnverleih.de in den Speicher dieser App und liest daraus die Kartenkacheln. Dann zeigt die Karte
- * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Weltkarte), jede einzeln.
+ * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Italien, Niederlande, Belgien, Luxemburg, Dänemark, Polen, Tschechien, Weltkarte), jede einzeln.
  * Format: PMTiles Version 3, Vektorkacheln im OpenMapTiles-Schema (dasselbe wie die Online-Karte). */
 window.FV = window.FV || {};
 (function () {
@@ -15,6 +15,12 @@ window.FV = window.FV || {};
     { id: 'at', name: 'Österreich', datei: 'oesterreich.pmtiles', teil: 'oesterreich-teil-', merker: 'offkarte-at' },
     { id: 'ch', name: 'Schweiz', datei: 'schweiz.pmtiles', teil: 'schweiz-teil-', merker: 'offkarte-ch' },
     { id: 'it', name: 'Italien', datei: 'italien.pmtiles', teil: 'italien-teil-', merker: 'offkarte-it' },
+    { id: 'nl', name: 'Niederlande', datei: 'niederlande.pmtiles', teil: 'niederlande-teil-', merker: 'offkarte-nl' },
+    { id: 'be', name: 'Belgien', datei: 'belgien.pmtiles', teil: 'belgien-teil-', merker: 'offkarte-be' },
+    { id: 'lu', name: 'Luxemburg', datei: 'luxemburg.pmtiles', teil: 'luxemburg-teil-', merker: 'offkarte-lu' },
+    { id: 'dk', name: 'Dänemark', datei: 'daenemark.pmtiles', teil: 'daenemark-teil-', merker: 'offkarte-dk' },
+    { id: 'pl', name: 'Polen', datei: 'polen.pmtiles', teil: 'polen-teil-', merker: 'offkarte-pl' },
+    { id: 'cz', name: 'Tschechien', datei: 'tschechien.pmtiles', teil: 'tschechien-teil-', merker: 'offkarte-cz' },
     { id: 'welt', name: 'Weltkarte', datei: 'welt.pmtiles', teil: 'welt-teil-', merker: 'offkarte-welt', uebersicht: true }
   ];
   var QUELLEN = ['https://www.fehnverleih.de/karten/', 'https://www.fehnverleih.de/fehnverleih/karten/'];

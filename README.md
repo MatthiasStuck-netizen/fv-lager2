@@ -6,8 +6,8 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
-## Neu in 4.7.7 (4.7.6 ohne Italien)
-- Offline-Karten zusätzlich **Frankreich**, **Österreich**, **Schweiz**, **Italien** (`offline.js`, Liste `KARTEN`; Dateien `frankreich-teil-NN`, `oesterreich-teil-NN`, `schweiz-teil-NN`, `italien-teil-NN` aus den Releases `karte-frankreich`, `karte-oesterreich`, `karte-schweiz`, `karte-italien`, Zweig `karte-europa`).
+## Neu in 4.7.8 (4.7.6/4.7.7 mit weniger Ländern)
+- Offline-Karten zusätzlich **Frankreich**, **Österreich**, **Schweiz**, **Italien**, **Niederlande**, **Belgien**, **Luxemburg**, **Dänemark**, **Polen**, **Tschechien** (`offline.js`, Liste `KARTEN`; Dateien `frankreich-teil-NN`, `oesterreich-teil-NN`, `schweiz-teil-NN`, `italien-teil-NN` usw. (`<land>-teil-NN`) aus den Releases `karte-<land>`, Zweig `karte-europa`).
 - Oberfläche `www` ist der Stand der installierten 4.7.5 (aus der APK zurückgeholt) plus diese Änderung. Gebaut mit `bauen.py Fehnverleih-Navi-4.7.5.apk www …`.
 
 ## Neu in 4.5.0
