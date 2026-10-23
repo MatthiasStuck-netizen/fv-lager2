@@ -1,0 +1,105 @@
+name: Karten Frankreich, Oesterreich, Schweiz bauen
+
+# Baut je eine Offline-Karte fuer Frankreich, Oesterreich und die Schweiz
+# fuer das Fehnverleih Navi: PMTiles v3, Vektorkacheln im OpenMapTiles-Schema (wie deutschland.pmtiles).
+# Ergebnis: Releases "karte-frankreich", "karte-oesterreich", "karte-schweiz" mit den Teilen <land>-teil-00, -01, ...
+# Die Teile kommen unveraendert in den Ordner "karten" auf Strato.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [karte-europa]
+    paths: [.github/workflows/karte-europa.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  karte:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - land: frankreich
+            titel: Frankreich
+            quelle: europe/france-latest.osm.pbf
+          - land: oesterreich
+            titel: Oesterreich
+            quelle: europe/austria-latest.osm.pbf
+          - land: schweiz
+            titel: Schweiz
+            quelle: europe/switzerland-latest.osm.pbf
+    steps:
+      - name: Speicherplatz freiraeumen
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          sudo docker image prune --all --force || true
+          sudo mkdir -p /mnt/arbeit && sudo chown "$USER" /mnt/arbeit
+          df -h / /mnt
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Werkzeuge
+        working-directory: /mnt/arbeit
+        run: curl -sSfL -o planetiler.jar https://github.com/onthegomap/planetiler/releases/latest/download/planetiler.jar
+
+      - name: OpenStreetMap-Daten ${{ matrix.titel }} laden
+        working-directory: /mnt/arbeit
+        run: |
+          mkdir -p data/sources
+          curl -sSfL -o data/sources/${{ matrix.land }}.osm.pbf https://download.geofabrik.de/${{ matrix.quelle }}
+          ls -lh data/sources
+
+      - name: Karte bauen (dauert)
+        working-directory: /mnt/arbeit
+        run: |
+          set -o pipefail
+          java -Xmx12g -jar planetiler.jar \
+            --osm-path=data/sources/${{ matrix.land }}.osm.pbf \
+            --download \
+            --output=${{ matrix.land }}.pmtiles \
+            --force 2>&1 | tee planetiler.log || {
+              df -h / /mnt | sed 's/^/::error::/'
+              grep -iE "error|exception|caused by|no space|memory" planetiler.log | head -8 | cut -c1-400 | sed 's/^/::error::/'
+              exit 1; }
+          rm -rf data
+          ls -lh ${{ matrix.land }}.pmtiles
+
+      - name: Pruefen, ob die Datei zum Navi passt
+        working-directory: /mnt/arbeit
+        run: |
+          python3 - ${{ matrix.land }}.pmtiles <<'EOF'
+          import struct, sys
+          d = open(sys.argv[1], 'rb').read(127)
+          assert d[:7] == b'PMTiles' and d[7] == 3, 'kein PMTiles v3'
+          assert d[99] == 1, 'keine Vektorkacheln (MVT)'
+          minz, maxz = d[100], d[101]
+          w, s, o, n = [x / 1e7 for x in struct.unpack('<iiii', d[102:118])]
+          print('OK  Zoom', minz, '-', maxz, ' Bereich', w, s, o, n)
+          assert maxz >= 14
+          EOF
+
+      - name: In Teile zerlegen (je 1,9 GB)
+        working-directory: /mnt/arbeit
+        run: |
+          mkdir aus
+          sha256sum ${{ matrix.land }}.pmtiles > aus/PRUEFSUMME.txt
+          split -b 1900m -d -a 2 ${{ matrix.land }}.pmtiles aus/${{ matrix.land }}-teil-
+          rm ${{ matrix.land }}.pmtiles
+          cd aus && ls -l >> PRUEFSUMME.txt && cat PRUEFSUMME.txt
+
+      - name: Als Download bereitstellen
+        working-directory: /mnt/arbeit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete karte-${{ matrix.land }} -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create karte-${{ matrix.land }} aus/* -R "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Offline-Karte ${{ matrix.titel }} ($(date +%d.%m.%Y))" \
+            --notes "Alle Teile ${{ matrix.land }}-teil-NN herunterladen und unveraendert in den Ordner karten auf Strato legen. Daten: (c) OpenStreetMap-Mitwirkende, ODbL."
