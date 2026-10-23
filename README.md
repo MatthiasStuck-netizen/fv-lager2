@@ -6,6 +6,9 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.8.0
+- Leiste unten: **Einstellungen** ganz rechts (nach Kosmos), `REITER` in `app.js`.
+
 ## Neu in 4.7.9
 - **E-Säulen** in „Suche Nahverkehr“ (Knopf nach Dampfzüge, `nahverkehr.js` `esSuchen`/`esZeigen`/`esBlatt`): Ort eintippen → alle Ladesäulen für Autos im ganzen Gemeindegebiet (Overpass `area` aus der OSM-Grenze des Nominatim-Treffers, sonst Umkreis 3 km; leer = 5 km um den Standort). Karte oben (`K.esaeulen` in `karte.js`, GeoJSON mit Gruppen und Anzahl), Umschalter Alle/Schnelllader ab 50 kW, Liste (je 100), Fenster mit Steckern, kW, Betreiber, Kosten, Bezahlen, Hinfahren. Ohne E-Bike-Ladestellen und private Säulen.
 - `G.suche` liefert zusätzlich `box`, `osmTyp`, `osmId`.

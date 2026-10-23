@@ -18,7 +18,7 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) stimmeSichern(); });
   FV.esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
-  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['suche', 'suche', 'Suche'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['einstellungen', 'zahnrad', 'Einstellungen'], ['nahverkehr', 'bus', 'Nahverkehr'], ['kosmos', 'rakete', 'Kosmos']];
+  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['suche', 'suche', 'Suche'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['nahverkehr', 'bus', 'Nahverkehr'], ['kosmos', 'rakete', 'Kosmos'], ['einstellungen', 'zahnrad', 'Einstellungen']];
   var HOCH = { auftraege: 1, anmeldung: 1, sperre: 1 }, OHNE_LEISTE = { anmeldung: 1, sperre: 1 };
 
   app.speichern = function () { B.schreiben('einstellungen', app.e); };
