@@ -185,8 +185,9 @@
   function zugBlatt(sg) {
     zugWahl = sg;
     var p = sg.jetzt || position(sg, new Date()) || { anteil: 0 }, proz = Math.round((p.anteil || 0) * 100);
+    var foto = FV.BILD ? FV.BILD.bahn(sg.art, sg.name, sg.von, sg.artName) : null;
     A().blatt('<h2>' + sym(sg.art === 'faehre' ? 'schiff' : sg.art === 'bus' ? 'bus' : sg.art === 'tram' || sg.art === 'ubahn' ? 'tram' : 'zug') + '<span>' + h(sg.name || sg.artName) +
-        '<br><small style="font-weight:400;font-size:13px">' + h(sg.artName) + '<span id="zbziel"></span></small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+        '<br><small style="font-weight:400;font-size:13px">' + h(sg.artName) + '<span id="zbziel"></span></small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' + (foto ? FV.BILD.platz('Foto wird gesucht …') : '') +
       '<div class="block creme fzstrecke"><div class="fzorte"><div><b>' + h(G.uhr(sg.ab)) + '</b><span>' + h(sg.von) + '</span></div>' + sym('rechts', 'zbpfeil') +
         '<div><b>' + h(G.uhr(sg.an)) + '</b><span>' + h(sg.nach) + '</span></div></div><div class="offbalken"><i style="width:' + proz + '%"></i></div>' +
         '<small>' + h('Gerade unterwegs von ' + sg.von + ' nach ' + sg.nach + ' · etwa ' + proz + ' %') + '</small></div>' +
@@ -195,6 +196,7 @@
         zeile('info', 'Daten', h(sg.echt ? 'mit Echtzeit (Verspätung) des Betreibers' : 'nach Fahrplan – für diese Linie gibt es keine Echtzeit')) + '</div>' +
       '<div id="zbhalte"></div>' +
       '<p class="klein2">Position nach Fahrplan und Echtzeit gerechnet (Transitous, offene Fahrplandaten) – kein GPS des Zuges, ohne Gewähr.</p>');
+    if (foto) FV.BILD.zeigen(foto, sg.name || sg.artName);
     if (!sg.tripId) return;
     motis('/trip', 'tripId=' + encodeURIComponent(sg.tripId) + '&language=de').then(function (j) {
       if (zugWahl !== sg) return;
@@ -212,7 +214,7 @@
   function schiffBlatt(s) {
     var art = schiffArt(s.typ), land = MID[Math.floor(s.mmsi / 1000000)] || '', alt = s.zeit > 1000 ? Math.max(0, Math.round((Date.now() - s.zeit) / 60000)) : null;
     var kn = s.sog != null ? s.sog : null;
-    A().blatt('<h2>' + sym('schiff') + '<span>' + h(s.name || 'MMSI ' + s.mmsi) + '<br><small style="font-weight:400;font-size:13px">' + h([art[0], land].filter(Boolean).join(' · ')) + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    A().blatt('<h2>' + sym('schiff') + '<span>' + h(s.name || 'MMSI ' + s.mmsi) + '<br><small style="font-weight:400;font-size:13px">' + h([art[0], land].filter(Boolean).join(' · ')) + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' + (FV.SCHIFFFOTO ? FV.SCHIFFFOTO.platz() : '') +
       '<div class="block">' +
         zeile('info', 'Kennung', h(['MMSI ' + s.mmsi, s.imo ? 'IMO ' + s.imo : '', s.rufz ? 'Rufzeichen ' + s.rufz : ''].filter(Boolean).join(' · '))) +
         zeile('tempo', 'Geschwindigkeit', kn != null ? h(String(kn).replace('.', ',') + ' kn (' + Math.round(kn * 1.852) + ' km/h)') : 'unbekannt') +
@@ -223,6 +225,7 @@
         zeile('uhr', 'Letzte Meldung', alt == null ? '' : alt < 1 ? 'gerade eben' : 'vor ' + alt + ' Min.') + '</div>' +
       '<div class="zweier"><button class="rand knopf" data-tun="schiff-folgen" data-m="' + s.mmsi + '">' + sym('ort') + 'Auf der Karte</button><button class="rand knopf" data-tun="schiff-web" data-m="' + s.mmsi + '">' + sym('extern') + 'Mehr im Netz</button></div>' +
       '<p class="klein2">Position per AIS (aisstream.io), ohne Gewähr. Kleine Boote senden oft kein AIS.</p>');
+    if (FV.SCHIFFFOTO) FV.SCHIFFFOTO.laden(s);
   }
   Tun['schiff-folgen'] = function (el) { var s = schiffNach[+el.getAttribute('data-m')]; if (!s) return; A().blattZu(); K.mitte(s, 13); };
   Tun['schiff-web'] = function (el) { B.oeffnen('https://www.marinetraffic.com/de/ais/details/ships/mmsi:' + el.getAttribute('data-m')); };
@@ -265,5 +268,6 @@
     return Promise.all(f.legs.map(function (l) {
       return gleisLeg(l).then(function (pts) { if (pts) { l.punkte = pts; l.schienengenau = true; return true; } return false; });
     })).then(function (x) { var neu = x.some(Boolean); if (neu && fertig) fertig(f); return neu; });
-  };
+  };  /* Für die Hafen-Tafel (Seite „Suche Nahverkehr“): Schiffsarten, Status, Flaggen – nur lesen */
+  L.hilfe = { art: schiffArt, status: STATUS, land: MID };
 })();

@@ -3,12 +3,22 @@
   'use strict';
   var B = FV.B, S = FV.S, G = FV.G, K = FV.K, F = FV.F;
   var $ = function (s, w) { return (w || document).querySelector(s); };
-  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, fahrzeug: '', fahrzeugName: '', zuhause: '', modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true, ebike: true, parkenFrei: true, design: 'auto', bahnnetz: true, seewege: true, flugrouten: true, flugzeuge: false, zuege: true, schiffe: true, nachrichtenAn: true, nachrichtenVorlesen: true, routenArt: 'schnell', gelaende: false, kartenQuelle: '' };
+  var STD = { ansage: true, pieper: true, wc: true, laden: true, essen: true, tanken: true, wcAnsage: true, vorlesen: true, stimme: '', tempo: 1, hoehe: 1, fahrzeug: '', fahrzeugName: '', zuhause: '', arbeitOrt: null, arbeit2Ort: null, modus: 'auto', verkehr: true, umleiten: true, bahnhof: true, bus: true, stadt: true, hhnetz: true, apotheke: true, arzt: true, flughafen: true, ebike: true, parkenFrei: true, design: 'auto', bahnnetz: true, seewege: true, flugrouten: true, flugzeuge: false, zuege: true, schiffe: true, nachrichtenAn: true, nachrichtenVorlesen: true, routenArt: 'schnell', gelaende: false, kartenQuelle: '' };
   var app = FV.app = { e: Object.assign({}, STD, B.lesen('einstellungen', {}) || {}), z: { reiter: 'auftraege', tag: G.iso(new Date()), auftraege: [], ziele: {}, stand: '', laedt: false, fehler: '' }, stapel: [] };
   B.stimmeWaehlen(app.e.stimme, app.e.tempo, app.e.hoehe);   // gewählte Stimme gleich beim Start setzen
+  /* Die Sprachausgabe des Handys braucht nach dem Start einen Moment. Wird die Stimme genau in dieser Zeit gesetzt,
+   * geht sie verloren (dann spricht wieder die Standardstimme im Standardtempo). Deshalb: gespeicherte Stimme und Tempo
+   * nach dem Start mehrmals erneut setzen, bis die gewählte Stimme wirklich aktiv ist – und beim Zurückkehren in die App. */
+  function stimmeSichern() {
+    var e = app.e; B.stimmeWaehlen(e.stimme, e.tempo, e.hoehe);
+    if (!e.stimme) return false;   // nur Tempo/Tonhöhe: lässt sich nicht abfragen → einfach mehrmals setzen
+    var d = B.stimmen() || {}; return d.aktuell === e.stimme;
+  }
+  (function nochmal(n) { setTimeout(function () { if (!stimmeSichern() && n < 12) nochmal(n + 1); }, n < 4 ? 1500 : 5000); })(0);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) stimmeSichern(); });
   FV.esc = function (t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
 
-  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['suche', 'suche', 'Suche'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['einstellungen', 'zahnrad', 'Einstellungen']];
+  var REITER = [['auftraege', 'kalender', 'Aufträge'], ['karte', 'karte', 'Karte'], ['suche', 'suche', 'Suche'], ['lager', 'lager', 'Lager'], ['wetter', 'wolkig', 'Wetter'], ['fahrzeuge', 'lkw', 'Fahrzeuge'], ['einstellungen', 'zahnrad', 'Einstellungen'], ['nahverkehr', 'bus', 'Nahverkehr'], ['kosmos', 'rakete', 'Kosmos']];
   var HOCH = { auftraege: 1, anmeldung: 1, sperre: 1 }, OHNE_LEISTE = { anmeldung: 1, sperre: 1 };
 
   app.speichern = function () { B.schreiben('einstellungen', app.e); };
@@ -51,6 +61,7 @@
     if (s.name !== 'fahrt') B.vollbild(false);
     $('#bannerbild').src = HOCH[s.name] ? 'img/banner-hoch.jpg' : 'img/banner-flach.jpg';
     var l = $('#leiste'); l.hidden = !!OHNE_LEISTE[s.name];
+    l.classList.toggle('viele', REITER.length > 8);
     l.innerHTML = REITER.map(function (r) { return '<button data-tun="reiter" data-r="' + r[0] + '"' + (r[0] === app.z.reiter ? ' class="akt"' : '') + '>' + FV.sym(r[1]) + r[2] + (r[0] === 'karte' ? '<i class="laeuft"></i>' : '') + '</button>'; }).join('');
     FV.Seiten[s.name](s.p);
   }

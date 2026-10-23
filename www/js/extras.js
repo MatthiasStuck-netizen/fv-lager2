@@ -23,7 +23,7 @@
   Tun['karte-quelle'] = function (el) {
     var e = A().e, jetzt = K.quelle(), ziel = el && el.getAttribute('data-q') || (jetzt === 'offline' ? 'online' : 'offline');
     if (ziel === 'offline' && !K.offlineDa()) {
-      A().frage('Auf diesem Handy ist noch keine Offline-Karte geladen.\nUnter Einstellungen → Offline-Karten lässt sie sich laden (Deutschland, Spanien + Portugal, Weltkarte).', 'Zu den Einstellungen', 'Abbrechen').then(function (ja) { if (ja) A().zeige('einstellungen', {}, 'reiter'); });
+      A().frage('Auf diesem Handy ist noch keine Offline-Karte geladen.\nUnter Einstellungen → Offline-Karten lässt sie sich laden (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Weltkarte).', 'Zu den Einstellungen', 'Abbrechen').then(function (ja) { if (ja) A().zeige('einstellungen', {}, 'reiter'); });
       return;
     }
     e.kartenQuelle = ziel; A().speichern();
@@ -41,7 +41,7 @@
   EX.startKnoepfe = function () {
     var n = ungelesen();
     function k(tun, s, t) { return '<button class="rand minikachel" data-tun="' + tun + '">' + sym(s) + '<span>' + t + '</span>' + (tun === 'nachrichten' && n ? '<i class="zahl">' + (n > 9 ? '9+' : n) + '</i>' : '') + '</button>'; }
-    return '<div class="minikacheln">' + k('favoriten-blatt', 'stern', 'Favoriten') + k('telefon', 'telefon', 'Telefon') + k('musik', 'musik', 'Spotify') + k('nachrichten', 'chat', 'Nachrichten') + k('verkehrsfunk', 'radio', 'Verkehrsfunk') + '</div>';
+    return '<div class="minikacheln">' + k('favoriten-blatt', 'stern', 'Favoriten') + k('telefon', 'telefon', 'Telefon') + k('musik', 'musik', 'Spotify') + k('aktuelles', 'zeitung', 'Aktuelles') + k('nachrichten', 'chat', 'Nachrichten') + k('verkehrsfunk', 'radio', 'Verkehrsfunk') + '</div>';
   };
   Tun['favoriten-blatt'] = function () {
     var F = FV.FAV, l = F ? F.alle() : [];
@@ -481,13 +481,15 @@
   Tun['nachrichten-mail'] = function () { A().z.nTab = 'mail'; A().zeige('nachrichten'); };
 
   /* ====================== Vollbild-Leiste während der Zielführung: Uhrzeit · Abfahrt · Ankunft ====================== */
-  EX.vollLeiste = function () { return '<div class="vollzeiten" id="vollzeiten"><div><b id="vzuhr">–</b><span>Uhrzeit</span></div><div><b id="vzab">–</b><span>Abfahrt</span></div><div><b id="vzan">–</b><span>Ankunft</span></div><div><b id="vzrest">–</b><span>Rest</span></div></div>'; };
+  EX.vollLeiste = function () { return '<div class="vollzeiten" id="vollzeiten"><div><b id="vzuhr">–</b><span>Uhrzeit</span></div><div><b id="vzab">–</b><span>Abfahrt</span></div><div><b id="vzan">–</b><span>Ankunft</span></div><div class="km"><b id="vzgef">–</b><span>Gefahren</span></div><div class="km"><b id="vzrest">–</b><span>Bis zum Ziel</span></div></div>'; };
+  function kmZahl(m) { return G.km(m); }
   EX.vollNeu = function (s, n) {
     var u = $('#vzuhr'); if (!u) return;
     u.textContent = G.uhr(new Date());
     var ab = n && (n.abfahrt || (n.reise && n.reise.legs && n.reise.legs[0] && n.reise.legs[0].ab));
     $('#vzab').textContent = ab ? G.uhr(new Date(ab)) : '–';
-    if (s) { $('#vzan').textContent = s.ankunft ? G.uhr(s.ankunft) : '–'; $('#vzrest').textContent = s.restM != null ? G.km(s.restM) : '–'; }
+    if (s) { $('#vzan').textContent = s.ankunft ? G.uhr(s.ankunft) : '–'; $('#vzrest').textContent = s.restM != null ? kmZahl(s.restM) : '–'; }
+    var gm = (FV.B.zaehler() || {}).meter || 0, gf = $('#vzgef'); if (gf) gf.textContent = kmZahl(gm);
   };
   setInterval(function () { var u = $('#vzuhr'); if (u) u.textContent = G.uhr(new Date()); }, 10000);
 })();

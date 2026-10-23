@@ -1,6 +1,7 @@
 /* Symbole: Material Design Icons (Google, Apache-2.0) */
 window.FV = window.FV || {};
-FV.SYMBOLE = {"kalender":"<path d=\"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 16H5V10h14zM9 14H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2zm-8 4H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2z\"/>",
+FV.SYMBOLE = {"koffer":"<path d=\"M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2m-6 0h-4V4h4z\"/>",
+"kalender":"<path d=\"M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2m0 16H5V10h14zM9 14H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2zm-8 4H7v-2h2zm4 0h-2v-2h2zm4 0h-2v-2h2z\"/>",
 "links":"<path d=\"M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z\"/>",
 "rechts":"<path d=\"M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z\"/>",
 "telefon":"<path d=\"M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02z\"/>",
@@ -126,3 +127,5 @@ FV.SYMBOLE.blatt = '<path d="M6.05 8.05a7.007 7.007 0 0 0-.02 9.88c1.47-3.4 4.09
 FV.SYMBOLE.lineal = '<path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2m0 10H3V8h2v4h2V8h2v4h2V8h2v4h2V8h2v4h2V8h2z"/>';
 FV.SYMBOLE.antworten = '<path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11"/>';
 FV.SYMBOLE.ebike = FV.SYMBOLE.fahrrad.replace('"/>', 'M6 .5 2.2 5.6h2.4L3.7 9.5 7.8 4.1H5.3L6.4.5z"/>');
+FV.SYMBOLE.dampf = '<circle cx="5.5" cy="2.6" r="1.5"/><circle cx="8.6" cy="1.9" r="1.1"/><path d="M4.5 5h3v3h-3z"/><path d="M3 9.2C3 8.5 3.5 8 4.2 8H14v6H3z"/><path fill-rule="evenodd" d="M14 4.5h7.2c.4 0 .8.4.8.8V14h-8zm2 1.8v3.4h4V6.3z"/><path d="M1.5 14.6h21v1.8h-21zM1 9.5h1.6v4.6H1z"/><circle cx="6" cy="19.2" r="2.4"/><circle cx="12" cy="19.2" r="2.4"/><circle cx="18" cy="19.2" r="2.4"/>';
+FV.SYMBOLE.zeitung = '<path d="M20.33 3.67 18.67 5.33 17 3.67l-1.67 1.66-1.66-1.66L12 5.33l-1.67-1.66-1.66 1.66L7 3.67 5.33 5.33 3.67 3.67 2 5.33V19c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5.33zM12 19H4v-6h8zm8 0h-6v-2h6zm0-4h-6v-2h6zm0-4H4V8h16z"/>';

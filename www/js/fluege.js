@@ -186,12 +186,13 @@
   function flugzeugBlatt(f) {
     if (!f) return;
     wahl = f; liste.forEach(function (x) { x.akt = x.id === f.id; }); K.flugzeuge(liste, flugzeugBlatt);
-    A().blatt('<h2>' + sym('flug') + '<span>' + h(f.name || f.kennz || f.id.toUpperCase()) + '<br><small style="font-weight:400;font-size:13px">' + h([f.typ, f.beschr, f.kennz].filter(Boolean).join(' · ') || 'Flugzeug') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    A().blatt('<h2>' + sym('flug') + '<span>' + h(f.name || f.kennz || f.id.toUpperCase()) + '<br><small style="font-weight:400;font-size:13px">' + h([f.typ, f.beschr, f.kennz].filter(Boolean).join(' · ') || 'Flugzeug') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' + (FV.BILD ? FV.BILD.platz('Foto vom Flugzeug wird gesucht …') : '') +
       '<div id="fzroute">' + (f.name ? X.laedt('Strecke wird gesucht …') : '') + '</div>' +
       '<div class="block">' + zeile('auf', 'Höhe', h(hoeheText(f.hoeheFt))) + zeile('tempo', 'Geschwindigkeit', f.kmh != null ? f.kmh + ' km/h über Grund' : '') + zeile('navi', 'Kurs', Math.round(f.kurs || 0) + '°') +
       zeile('info', 'Kennung', h(['ICAO ' + f.id.toUpperCase(), f.squawk ? 'Squawk ' + f.squawk : '', f.land || ''].filter(Boolean).join(' · '))) + '</div>' +
       '<div id="fzzeiten"></div>' +
       '<p class="klein2">Live-Position: ' + h(f.quelle) + ' (ADS-B, ohne Gewähr) · wird alle 20 Sekunden neu geholt.</p>');
+    if (FV.BILD) FV.BILD.zeigen(FV.BILD.flugzeug(f.kennz, f.typ, f.beschr), f.name || f.kennz || 'Flugzeug');
     if (!f.name) { zeitenZeigen(f, null); return; }
     strecke(f).then(function (r) {
       if (wahl === f) zeitenZeigen(f, r);
@@ -271,12 +272,13 @@
       var abP = t(x.ab_plan) || (!ankunft ? x.plan : null), abN = t(x.ab_neu) || (!ankunft ? x.neu : null), anP = t(x.an_plan) || (ankunft ? x.plan : null), anN = t(x.an_neu) || (ankunft ? x.neu : null);
       return zeile('uhr', 'Uhrzeit jetzt', G.uhr(new Date())) + zeitZeile('abflug', 'Abflug ' + h(von.iata || ''), abP, abN) + zeitZeile('ankunft', 'Ankunft ' + h(nach.iata || ''), anP, anN);
     }
-    A().blatt('<h2>' + sym('flug') + '<span>' + h(x.nr) + (x.cs ? ' <small class="iata">' + h(x.cs) + '</small>' : '') + '<br><small style="font-weight:400;font-size:13px">' + h([x.airline, x.typ, x.reg].filter(Boolean).join(' · ') || 'Flug') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    A().blatt('<h2>' + sym('flug') + '<span>' + h(x.nr) + (x.cs ? ' <small class="iata">' + h(x.cs) + '</small>' : '') + '<br><small style="font-weight:400;font-size:13px">' + h([x.airline, x.typ, x.reg].filter(Boolean).join(' · ') || 'Flug') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' + (FV.BILD ? FV.BILD.platz('Foto vom Flugzeug wird gesucht …') : '') +
       '<div class="block creme fzstrecke"><div class="fzorte"><div><b>' + h(von.iata || '') + '</b><span>' + h(von.ort || von.name || '') + '</span></div>' + sym('flug') +
         '<div><b>' + h(nach.iata || '') + '</b><span>' + h(nach.ort || nach.name || '') + '</span></div></div><div class="offbalken"><i id="fdanteil" style="width:0%"></i></div><small id="fdstand">' + h(aus ? 'annulliert' : (ST[x.status] || 'geplant')) + '</small></div>' +
       '<div class="block" id="fdzeiten">' + zeitenHtml() + zeile('pin', ankunft ? 'Gepäckband' : 'Gate', h([(ankunft ? x.band : x.gate) || '', x.terminal ? 'Terminal ' + x.terminal : ''].filter(Boolean).join(' · '))) + '</div>' +
       '<div id="fdlive">' + (aus ? '' : X.laedt('Live-Position wird gesucht …')) + '</div>' +
       '<p class="klein2">Flugtafel: AeroDataBox · Live-Position: adsb.lol (ADS-B, ohne Gewähr) · wird alle 20 Sekunden neu geholt.</p>');
+    if (FV.BILD) FV.BILD.zeigen(FV.BILD.flugzeug(x.reg, '', x.typ), x.nr || 'Flugzeug');
     function live() {
       if (!detail || detail.x !== x || !$('#fdlive')) { clearInterval(detailT); return; }
       liveSuchen(x).then(function (a) {

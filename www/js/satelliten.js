@@ -195,7 +195,7 @@
     var x = letzte && letzte.l[+el.getAttribute('data-i')]; if (!x) return;
     function z(s, k, t) { return t ? '<div class="detailzeile">' + sym(s) + '<div><small>' + k + '</small>' + t + '</div></div>' : ''; }
     var u = x.umlauf ? Math.floor(x.umlauf) + ' Std. ' + Math.round((x.umlauf % 1) * 60) + ' Min.' : '';
-    A().blatt('<h2>' + sym('satellit') + '<span>' + h(x.name) + '<br><small style="font-weight:400;font-size:13px">' + h(x.sys + ' (' + (LAND[x.sys] || '') + ') · ' + x.kurz) + '</small></span><button data-tun="sat-zurueck">' + sym('links') + '</button><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+    A().blatt('<h2>' + sym('satellit') + '<span>' + h(x.name) + '<br><small style="font-weight:400;font-size:13px">' + h(x.sys + ' (' + (LAND[x.sys] || '') + ') · ' + x.kurz) + '</small></span><button data-tun="sat-zurueck">' + sym('links') + '</button><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' + (FV.BILD ? FV.BILD.platz('Foto vom Satelliten wird gesucht …') : '') +
       '<div class="block">' + z('haken', 'Verbindung', x.genutzt ? 'verbunden – wird für deinen Standort benutzt' : 'in Sicht, wird gerade nicht benutzt') +
         z('auf', 'Höhe über der Erde', (x.genau ? '' : 'ca. ') + zahl(x.hoehe, ' km')) +
         z('tempo', 'Geschwindigkeit', (x.genau ? '' : 'ca. ') + zahl(x.kmh, ' km/h') + ' (' + (x.kmh / 3600).toFixed(2).replace('.', ',') + ' km/s)') +
@@ -205,6 +205,7 @@
         z('ton', 'Signal', x.snr > 0 ? Math.round(x.snr) + ' dB-Hz · ' + (x.snr >= 35 ? 'stark' : x.snr >= 25 ? 'mittel' : 'schwach') + (x.mhz ? ' · Frequenz ' + band(x.mhz) : '') : 'kein Signal') +
         z('info', 'Kennung', h(['Nummer ' + x.nr, x.norad ? 'NORAD ' + x.norad : '', x.neig ? 'Bahnneigung ' + x.neig.toFixed(1).replace('.', ',') + '°' : ''].filter(Boolean).join(' · '))) + '</div>' +
       (x.genau ? '' : '<p class="klein2">Für diesen Satelliten fehlen Bahndaten – Höhe und Geschwindigkeit sind die üblichen Werte des Systems.</p>'));
+    if (FV.BILD) FV.BILD.zeigen(FV.BILD.satellit(x.sys), x.name);
   };
   SAT._test = { bahn: bahnJetzt, blick: blick, ort: ortEcef, hoehe: hoeheUeberGrund, vorbereiten: vorbereiten };
   Tun['sat-zurueck'] = function () { if (Tun.satelliten) Tun.satelliten(); };

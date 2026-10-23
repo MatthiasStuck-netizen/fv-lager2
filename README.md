@@ -1,10 +1,14 @@
-# Fehnverleih Navi 3.9.x – 4.4.x – Oberfläche und Bauwerkzeuge
+# Fehnverleih Navi 3.9.x – 4.7.x – Oberfläche und Bauwerkzeuge
 
 Dieser Zweig enthält die Oberfläche der installierten Navi-App ab **3.9.3** (aus der APK zurückgeholt)
 und die Änderungen ab **3.9.4**. Der Android-Teil (Kotlin) von 3.9.x liegt nur kompiliert in der APK vor;
 gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und neu unterschrieben wird.
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
+
+## Neu in 4.7.6
+- Offline-Karten zusätzlich **Frankreich**, **Österreich**, **Schweiz** (`offline.js`, Liste `KARTEN`; Dateien `frankreich-teil-NN`, `oesterreich-teil-NN`, `schweiz-teil-NN` aus den Releases `karte-frankreich`, `karte-oesterreich`, `karte-schweiz`, Zweig `karte-europa`).
+- Oberfläche `www` ist der Stand der installierten 4.7.5 (aus der APK zurückgeholt) plus diese Änderung. Gebaut mit `bauen.py Fehnverleih-Navi-4.7.5.apk www …`.
 
 ## Neu in 4.5.0
 - **Kostenlose Parkplätze** (`parken.js`, Ebene `parkenFrei`): alle Parkplätze aus OpenStreetMap mit `fee=no` – weltweit, in jeder Stadt, ab Zoom 12 im sichtbaren Ausschnitt (Kacheln 0,1°, 7 Tage gemerkt; ohne private/Kunden-/Anwohner-Parkplätze). Blaues „P“ mit grünem „0 €“, antippen → Art, Plätze, Höchstparkdauer, Parkscheibe, Zeiten, Durchfahrtshöhe, Lkw, Hinfahren/zu Fuß. Seite `parkfrei` (in der Nähe bzw. „am Ziel“ aus der Zielführung). Schalter in Ebenen, Zielführung und Einstellungen.

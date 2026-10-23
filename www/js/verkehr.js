@@ -42,7 +42,7 @@
     return neu.catch(function (e) { if (d && alter < (o.notfall != null ? o.notfall : 30 * ZW_TAG)) return d.l; throw e; });
   };
   /** Alles Gespeicherte löschen (Einstellungen) */
-  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt', 'halt_schiff', 'ebike', 'parken'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
+  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt', 'halt_schiff', 'halt_tram', 'ebike', 'parken'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
 
   /* ---------- OpenStreetMap (Overpass): zuerst über die Verwaltung (Zwischenspeicher auf dem Server), sonst direkt ---------- */
   function wirt(u) { return String(u).replace(/^https?:\/\//, '').split('/')[0]; }
@@ -89,6 +89,42 @@
       if (Array.isArray(sg) && sg.length) sg.forEach(function (x) { g.push('Server → ' + x); });
       else g.push('Server: ' + grundText(e));
       return osmDirekt(q, g);
+    });
+  };
+  /** Wie V.osm, aber alle Wege gleichzeitig statt nacheinander: Server (Zwischenspeicher) und die Kartenserver
+   *  direkt, im Abstand von 4 Sekunden gestaffelt. Die erste brauchbare Antwort gewinnt. */
+  V.osmSchnell = function (q, dauer, zeit) {
+    var S = FV.S, gruende = [], offen = 0, fertig = false;
+    zeit = zeit || 40000;
+    return new Promise(function (ok, fehl) {
+      function gut(j) { if (fertig) return; fertig = true; ok(j); }
+      function schlecht(text) {
+        gruende.push(text); offen--;
+        if (!offen && !fertig) { fertig = true; var f = new Error('OpenStreetMap ist gerade nicht erreichbar.'); f.gruende = gruende; fehl(f); }
+      }
+      if (!osmOhneServer && S && !S.demo && S.angemeldet()) {
+        offen++;
+        S.ruf('osm', { q: q, dauer: dauer || 86400 }, zeit + 10000).then(function (r) {
+          if (!Array.isArray(r.elements)) throw new Error('leer');
+          gut(r);
+        }).catch(function (e) {
+          if (e && e.unbekannt) osmOhneServer = true;
+          schlecht('Server: ' + grundText(e));
+        });
+      }
+      G.DIENST.overpass.forEach(function (url, i) {
+        offen++;
+        setTimeout(function () {
+          if (fertig) { offen--; return; }
+          B.json({ methode: 'POST', url: url, kopf: { 'Content-Type': 'application/x-www-form-urlencoded', 'Accept': 'application/json', 'Referer': 'https://fehnverleih.de/' }, daten: 'data=' + encodeURIComponent(q), zeit: zeit })
+            .then(function (j) {
+              if (!j || !Array.isArray(j.elements)) throw new Error('leere Antwort');
+              if (/error|timed out|out of memory/i.test(j.remark || '') && !j.elements.length) throw new Error('Abfrage abgebrochen');
+              gut(j);
+            })
+            .catch(function (e) { schlecht('Handy → ' + wirt(url) + ': ' + grundText(e)); });
+        }, i * 4000);
+      });
     });
   };
   /** Gründe eines Kartenfehlers für die Anzeige (klein, unter der Fehlermeldung) */
@@ -853,9 +889,74 @@
       });
     });
   }
+  /* ---------- Haltestelle / Bahnhof / Anleger über den NAMEN suchen (Seite „Suche Nahverkehr“) ----------
+   * art: 'zug', 'bus' oder 'schiff'. Liefert [{ id, name, lat, lon, zug, sbahn, ubahn, tram, bus, schiff, tafelArt }], beste zuerst.
+   * Reihenfolge: DB Navigator → bahn.de → transport.rest (die erste Quelle mit Treffern gewinnt). */
+  function passtZu(b, art) {
+    var bekannt = b.zug || b.sbahn || b.ubahn || b.tram || b.bus || b.schiff;
+    if (!bekannt) return true;   // Quelle nennt keine Verkehrsmittel → lieber zeigen
+    if (art === 'zug') return b.zug || b.sbahn || b.ubahn;
+    if (art === 'schiff') return b.schiff;
+    if (art === 'ubahn') return b.ubahn;
+    if (art === 'tram') return b.tram;
+    return b.bus || b.tram;
+  }
+  function suchStelle(id, name, lat, lon, pr) {
+    return { id: id, name: name, lat: lat, lon: lon, zug: !!pr.zug, sbahn: !!pr.sbahn, ubahn: !!pr.ubahn, tram: !!pr.tram, bus: !!pr.bus, schiff: !!pr.schiff };
+  }
+  function suchNavi(text, gruende) {
+    return naviFrage('location/search', 'location.v3', { locationTypes: ['ST'], searchTerm: text, maxResults: 25 }, gruende).then(function (j) {
+      var roh = Array.isArray(j) ? j : (j && (j.locations || j.orte)) || [];
+      if (!Array.isArray(roh)) throw new Error('unverständliche Antwort');
+      return roh.map(function (x) {
+        var c = x.coordinates || x.position || {}, lid = lidTeile(x.locationId || x.id), id = evaOhneNull(x.evaNr || x.extId || lid.L);
+        var lat = c.latitude != null ? +c.latitude : lid.Y ? lid.Y / 1e6 : null, lon = c.longitude != null ? +c.longitude : lid.X ? lid.X / 1e6 : null;
+        if (!id || lat == null) return null;
+        return suchStelle(id, x.name || lid.O || 'Haltestelle', lat, lon, haltProdukte(x));
+      }).filter(Boolean);
+    });
+  }
+  function suchWeb(text, gruende) {
+    return dbFrage('/orte?suchbegriff=' + encodeURIComponent(text) + '&typ=ALL&limit=25', gruende).then(function (j) {
+      if (!Array.isArray(j)) throw new Error('unverständliche Antwort');
+      return j.map(function (x) {
+        if (x.type && x.type !== 'ST') return null;
+        var id = evaOhneNull(x.extId || lidTeile(x.id).L); if (!id || x.lat == null) return null;
+        return suchStelle(id, x.name || 'Haltestelle', +x.lat, +x.lon, haltProdukte(x));
+      }).filter(Boolean);
+    });
+  }
+  function suchRest(text, gruende) {
+    return bahnFrage('/locations?query=' + encodeURIComponent(text) + '&results=25&stops=true&addresses=false&poi=false&linesOfStops=false&language=de', gruende).then(function (j) {
+      var roh = Array.isArray(j) ? j : [];
+      return roh.map(function (x) {
+        var loc = x.location || x, p = x.products || {}; if (!x.id || loc.latitude == null) return null;
+        return suchStelle(evaOhneNull(x.id), x.name || 'Haltestelle', +loc.latitude, +loc.longitude, {
+          zug: p.nationalExpress || p.national || p.regionalExpress || p.regional, sbahn: p.suburban, ubahn: p.subway, tram: p.tram, bus: p.bus || p.taxi, schiff: p.ferry });
+      }).filter(Boolean);
+    });
+  }
+  V.stationSuche = function (text, art) {
+    var gruende = [];
+    function mitTreffern(l) { if (!l.length) throw new Error('leer'); return l; }
+    return suchNavi(text, gruende).then(mitTreffern)
+      .catch(function () { return suchWeb(text, gruende).then(mitTreffern); })
+      .catch(function () { return suchRest(text, gruende); })
+      .then(function (l) {
+        var gesehen = {};
+        return l.filter(function (b) { if (gesehen[b.id]) return false; gesehen[b.id] = 1; return passtZu(b, art); }).map(function (b) {
+          // Welche Tafel passt: reine U-Bahn-Station → S-/U-Bahn-Tafel, Bus → alles an der Haltestelle
+          b.tafelArt = art === 'zug' ? (!b.zug && !b.sbahn && b.ubahn ? 'stadt' : 'zug') : art === 'bus' ? 'nurbus' : art;
+          return b;
+        });
+      }).catch(function (e) { if (e && !e.gruende) e.gruende = gruende; throw e; });
+  };
   /** Abfahrten oder Ankünfte der nächsten 90 Minuten – live, mit Verspätung, Gleis und Gleiswechsel. b = Bahnhof oder Bahn-Nummer */
   V.tafel = function (b, ankunft, art) {
     if (typeof b !== 'object') b = { id: String(b) };
+    if (art === 'ubahn') return tafelUbahn(b, ankunft);
+    if (art === 'tram') return tafelTram(b, ankunft);
+    if (art === 'nurbus') return tafelBusNur(b, ankunft);
     var gruende = [], zug = !art || art === 'zug';
     return (zug ? bfId(b, gruende) : haltId(b, art, gruende)).then(function (id) {
       // Reihenfolge: DB Navigator → bahnhof.de (nur Bahnhöfe) → bahn.de → transport.rest (der erste, der antwortet, gewinnt)
@@ -869,6 +970,98 @@
     });
   };
   /** Kurzfassung einer Tafel: { pk, sp, au } */
+  /** Nur U-Bahnen. Große Bahnhöfe (z. B. Hamburg Hbf) haben ihre U-Bahn oft als eigene Haltestelle daneben
+   * („Hauptbahnhof Nord“, „Hauptbahnhof Süd“) – die werden im Umkreis von 500 m mit abgefragt. */
+  function tafelUbahn(b, ankunft) {
+    function binnen(w, ms) { return new Promise(function (ok) { var t = setTimeout(function () { ok([]); }, ms); w.then(function (x) { clearTimeout(t); ok(x); }, function () { clearTimeout(t); ok([]); }); }); }
+    var nah = b.lat != null ? binnen(V.haltestellen({ lat: b.lat, lon: b.lon }, 500, 'stadt'), 8000) : Promise.resolve([]);
+    return nah.then(function (l) {
+      var halte = [b], ids = {}; if (b.id) ids[b.id] = 1;
+      l.forEach(function (x) { if (x.ubahn && x.id && !ids[x.id] && halte.length < 5) { ids[x.id] = 1; halte.push(x); } });
+      var fehler = null;
+      return Promise.all(halte.map(function (x, i) {
+        var w = V.tafel(x, ankunft, 'stadt');
+        return (i === 0 ? w : binnen(w, 20000)).catch(function (e) { fehler = e; return []; });
+      })).then(function (t) {
+        var gesehen = {}, aus = [];
+        t.forEach(function (liste) { liste.forEach(function (y) {
+          if (y.produkt !== 'subway' && !/^U\s?\d/.test(y.linie || '')) return;
+          var k = (y.linie || '') + '|' + (y.plan ? +y.plan : '') + '|' + (y.richtung || ''); if (gesehen[k]) return; gesehen[k] = 1;
+          y.produkt = 'subway'; aus.push(y);
+        }); });
+        if (!aus.length && fehler && t.every(function (x) { return !x.length; })) throw fehler;
+        return aus.sort(function (a, c) { return a.plan - c.plan; });
+      });
+    });
+  }
+  /** Nur Straßenbahnen: alle Abfahrten an der Haltestelle und an Straßenbahn-Halten bis 300 m daneben */
+  function tafelTram(b, ankunft) { return tafelNur(b, ankunft, 'tram', /^(STR|Tram|Str)\b/i); }
+  /** Nur Busse (auch Rufbusse) – große Bahnhöfe haben ihre Bussteige oft als eigene Haltestellen daneben */
+  function tafelBusNur(b, ankunft) { return tafelNur(b, ankunft, 'bus', /^(Bus|RUF|AST|ALT)\b/i); }
+  function tafelNur(b, ankunft, prod, linieRe) {
+    function binnen(w, ms) { return new Promise(function (ok) { var t = setTimeout(function () { ok([]); }, ms); w.then(function (x) { clearTimeout(t); ok(x); }, function () { clearTimeout(t); ok([]); }); }); }
+    var nah = b.lat != null ? binnen(V.haltestellen({ lat: b.lat, lon: b.lon }, 300, prod), 8000) : Promise.resolve([]);
+    return nah.then(function (l) {
+      var halte = [b], ids = {}; if (b.id) ids[b.id] = 1;
+      l.forEach(function (x) { if (x.id && !ids[x.id] && halte.length < 4) { ids[x.id] = 1; halte.push(x); } });
+      var fehler = null;
+      return Promise.all(halte.map(function (x, i) {
+        var w = V.tafel(x, ankunft, 'bus');   // „bus“ = alles an der Haltestelle, danach nur Straßenbahnen behalten
+        return (i === 0 ? w : binnen(w, 20000)).catch(function (e) { fehler = e; return []; });
+      })).then(function (t) {
+        var gesehen = {}, aus = [];
+        t.forEach(function (liste) { liste.forEach(function (y) {
+          var passt = prod === 'bus' ? (y.produkt === 'bus' || y.produkt === 'taxi') : y.produkt === prod;
+          if (!passt && !(!y.produkt && linieRe.test(y.linie || ''))) return;
+          var k = (y.linie || '') + '|' + (y.plan ? +y.plan : '') + '|' + (y.richtung || ''); if (gesehen[k]) return; gesehen[k] = 1;
+          y.produkt = prod === 'bus' ? 'bus' : prod; aus.push(y);
+        }); });
+        if (!aus.length && fehler && t.every(function (x) { return !x.length; })) throw fehler;
+        return aus.sort(function (a, c) { return a.plan - c.plan; });
+      });
+    });
+  }
+  /* ---------- Liniennetz einer Stadt (U-Bahn, S-Bahn, Straßenbahn) aus OpenStreetMap ----------
+   * Liefert { linien: [{ ref, farbe, name, von, nach, art: 'ubahn'|'sbahn'|'tram', wege }], stand }. Gespeichert 30 Tage je Gebiet. */
+  var NETZ_FARBE = { ubahn: '#0067b3', sbahn: '#2f9e44', tram: '#d6261c' };
+  var netzLauf = {};
+  V.netz = function (p) {
+    if (V.beiHamburg(p)) return V.hhNetz();
+    var mlat = Math.round(p.lat * 10) / 10, mlon = Math.round(p.lon * 10) / 10, key = mlat.toFixed(1) + '_' + mlon.toFixed(1);
+    var d = B.lesen('netz_' + key, null);
+    if (d && d.linien && Date.now() - (d.stand || 0) < 30 * ZW_TAG) return Promise.resolve(d);
+    if (netzLauf[key]) return netzLauf[key];
+    var dl = 0.16, dn = 0.16 / Math.max(0.3, Math.cos(mlat * Math.PI / 180)), bb = '(' + [mlat - dl, mlon - dn, mlat + dl, mlon + dn].map(function (x) { return x.toFixed(3); }).join(',') + ')';
+    var q = '[out:json][timeout:90];(rel["type"="route"]["route"~"^(subway|tram|light_rail)$"]' + bb + ';rel["type"="route"]["route"="train"]["ref"~"^S ?[0-9]{1,2}$"]' + bb + ';)->.r;.r out body;way(r.r)["railway"~"^(rail|subway|light_rail|tram|narrow_gauge)$"]' + bb + ';out geom;';
+    var w = osmDirekt(q, [], 90000).catch(function (e) {
+      var S = FV.S; if (!S || S.demo || !S.angemeldet()) throw e;
+      return S.ruf('osm', { q: q, dauer: 30 * 86400 }, 95000);
+    }).then(function (j) {
+      var wege = {}, rels = [];
+      (j.elements || []).forEach(function (e) {
+        if (e.type === 'way' && Array.isArray(e.geometry)) wege[e.id] = e.geometry.map(function (g) { return [Math.round(g.lon * 1e5) / 1e5, Math.round(g.lat * 1e5) / 1e5]; });
+        else if (e.type === 'relation') rels.push(e);
+      });
+      var nachRef = {};
+      rels.forEach(function (r) {
+        var t = r.tags || {}, ref = String(t.ref || '').replace(/\s+/g, ''); if (!ref) return;
+        var art = t.route === 'subway' ? 'ubahn' : t.route === 'train' || /^S\d/.test(ref) ? 'sbahn' : t.route === 'light_rail' && /^U\d/.test(ref) ? 'ubahn' : 'tram';
+        var k = art + '|' + ref;
+        var l = nachRef[k] || (nachRef[k] = { ref: ref, farbe: /^#[0-9a-f]{6}$/i.test(t.colour || '') ? t.colour : NETZ_FARBE[art], name: t.name || ref, von: t.from || '', nach: t.to || '', art: art, netz: t.network || t.operator || '', ids: {} });
+        (r.members || []).forEach(function (m) { if (m.type === 'way' && wege[m.ref] && !/platform/.test(m.role || '')) l.ids[m.ref] = 1; });
+      });
+      var ORD = { sbahn: 0, ubahn: 1, tram: 2 };
+      function nr(x) { var m = /\d+/.exec(x); return m ? +m[0] : 999; }
+      var linien = Object.keys(nachRef).map(function (k) { var l = nachRef[k]; l.wege = Object.keys(l.ids).map(function (id) { return wege[id]; }); delete l.ids; return l; })
+        .filter(function (l) { return l.wege.length; })
+        .sort(function (a, b) { return ORD[a.art] - ORD[b.art] || nr(a.ref) - nr(b.ref) || (a.ref < b.ref ? -1 : 1); });
+      var erg = { linien: linien, stand: Date.now() };
+      try { B.schreiben('netz_' + key, erg); } catch (e) {}
+      return erg;
+    });
+    netzLauf[key] = w.then(function (x) { delete netzLauf[key]; return x; }, function (e) { delete netzLauf[key]; if (d && d.linien) return d; throw e; });
+    return netzLauf[key];
+  };
   V.tafelSumme = function (l) { var s = { pk: 0, sp: 0, au: 0 }; l.forEach(function (x) { if (x.faellt) s.au++; else if (x.verz >= 6) s.sp++; else if (x.verz != null) s.pk++; }); return s; };
   /** Liegt das Ziel an einem Bahnhof (höchstens 700 m)? Liefert den Bahnhof oder null */
   V.zielBahnhof = function (p) {
@@ -964,7 +1157,8 @@
   var HALT_PROD = {
     bus: ['BUSSE', 'ANRUFPFLICHTIGEVERKEHRE'],
     stadt: ['SBAHNEN', 'UBAHN'],
-    schiff: ['SCHIFFE']
+    schiff: ['SCHIFFE'],
+    tram: ['STRASSENBAHN']
   };
   var PROD_NAME = { BUSSE: 'bus', BUS: 'bus', ANRUFPFLICHTIGEVERKEHRE: 'bus', ANRUFPFLICHTIG: 'bus', SBAHNEN: 'sbahn', SBAHN: 'sbahn', UBAHN: 'ubahn', STRASSENBAHN: 'tram', STR: 'tram', TRAM: 'tram',
     HOCHGESCHWINDIGKEITSZUEGE: 'zug', ICE: 'zug', INTERCITYUNDEUROCITYZUEGE: 'zug', IC_EC: 'zug', EC_IC: 'zug', INTERREGIOUNDSCHNELLZUEGE: 'zug', IR: 'zug', NAHVERKEHRSONSTIGEZUEGE: 'zug', RB: 'zug', REGIONAL: 'zug', SCHIFFE: 'schiff', SCHIFF: 'schiff' };
@@ -1005,6 +1199,7 @@
         if (art === 'stadt' && !pr.sbahn && !pr.ubahn) return;
         if (art === 'bus' && !pr.bus && Object.keys(pr).length) return;
         if (art === 'schiff' && !pr.schiff && Object.keys(pr).length) return;
+        if (art === 'tram' && !pr.tram && Object.keys(pr).length) return;
         l.push({ id: id, name: x.name || lid.O || 'Haltestelle', lat: lat, lon: lon, bus: !!pr.bus, sbahn: !!pr.sbahn, ubahn: !!pr.ubahn, tram: !!pr.tram, zug: !!pr.zug, schiff: !!pr.schiff });
       });
       if (!l.length && roh.length) throw new Error('leer');
@@ -1014,6 +1209,7 @@
   function haltOsm(p, meter, art) {
     var um = '(around:' + Math.min(meter, 10000) + ',' + p.lat.toFixed(5) + ',' + p.lon.toFixed(5) + ')';
     var q = art === 'schiff' ? '[out:json][timeout:25];nwr["amenity"="ferry_terminal"]' + um + ';out center tags 60;'
+      : art === 'tram' ? '[out:json][timeout:25];(node["railway"="tram_stop"]' + um + ';nwr["public_transport"="platform"]["tram"="yes"]' + um + ';);out center tags 120;'
       : art === 'bus'
       ? '[out:json][timeout:25];(node["highway"="bus_stop"]' + um + ';nwr["public_transport"="platform"]["bus"="yes"]' + um + ';);out center tags 150;'
       : '[out:json][timeout:25];(nwr["railway"~"^(station|halt)$"]["station"~"^(subway|light_rail|suburban)$"]' + um + ';nwr["railway"~"^(station|halt)$"]["subway"="yes"]' + um + ';nwr["railway"~"^(station|halt)$"]["network"~"S-Bahn"]' + um + ';nwr["railway"~"^(station|halt)$"]["operator"~"S-Bahn"]' + um + ';);out center tags 80;';
@@ -1023,6 +1219,7 @@
         var t = e.tags || {}, o = osmOrt(e); if (o.lat == null || !t.name) return;
         if (/^(disused|abandoned|razed)$/.test(t.railway || '') || t['disused:railway']) return;
         var ub = t.station === 'subway' || t.subway === 'yes' || /U-Bahn/i.test(t.network || '');
+        if (art === 'tram') { l.push({ id: '', name: t.name, lat: o.lat, lon: o.lon, tram: true, osm: true }); return; }
         if (art === 'schiff') { l.push({ id: '', name: t['name:de'] || t.name, lat: o.lat, lon: o.lon, schiff: true, osm: true, web: t.website || t['contact:website'] || '', betreiber: t.operator || '' }); return; }
         l.push({ id: '', name: t.name, lat: o.lat, lon: o.lon, bus: art === 'bus', sbahn: art !== 'bus' && !ub, ubahn: art !== 'bus' && ub, tram: false, zug: false, osm: true });
       });

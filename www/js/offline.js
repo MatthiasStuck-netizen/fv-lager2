@@ -1,7 +1,7 @@
 /* Offline-Karten vom Fehnverleih-Server.
  * Lädt die Kartendateien (z. B. deutschland.pmtiles oder ihre Teile teil-00, teil-01, …) aus dem Ordner "karten"
  * auf www.fehnverleih.de in den Speicher dieser App und liest daraus die Kartenkacheln. Dann zeigt die Karte
- * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Weltkarte), jede einzeln.
+ * auch ohne Internet alles an. Mehrere Karten sind möglich (Deutschland, Spanien + Portugal, Frankreich, Österreich, Schweiz, Weltkarte), jede einzeln.
  * Format: PMTiles Version 3, Vektorkacheln im OpenMapTiles-Schema (dasselbe wie die Online-Karte). */
 window.FV = window.FV || {};
 (function () {
@@ -11,6 +11,9 @@ window.FV = window.FV || {};
   var KARTEN = [
     { id: 'de', name: 'Deutschland', datei: 'deutschland.pmtiles', teil: 'teil-', merker: 'offkarte' },
     { id: 'es', name: 'Spanien + Portugal', datei: 'spanien-portugal.pmtiles', teil: 'spanien-portugal-teil-', merker: 'offkarte-es' },
+    { id: 'fr', name: 'Frankreich', datei: 'frankreich.pmtiles', teil: 'frankreich-teil-', merker: 'offkarte-fr' },
+    { id: 'at', name: 'Österreich', datei: 'oesterreich.pmtiles', teil: 'oesterreich-teil-', merker: 'offkarte-at' },
+    { id: 'ch', name: 'Schweiz', datei: 'schweiz.pmtiles', teil: 'schweiz-teil-', merker: 'offkarte-ch' },
     { id: 'welt', name: 'Weltkarte', datei: 'welt.pmtiles', teil: 'welt-teil-', merker: 'offkarte-welt', uebersicht: true }
   ];
   var QUELLEN = ['https://www.fehnverleih.de/karten/', 'https://www.fehnverleih.de/fehnverleih/karten/'];
