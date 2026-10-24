@@ -1,0 +1,33 @@
+name: Lager-App Apps-Knopf (Klasse übersetzen)
+on:
+  workflow_dispatch:
+  push:
+    branches: [lager-apps]
+permissions:
+  contents: write
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: Übersetzen
+        run: |
+          SDK=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          yes | $SDK/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" "build-tools;34.0.0" > /dev/null || true
+          JAR=$SDK/platforms/android-34/android.jar
+          mkdir -p stubkl kl dexaus aus
+          javac --release 8 -encoding UTF-8 -Xlint:-options -cp "$JAR" -d stubkl $(find stub -name '*.java') 2>&1 | tee protokoll.txt
+          javac --release 8 -encoding UTF-8 -Xlint:-options -cp "$JAR:stubkl" -d kl src/de/fehnverleih/lager/app/AppsLaden.java 2>&1 | tee -a protokoll.txt
+          test -f kl/de/fehnverleih/lager/app/AppsLaden.class
+          $SDK/build-tools/34.0.0/d8 --release --min-api 24 --lib "$JAR" --classpath stubkl --output dexaus $(find kl -name '*.class') 2>&1 | tee -a protokoll.txt
+          cp dexaus/classes.dex aus/apps-classes.dex
+      - name: Bereitstellen
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p aus; touch protokoll.txt; cp protokoll.txt aus/
+          gh release delete lager-apps -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create lager-apps aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Lager-App: Apps-Knopf" --notes "Zwischenstand"
