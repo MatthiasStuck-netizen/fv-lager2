@@ -3,7 +3,7 @@ name: Navi Android Auto (Gerätetest)
 on:
   push:
     branches: [navi-auto]
-    paths: ['test/navi.apk', '.github/workflows/navi-auto-test.yml']
+    paths: ['test/**', '.github/workflows/navi-auto-test.yml']
 
 permissions:
   contents: write
@@ -31,23 +31,12 @@ jobs:
           ram-size: 4096M
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
-          script: |
-            mkdir -p geraet
-            adb install -r test/navi.apk > geraet/installieren.txt 2>&1; cat geraet/installieren.txt
-            adb shell cmd package query-services -a androidx.car.app.CarAppService > geraet/dienste.txt 2>&1; cat geraet/dienste.txt
-            adb shell dumpsys package de.fehnverleih.navi | grep -iE "versionName|AutoDienst|ACCESS_SURFACE|NAVIGATION" > geraet/paket.txt; cat geraet/paket.txt
-            adb logcat -c
-            adb shell am start -n de.fehnverleih.navi/.MainActivity
-            sleep 25
-            adb exec-out screencap -p > geraet/start.png
-            adb logcat -d -b crash > geraet/absturz.txt; cat geraet/absturz.txt
-            adb logcat -d | grep -iE "fehnverleih|AndroidRuntime|chromium.*Uncaught" | tail -200 > geraet/logcat.txt
-            adb shell pidof de.fehnverleih.navi > geraet/laeuft.txt || echo "LAEUFT NICHT" > geraet/laeuft.txt; cat geraet/laeuft.txt
+          script: bash test/geraet.sh
       - name: Ergebnis
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          mkdir -p geraet; ls -l geraet
+          mkdir -p geraet; echo "lauf $GITHUB_RUN_ID" > geraet/lauf.txt; ls -l geraet
           gh release delete navi-auto-test -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
           gh release create navi-auto-test geraet/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi Android Auto: Gerätetest" --notes "Emulator"
