@@ -11,8 +11,8 @@ import de.fehnverleih.lager.kern.Antwort;
 import de.fehnverleih.lager.kern.Api;
 import java.util.List;
 
-/** Knopf „Apps herunterladen“ auf der Hallen-Seite: zeigt die APK-Dateien aus dem Ordner „Apps“ auf dem Server
- *  und lädt die angetippte über einen Link, den nur die Lager-App bekommt (30 Minuten gültig). */
+/** Knopf „Apps herunterladen“ auf der Admin-Seite „Mehr“: zeigt die APK-Dateien aus dem Ordner „Apps“ auf dem Server
+ *  und lädt die angetippte über einen Link, den nur die Lager-App (Admin) bekommt (30 Minuten gültig). */
 final class AppsLaden {
     private AppsLaden() {}
 
