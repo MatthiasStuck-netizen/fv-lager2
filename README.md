@@ -6,6 +6,9 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.8.8
+- Veranstaltungskalender: Google liefert Veranstaltungen nur bei **englischen** Suchen (SerpApi google_events immer hl=en/gl=us). Suchwörter jetzt englisch (Events, Theater, Musicals, Concerts, Comedy shows, Family events, Festivals and markets, Exhibitions), Ort in Deutschland mit „, Germany“; kein hl/gl mehr. Datum/Uhrzeit werden ins Deutsche übersetzt (`deutsch()`: „Sat, Oct 25, 8 PM“ → „Sa., 25. Okt., 20:00“).
+
 ## Neu in 4.8.7
 - Oberfläche `www` = Stand der installierten 4.8.6 (aus der APK, mit Android Auto und Modellflugplätzen) plus diese Änderung. Gebaut mit `bauen.py Fehnverleih-Navi-4.8.6.apk www … 4.8.7 487`.
 - Seite **Suche**: „Abfahrten und Ankünfte“ entfernt (gibt es unter Nahverkehr). Dafür **Veranstaltungskalender** (`suche.js`): Art (Alles, Theater, Musical, Konzerte, Comedy, Familie, Feste, Museen), Zeitraum (Alle/Heute/Wochenende/Woche/Monat), Ort oder „In der Nähe“ (Ortsname über `V.plz`). Quelle Google-Veranstaltungssuche über SerpApi (`engine=google_events`, Schlüssel wie Flugsuche aus der Verwaltung), je Seite 10, „Mehr laden“, 6 Std. gemerkt (`V.merk('events')`). Fenster mit Wann/Wo/Beschreibung, Tickets, Hinfahren (Adresse über Nominatim).

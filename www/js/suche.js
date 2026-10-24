@@ -113,8 +113,9 @@
   /* ====================== Veranstaltungen ======================
    * Theater, Musical, Konzerte, Comedy, Familie, Feste & Märkte, Ausstellungen an einem beliebigen Ort.
    * Quelle: Google-Veranstaltungssuche über SerpApi (derselbe Schlüssel wie für die Flugsuche, kommt aus der Verwaltung). */
-  var VARTEN = [['alles', 'kalender', 'Alles', 'Veranstaltungen'], ['theater', 'maske', 'Theater', 'Theater'], ['musical', 'stern', 'Musical', 'Musical'], ['konzert', 'musik', 'Konzerte', 'Konzerte'],
-    ['comedy', 'mikro', 'Comedy', 'Comedy Kabarett'], ['familie', 'leute', 'Familie', 'Kinder und Familie Veranstaltungen'], ['feste', 'event', 'Feste', 'Feste und Märkte'], ['ausstellung', 'museum', 'Museen', 'Ausstellungen']];
+  /* Google zeigt Veranstaltungen nur bei englischen Suchen (SerpApi: immer hl=en, gl=us) – deshalb englische Suchwörter, Anzeige auf Deutsch */
+  var VARTEN = [['alles', 'kalender', 'Alles', 'Events'], ['theater', 'maske', 'Theater', 'Theater'], ['musical', 'stern', 'Musical', 'Musicals'], ['konzert', 'musik', 'Konzerte', 'Concerts'],
+    ['comedy', 'mikro', 'Comedy', 'Comedy shows'], ['familie', 'leute', 'Familie', 'Family events'], ['feste', 'event', 'Feste', 'Festivals and markets'], ['ausstellung', 'museum', 'Museen', 'Exhibitions']];
   var ZEITEN = [['', 'Alle'], ['date:today', 'Heute'], ['date:weekend', 'Wochenende'], ['date:week', 'Woche'], ['date:month', 'Monat']];
   function zustand() { var z = A().z; return z.suche || (z.suche = { vart: 'alles', vzeit: '', ort: '', ergebnis: null, titel: '', ziel: '', treffer: null }); }
   Se.suche = function () {
@@ -190,7 +191,7 @@
   function seiteHolen(ortName, art, zeit, start) {
     var q = art[3] + ' in ' + ortName, key = [new Date().toDateString(), q, zeit, start].join('|');
     return FV.V.merk('events', key, { frisch: VER_FRISCH, alt: 0, notfall: 24 * 3600000, max: 40 }, function () {
-      var p = { engine: 'google_events', q: q, hl: 'de', gl: 'de', api_key: serpSchluessel() };
+      var p = { engine: 'google_events', q: q, api_key: serpSchluessel() };
       if (zeit) p.htichips = zeit;
       if (start) p.start = String(start);
       return B.json({ url: 'https://serpapi.com/search.json?' + Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&'), zeit: 30000, auchFehler: true }).then(function (j) {
@@ -198,12 +199,26 @@
         return ((j && j.events_results) || []).map(function (x) {
           var d = x.date || {}, adr = Array.isArray(x.address) ? x.address : x.address ? [x.address] : [];
           var tickets = (x.ticket_info || []).filter(function (t) { return t && t.link; }).slice(0, 6).map(function (t) { return { quelle: String(t.source || 'Webseite').slice(0, 60), link: t.link, art: t.link_type || '' }; });
-          return { titel: String(x.title || '').slice(0, 200), tag: String(d.start_date || '').slice(0, 40), wann: String(d.when || '').slice(0, 120), adresse: adr.map(String).slice(0, 3),
+          return { titel: String(x.title || '').slice(0, 200), tag: deutsch(String(d.start_date || '').slice(0, 40)), wann: deutsch(String(d.when || '').slice(0, 120)), adresse: adr.map(String).slice(0, 3),
             ort: x.venue && x.venue.name ? String(x.venue.name).slice(0, 120) : adr[0] ? String(adr[0]).slice(0, 120) : '', text: String(x.description || '').slice(0, 600),
             link: x.link || '', tickets: tickets, bild: x.thumbnail || x.image || '' };
         }).filter(function (x) { return x.titel; });
       });
     });
+  }
+  /** Liegt der Punkt in Deutschland (grob)? Dann „, Germany“ an den Ort – sonst findet Google z. B. bei „Leer“ nichts Passendes */
+  function inDE(p) { return p && p.lat > 47.2 && p.lat < 55.1 && p.lon > 5.8 && p.lon < 15.1; }
+  /** Englische Datumsangaben von Google auf Deutsch: „Sat, Oct 25, 8 – 10:30 PM“ → „Sa., 25. Okt., 20:00 – 22:30“ */
+  var MON = { Jan: 'Jan.', Feb: 'Feb.', Mar: 'März', Apr: 'Apr.', May: 'Mai', Jun: 'Juni', Jul: 'Juli', Aug: 'Aug.', Sep: 'Sept.', Sept: 'Sept.', Oct: 'Okt.', Nov: 'Nov.', Dec: 'Dez.' };
+  var WT = { Mon: 'Mo.', Tue: 'Di.', Wed: 'Mi.', Thu: 'Do.', Fri: 'Fr.', Sat: 'Sa.', Sun: 'So.' };
+  function uhr(hh, mm, ap) { var x = +hh % 12 + (/pm/i.test(ap) ? 12 : 0); return (x < 10 ? '0' : '') + x + ':' + (mm || '00'); }
+  function deutsch(t) {
+    if (!t) return t;
+    t = t.replace(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?\s*([–-])\s*(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/gi, function (m, h1, m1, a1, st, h2, m2, a2) { return uhr(h1, m1, a1 || a2) + ' – ' + uhr(h2, m2, a2); });
+    t = t.replace(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/gi, function (m, hh, mm, ap) { return uhr(hh, mm, ap); });
+    t = t.replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})\b/g, function (m, mo, d) { return d + '. ' + MON[mo]; });
+    t = t.replace(/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\b\.?/g, function (m, w) { return WT[w]; });
+    return t.replace(/\bToday\b/g, 'Heute').replace(/\bTomorrow\b/g, 'Morgen');
   }
   function verSuchen(text, nah) {
     var s = zustand(), box = $('#sver'), meins = ++suchLauf; if (!box) return;
@@ -213,13 +228,14 @@
     }
     box.innerHTML = X.laedt('Veranstaltungen werden gesucht …');
     var wo = nah ? X.startpunkt().then(function (p) { return FV.V.plz(p).then(function (r) { if (!r.ort) throw 0; return { name: r.ort, nah: true }; }); })
+      .then(function (o) { o.de = true; return o; })
       .catch(function () { throw new Error('Der Ort, an dem Sie gerade sind, wurde nicht erkannt. Bitte einen Ort eintippen.'); })
-      : ortFinden(text).then(function (p) { return { name: text }; });
+      : ortFinden(text).then(function (p) { return { name: text, de: inDE(p) }; });
     var art = VARTEN.filter(function (a) { return a[0] === s.vart; })[0] || VARTEN[0];
     wo.then(function (o) {
       if (meins !== suchLauf) return;
-      s.ortName = o.name;
-      return seiteHolen(o.name, art, s.vzeit, 0).then(function (l) {
+      s.ortName = o.name; s.ortSuche = o.de ? o.name + ', Germany' : o.name;
+      return seiteHolen(s.ortSuche, art, s.vzeit, 0).then(function (l) {
         if (meins !== suchLauf) return;
         s.titel = art[2] === 'Alles' ? 'Veranstaltungen in ' + o.name : art[2] + ' in ' + o.name;
         s.ergebnis = l; s.mehr = l.length >= 10; s.seite = 0;
@@ -238,7 +254,7 @@
   Tun['ver-mehr'] = function (el) {
     var s = zustand(), art = VARTEN.filter(function (a) { return a[0] === s.vart; })[0] || VARTEN[0], meins = suchLauf; if (!s.ergebnis || !s.ortName) return;
     el.disabled = true; el.innerHTML = '<i class="dreh"></i>Wird geladen …';
-    seiteHolen(s.ortName, art, s.vzeit, ((s.seite || 0) + 1) * 10).then(function (l) {
+    seiteHolen(s.ortSuche || s.ortName, art, s.vzeit, ((s.seite || 0) + 1) * 10).then(function (l) {
       if (meins !== suchLauf) return;
       var schon = {}; s.ergebnis.forEach(function (x) { schon[x.titel + '|' + x.wann] = 1; });
       l = l.filter(function (x) { return !schon[x.titel + '|' + x.wann]; });
