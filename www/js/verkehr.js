@@ -42,7 +42,7 @@
     return neu.catch(function (e) { if (d && alter < (o.notfall != null ? o.notfall : 30 * ZW_TAG)) return d.l; throw e; });
   };
   /** Alles Gespeicherte löschen (Einstellungen) */
-  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt', 'halt_schiff', 'halt_tram', 'ebike', 'parken'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
+  V.merkLeeren = function () { ['apo', 'arzt', 'arztnot', 'bahnhof', 'flug', 'plz', 'notdienst', 'halt_bus', 'halt_stadt', 'halt_schiff', 'halt_tram', 'ebike', 'parken', 'events'].forEach(function (k) { zwDa[k] = {}; B.schreiben('zw_' + k, null); }); };
 
   /* ---------- OpenStreetMap (Overpass): zuerst über die Verwaltung (Zwischenspeicher auf dem Server), sonst direkt ---------- */
   function wirt(u) { return String(u).replace(/^https?:\/\//, '').split('/')[0]; }

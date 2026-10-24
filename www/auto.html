@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Fehnverleih Navi – Android Auto</title>
+<link rel="stylesheet" href="lib/maplibre-gl.css">
+<style>
+  html, body { margin: 0; height: 100%; background: #10141a; overflow: hidden; }
+  #karte { position: absolute; inset: 0; }
+  #hinweis { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #e8c46a; font: 600 22px/1.3 sans-serif; text-align: center; display: none; }
+  .auto { width: 44px; height: 44px; }
+  .maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none !important; }
+</style>
+</head>
+<body>
+<div id="karte"></div>
+<div id="hinweis"></div>
+<script src="lib/maplibre-gl.js"></script>
+<script src="js/bruecke.js"></script>
+<script src="js/offline.js"></script>
+<script>
+/* Karte für den Bildschirm im Auto (Android Auto). Liest Stand und Route, die die Navi auf dem Handy ablegt (js/auto.js). */
+(function () {
+  'use strict';
+  var B = FV.B, O = FV.O;
+  var STIL_URL = 'https://tiles.openfreemap.org/styles/liberty';
+  var RASTER = { version: 8, sources: { osm: { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, maxzoom: 19 } },
+    layers: [{ id: 'osm', type: 'raster', source: 'osm' }] };
+  var map = null, auto = null, routeNr = -1, zoomPlus = 0, rand = { top: 0, bottom: 0, left: 0, right: 0 }, bereit = false;
+  var FVA = window.FVA = {};
+
+  function einst() { return B.lesen('einstellungen', {}) || {}; }
+  function offline() { return einst().kartenQuelle !== 'online' && O && O.aktiv(); }
+  function stil() {
+    var merker = B.lesen('kartenstil2', null) || B.lesen('kartenstil', null);
+    if (offline()) { O.protokoll(); return Promise.resolve(merker && merker.layers ? O.stil(merker) : O.grundstil()); }
+    if (merker && merker.layers) return Promise.resolve(merker);
+    return fetch(STIL_URL).then(function (r) { return r.json(); }).catch(function () { return RASTER; });
+  }
+  function pfeil() {
+    var d = document.createElement('div'); d.className = 'auto';
+    d.innerHTML = '<svg viewBox="0 0 44 44" width="44" height="44"><circle cx="22" cy="22" r="20" fill="#10141a" fill-opacity=".35"/><path d="M22 5 L35 36 L22 29 L9 36 Z" fill="#e8b23a" stroke="#fff" stroke-width="2.5" stroke-linejoin="round"/></svg>';
+    return d;
+  }
+  function routeSetzen() {
+    var r = B.lesen('autoRoute', null), q = map.getSource('route');
+    var daten = { type: 'FeatureCollection', features: r && r.punkte && r.punkte.length > 1 ? [{ type: 'Feature', geometry: { type: 'LineString', coordinates: r.punkte }, properties: {} }] : [] };
+    if (q) q.setData(daten);
+    routeNr = r ? r.nr : -1;
+  }
+  function ebenen() {
+    if (!map.getSource('route')) map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    if (!map.getLayer('route-rand')) map.addLayer({ id: 'route-rand', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#5a3d00', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 6, 16, 16] } });
+    if (!map.getLayer('route')) map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#e8b23a', 'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3.5, 16, 10] } });
+  }
+  function hinweis(t) { var h = document.getElementById('hinweis'); h.textContent = t || ''; h.style.display = t ? 'block' : 'none'; }
+
+  /** Neuer Stand vom Handy: Karte und Auto nachführen */
+  FVA.neu = function () {
+    if (!bereit) return;
+    var s = B.lesen('autoStand', null), puls = +B.lesen('autoPuls', 0) || 0;
+    if (!puls || Date.now() - puls > 20000) hinweis('Bitte die Fehnverleih Navi auf dem Handy öffnen.');
+    else if (!s || typeof s.lat !== 'number') hinweis('Warte auf den Standort …');
+    else hinweis('');
+    if (!s || typeof s.lat !== 'number') return;
+    if (s.aktiv && s.nr !== routeNr) routeSetzen();
+    if (!s.aktiv && routeNr !== -1) { var q = map.getSource('route'); if (q) q.setData({ type: 'FeatureCollection', features: [] }); routeNr = -1; }
+    var p = [s.lon, s.lat], kurs = s.kurs >= 0 ? s.kurs : map.getBearing();
+    if (!auto) auto = new maplibregl.Marker({ element: pfeil(), rotationAlignment: 'map', pitchAlignment: 'map' }).setLngLat(p).addTo(map);
+    auto.setLngLat(p); auto.setRotation(kurs);
+    // Zoom nach Tempo: in der Stadt nah, auf der Autobahn weiter weg; kurz vor der Abbiegung näher heran
+    var kmh = s.kmh || 0, z = kmh > 100 ? 14.2 : kmh > 70 ? 15 : kmh > 40 ? 15.8 : 16.5;
+    if (s.aktiv && s.bis >= 0 && s.bis < 250) z = Math.max(z, 16.8);
+    z = Math.max(4, Math.min(19, z + zoomPlus));
+    map.easeTo({ center: p, bearing: s.aktiv ? kurs : 0, pitch: s.aktiv ? 50 : 0, zoom: z, duration: 900, easing: function (t) { return t; },
+      padding: { top: rand.top + (s.aktiv ? (window.innerHeight - rand.top - rand.bottom) * 0.35 : 0), bottom: rand.bottom, left: rand.left, right: rand.right } });
+  };
+  /** Zoomknöpfe im Auto */
+  FVA.zoom = function (d) { zoomPlus = Math.max(-8, Math.min(4, zoomPlus + d)); FVA.neu(); };
+  /** Sichtbarer Bereich (ohne die Karten von Android Auto), in CSS-Pixeln */
+  FVA.bereich = function (l, t, r, b) { rand = { left: l, top: t, right: r, bottom: b }; FVA.neu(); };
+
+  stil().then(function (st) {
+    map = new maplibregl.Map({ container: 'karte', style: st, center: [7.63, 53.13], zoom: 13, interactive: false, attributionControl: false, fadeDuration: 0 });
+    map.on('style.load', function () { ebenen(); routeNr = -1; bereit = true; FVA.neu(); });
+    map.on('error', function () {});
+  });
+  setInterval(function () { if (bereit) FVA.neu(); }, 3000);   // falls eine Nachricht vom Handy ausbleibt
+})();
+</script>
+</body>
+</html>

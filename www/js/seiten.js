@@ -369,7 +369,7 @@
   }
   var umgebungPunkte = [];
   function umgebungKarte(punkte) { umgebungPunkte = punkte; bahnhoefeKarte(punkte); apothekenKarte(punkte); aerzteKarte(punkte); flughafenKarte(punkte); haltKarte('bus', punkte); haltKarte('stadt', punkte); netzKarte(punkte); }
-  var EBENEN = [['zuege', 'zug', 'Züge live'], ['schiffe', 'schiff', 'Schiffe live (AIS)'], ['bahnnetz', 'zug', 'Bahnstrecken'], ['seewege', 'schiff', 'Schiffs- und Fährstrecken'], ['flugzeuge', 'flug', 'Flugzeuge live'], ['flugrouten', 'route', 'Flugstrecken'], ['parkenFrei', 'parken', 'Kostenlose Parkplätze'], ['ebike', 'ebike', 'E-Bike-Stationen'], ['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
+  var EBENEN = [['zuege', 'zug', 'Züge live'], ['schiffe', 'schiff', 'Schiffe live (AIS)'], ['bahnnetz', 'zug', 'Bahnstrecken'], ['seewege', 'schiff', 'Schiffs- und Fährstrecken'], ['flugzeuge', 'flug', 'Flugzeuge live'], ['flugrouten', 'route', 'Flugstrecken'], ['parkenFrei', 'parken', 'Kostenlose Parkplätze'], ['modellflug', 'flug', 'Modellflugplätze'], ['ebike', 'ebike', 'E-Bike-Stationen'], ['bahnhof', 'zug', 'Bahnhöfe'], ['stadt', 'tram', 'U- und S-Bahn'], ['bus', 'bus', 'Bushaltestellen'], ['hhnetz', 'zug', 'Hamburg S-/U-Bahn-Netz'], ['apotheke', 'apotheke', 'Apotheken'], ['arzt', 'arzt', 'Ärzte'], ['flughafen', 'flug', 'Flughäfen']];
   function ebeneNeu(k) {
     var e = A().e, pk = umgebungPunkte.length ? umgebungPunkte : [B.ort(), F.ziel], an = e[k] !== false;
     if (k === 'bahnhof') { if (!an) K.bahnhoefe([]); else bahnhoefeKarte(pk); }
@@ -382,6 +382,7 @@
     if (k === 'flugzeuge' && FV.FL) FV.FL.live();
     if (k === 'ebike' && FV.EB) FV.EB.neu(an);
     if (k === 'parkenFrei' && FV.PK) FV.PK.neu(an);
+    if (k === 'modellflug' && FV.MF) FV.MF.neu(an);
     if ((k === 'zuege' || k === 'schiffe') && FV.LIVE) { FV.LIVE.neu(); if (k === 'schiffe' && an) schiffHinweis(); }
   }
   /** Schiffe live brauchen den Android-Teil 4.4 und einen aisstream-Schlüssel – sonst kurz sagen, warum keine kommen */
@@ -1289,11 +1290,12 @@
       zeilen.push(['Auto bis ' + l.nach + ': ' + km.toFixed(1).replace('.', ',') + ' km × ' + euro(s.satz), b]);
     });
     if (v.preis) { summe += v.preis.betrag; zeilen.push([(v.mitFaehre ? 'Fahrkarte Bahn/Fähre' : 'Fahrkarte Bus/Bahn') + (v.preis.teil ? ' (nur Teilstrecke)' : '') + ', 1 Erwachsener', v.preis.betrag]); if (v.preis.teil) offen = true; }
-    else if (v.legs.some(function (l) { return !l.fuss && l.art !== 'auto'; })) {
+    else if (v.legs.some(function (l) { return !l.fuss && l.art !== 'auto' && !(v.flugPreis && l.art === 'flug'); })) {
       offen = true;
       zeilen.push([v.legs.some(function (l) { return l.art === 'flug'; }) ? 'Flug: Preis bei der Flugsuche' : v.mitFaehre ? 'Fähre: Preis bei der Reederei' : 'Fahrkarte: Preis beim DB Navigator', null]);
     }
-    if (v.preis && v.legs.some(function (l) { return l.art === 'flug'; })) { offen = true; zeilen.push(['Flug: Preis bei der Flugsuche', null]); }
+    if (v.flugPreis) { summe += v.flugPreis.betrag; zeilen.push(['Flug ' + v.flugPreis.nr + (v.flugPreis.airline ? ' (' + v.flugPreis.airline + ')' : '') + ', 1 Erwachsener, laut Google-Flugsuche', v.flugPreis.betrag]); }
+    else if (v.preis && v.legs.some(function (l) { return l.art === 'flug'; })) { offen = true; zeilen.push(['Flug: Preis bei der Flugsuche', null]); }
     if (v.autoMit) zeilen.push(['Auto mit auf die Fähre: Preis bei der Reederei', null]);
     return { summe: Math.round(summe * 100) / 100, offen: offen || !!v.autoMit, zeilen: zeilen, satz: s };
   }
@@ -1484,6 +1486,40 @@
       var f = l[0]; return f ? { legs: f.legs, ab: f.ab, an: f.an, preis: f.preis, db: true } : null;
     }).catch(function () { return null; }).then(function (r) { return r || transitous(S, D, wann, ankunft, vonName, nachName); });
   }
+  /* ---------- Echte Flüge mit Preis über SerpApi (Google-Flugsuche), Schlüssel in den Einstellungen ---------- */
+  function serpSchluessel() { var v = A().z.verkehr; return String(A().e.serpSchluessel || (v && v.serpapi) || '').trim(); }   // eigener Schlüssel im Handy, sonst der aus der Verwaltung
+  var serpCache = {};
+  function tagIso(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  /** alle Flüge A → B an einem Tag (einfache Fahrt, 1 Erwachsener, Euro) */
+  function serpTag(a, b, tag) {
+    var k = a.iata + b.iata + tag;
+    if (!serpCache[k]) serpCache[k] = B.json({ url: 'https://serpapi.com/search.json?engine=google_flights&type=2&adults=1&currency=EUR&hl=de&gl=de&departure_id=' + a.iata + '&arrival_id=' + b.iata + '&outbound_date=' + tag + '&api_key=' + encodeURIComponent(serpSchluessel()), zeit: 30000 })
+      .then(function (j) { if (j.error && !/no results/i.test(j.error)) throw new Error(j.error); return (j.best_flights || []).concat(j.other_flights || []); })
+      .catch(function (e) { delete serpCache[k]; throw e; });
+    return serpCache[k];
+  }
+  /** frühester Flug A → B ab „ab“ mit Preis (heute bzw. Reisetag, sonst der Tag danach) – oder null.
+   *  Die Abflugzeit gilt als Ortszeit am Handy (Abflughafen in der Nähe), alle weiteren Zeiten aus den Flugdauern. */
+  function serpFlug(a, b, ab) {
+    if (!serpSchluessel()) return Promise.resolve(null);
+    function waehle(l) {
+      var w = l.filter(function (x) { return x.price > 0 && x.flights && x.flights.length; }).map(function (x) {
+        var f0 = x.flights[0], t = new Date(String(f0.departure_airport && f0.departure_airport.time || '').replace(' ', 'T'));
+        return { x: x, ab: t };
+      }).filter(function (o) { return isFinite(o.ab) && o.ab.getTime() >= ab; });
+      w.sort(function (p, q) { return (p.ab - q.ab) || (p.x.price - q.x.price); });
+      if (!w.length) return null;
+      var o = w[0], x = o.x, t0 = o.ab.getTime(), segs = [];
+      x.flights.forEach(function (s, i) {
+        var dauer = (s.duration || 0) * 60;
+        segs.push({ von: s.departure_airport.id, nach: s.arrival_airport.id, ab: new Date(t0), an: new Date(t0 + dauer * 1000), dauer: dauer, nr: s.flight_number || '', airline: s.airline || '', flugzeug: s.airplane || '' });
+        t0 += dauer * 1000 + ((x.layovers && x.layovers[i] && x.layovers[i].duration) || 0) * 60000;
+      });
+      return { serp: true, nr: segs.map(function (s) { return s.nr; }).filter(Boolean).join(' + '), airline: segs[0].airline, plan: o.ab, preis: x.price, segs: segs };
+    }
+    var d = new Date(ab), d2 = new Date(ab + 86400000);
+    return serpTag(a, b, tagIso(d)).then(function (l) { return waehle(l) || serpTag(a, b, tagIso(d2)).then(waehle); }).catch(function () { return null; });
+  }
   /** Echter Flug A → B von der Flugtafel (frühestens ab ab) – oder null */
   function echterFlug(a, b, ab) {
     if (!FV.V.flugtafel) return Promise.resolve(null);
@@ -1558,7 +1594,7 @@
         if (!h1) return null;
         var frueh = new Date(h1.an.getTime() + CHECKIN);
         var weg = flugWeg(a, b), erstZiel = weg[1];
-        return echterFlug(a, erstZiel, frueh.getTime()).then(function (echt) {
+        return serpFlug(a, b, frueh.getTime()).then(function (sf) { return sf || echterFlug(a, erstZiel, frueh.getTime()); }).then(function (echt) {
           var abflug = echt ? (echt.neu || echt.plan) : frueh, amFlughafen = new Date(abflug.getTime() - CHECKIN);
           // 2) mit echtem Flug: rückwärts rechnen – so spät wie möglich losfahren, aber rechtzeitig da sein
           var hinNeu = !echt ? Promise.resolve(h1) : mitAuto ? Promise.resolve((function () {
@@ -1567,7 +1603,17 @@
           })()) : oevTeil(S, aP, aP.name, amFlughafen, true, 'Start', aP.name).then(function (r) { return r && r.ab >= Date.now() - 60000 ? r : h1; });
           return hinNeu.then(function (h2) {
             var fls = [], t0 = abflug;
-            for (var wi = 1; wi < weg.length; wi++) {
+            if (echt && echt.serp) {   // echte Flüge aus der Flugsuche, auch mit Umsteigen
+              weg = [a];
+              echt.segs.forEach(function (s, si) {
+                var f1 = FV.FL && FV.FL.iata(s.von) || (si === 0 ? a : weg[weg.length - 1]), f2 = FV.FL && FV.FL.iata(s.nach) || (si === echt.segs.length - 1 ? b : f1);
+                var q = flugLeg(f1, f2, s.ab, { nr: s.nr, airline: [s.airline, s.flugzeug].filter(Boolean).join(' · ') });
+                q.an = s.an; q.dauer = s.dauer;
+                if (si > 0) q.hinweise = ['Umsteigen in ' + fhName(f1)].concat(q.hinweise || []);
+                fls.push(q); weg.push(f2);
+              });
+            }
+            else for (var wi = 1; wi < weg.length; wi++) {
               var q = flugLeg(weg[wi - 1], weg[wi], t0, wi === 1 ? echt : null);
               if (wi > 1) q.hinweise = ['Umsteigen in ' + fhName(weg[wi - 1]) + ' (ca. 2 Std. eingeplant)'];
               fls.push(q); t0 = new Date(q.an.getTime() + UMSTEIGEN);
@@ -1588,15 +1634,16 @@
               var hinweise = [];
               hinweise.push((mitAuto ? 'Losfahren ' : 'Los geht es ') + 'um ' + G.uhr(new Date(Math.max(Date.now(), erst.ab))) + (erst.fuss && h2.legs[1] ? ' (zu Fuß zur Haltestelle ' + h2.legs[1].von + ')' : '') + '.');
               hinweise.push('Spätestens ' + G.uhr(amFlughafen) + ' am Flughafen ' + fhName(a) + ' sein (2 Std. vor Abflug).');
-              if (weg.length > 2) hinweise.push('Flugweg mit Umsteigen: ' + weg.map(function (x) { return fhName(x) + ' (' + x.iata + ')'; }).join(' → ') + '. Zeiten geschätzt, je 2 Std. zum Umsteigen.');
-              hinweise.push(echt ? 'Flug ' + echt.nr + ' um ' + G.uhr(abflug) + (echt.airline ? ' (' + echt.airline + ')' : '') + ' laut Flugtafel – Ankunft ca. ' + G.uhr(fl.an) + '. Ticket vorher buchen!'
+              if (weg.length > 2) hinweise.push('Flugweg mit Umsteigen: ' + weg.map(function (x) { return fhName(x) + ' (' + x.iata + ')'; }).join(' → ') + (echt && echt.serp ? '.' : '. Zeiten geschätzt, je 2 Std. zum Umsteigen.'));
+              hinweise.push(echt && echt.serp ? 'Flug ' + echt.nr + ' um ' + G.uhr(abflug) + (echt.airline ? ' (' + echt.airline + ')' : '') + ' laut Google-Flugsuche, ab ' + euro(echt.preis) + ' – Ankunft ca. ' + G.uhr(fl.an) + '. Preis kann sich ändern, Ticket vorher buchen!'
+                : echt ? 'Flug ' + echt.nr + ' um ' + G.uhr(abflug) + (echt.airline ? ' (' + echt.airline + ')' : '') + ' laut Flugtafel – Ankunft ca. ' + G.uhr(fl.an) + '. Ticket vorher buchen!'
                 : 'Flugzeit geschätzt (die Flugtafel zeigt nur die nächsten Stunden) – passenden Flug ' + a.iata + ' → ' + b.iata + ' suchen und buchen.');
               hinweise.push(taxi ? 'Am Zielort ist kein Bus/Bahn bekannt: vom Flughafen ' + fhName(b) + ' mit Taxi oder Mietwagen weiter (ca. ' + dauerKurz(weiter[0].dauer) + ').'
                 : 'Am Zielort: ' + weiter.filter(function (l) { return !l.fuss; }).map(function (l) { return linienText(l) + ' ab ' + G.uhr(l.ab); }).join(', dann ') + (weiter[weiter.length - 1].fuss ? ', zuletzt zu Fuß zum Ziel' : '') + '.');
               if (mitAuto) hinweise.push('Auto am Flughafen ' + fhName(a) + ' parken (15 Min. eingeplant).');
               return { key: mitAuto ? 'autoflug' : 'oevflug', titel: (mitAuto ? 'Auto' : 'Bus & Bahn') + ' zum Flughafen ' + fhName(a) + ', Flug nach ' + fhName(b) + (weg.length > 2 ? ' über ' + weg.slice(1, -1).map(fhName).join(' und ') : '') + (taxi ? ', Taxi zum Ziel' : ', Bus/Bahn zum Ziel'),
                 legs: legs, flug: { a: a, b: b, echt: echt, weg: weg }, hinweise: hinweise, ohneAuto: !mitAuto, zeitplan: 'Am Flughafen spätestens ' + G.uhr(amFlughafen) + ' · Abflug ' + G.uhr(abflug) + (echt ? ' (' + echt.nr + ')' : ' (geschätzt)') + ' · ' + weg.map(function (x) { return x.iata; }).join(' → '),
-                preis: h2.preis ? { betrag: h2.preis.betrag, teil: true } : null, db: !!h2.db };
+                preis: h2.preis ? { betrag: h2.preis.betrag, teil: true } : null, db: !!h2.db, flugPreis: echt && echt.serp ? { betrag: echt.preis, nr: echt.nr, airline: echt.airline } : null };
             });
           });
         });
@@ -1853,7 +1900,7 @@
     var html = '<h2>' + sym('route') + '<span>Reisestrecke' + (gesamt ? ' · ' + G.km(gesamt) : '') + (r.dauer ? ' · ' + dauerLang(r.dauer) : '') + '<br><small style="font-weight:400;font-size:14px">nach ' + h(zielName) + (r.ueber ? ' · ' + h(r.ueber) : '') + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
       '<div class="block"><div class="vollzeiten" style="display:flex;position:static;flex-wrap:wrap;row-gap:4px">' +
         wert('Abfahrt', ab ? G.uhr(ab) : '–') + wert('Ankunft', st.ankunft ? G.uhr(st.ankunft) : r.dauer && gesamt ? G.uhr(new Date(Date.now() + r.dauer * 1000 * Math.max(0, gesamt - weg) / gesamt)) : '–') + wert('Uhrzeit', G.uhr(new Date())) +
-        '<div class="km"><b>' + G.km(gef) + '</b><span>Gefahren</span></div><div class="km"><b>' + (st.restM != null ? G.km(st.restM) : gesamt ? G.km(Math.max(0, gesamt - weg)) : '–') + '</b><span>Bis zum Ziel</span></div></div>' +
+        '<div class="km"><b>' + G.km(gef) + '</b><span>Gefahren</span></div><div class="km"><b>' + (st.restM != null ? G.km(st.restM + FV.reiseRestDanach(n)) : gesamt ? G.km(Math.max(0, gesamt - weg) + FV.reiseRestDanach(n)) : '–') + '</b><span>Bis zum Ziel</span></div></div>' +
         (ziel.adresse ? '<p class="klein2" style="margin:8px 2px 0">' + sym('a_ziel') + ' ' + h(adr1(ziel.adresse)) + '</p>' : '') + '</div>' +
       '<h3 class="ueber">' + sym('navi') + 'Wegbeschreibung</h3><div class="block">';
     var naechst = -1;
@@ -2119,6 +2166,7 @@
       '<button data-tun="fahrt-schalter" data-k="laden" class="' + (e.laden !== false ? 'an' : '') + '">' + sym('laden') + 'E-Ladesäulen<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="parkenFrei" class="' + (e.parkenFrei !== false ? 'an' : '') + '">' + sym('parken') + 'Kostenlose Parkplätze<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="ebike" class="' + (e.ebike !== false ? 'an' : '') + '">' + sym('ebike') + 'E-Bike-Stationen<i></i></button>' +
+      '<button data-tun="fahrt-schalter" data-k="modellflug" class="' + (e.modellflug === true ? 'an' : '') + '">' + sym('flug') + 'Modellflugplätze<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="essen" class="' + (e.essen !== false ? 'an' : '') + '">' + sym('kaffee') + 'Bäcker und Café<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="tanken" class="' + (e.tanken !== false ? 'an' : '') + '">' + sym('tanken') + 'Tankstellen (Diesel)<i></i></button>' +
       '<button data-tun="fahrt-schalter" data-k="bahnhof" class="' + (e.bahnhof !== false ? 'an' : '') + '">' + sym('zug') + 'Bahnhöfe<i></i></button>' +
@@ -2135,12 +2183,13 @@
       '<button data-tun="parkfrei" data-ziel="1" class="link">' + sym('parken') + 'Kostenlos parken am Ziel</button>';
   }
   Tun['fahrt-auswahl'] = function () { var f = $('#auswfeld'); f.hidden = !f.hidden; };
-  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz|bahnnetz|seewege|flugrouten|flugzeuge|ebike|parkenFrei)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
+  Tun['fahrt-schalter'] = function (el) { var k = el.getAttribute('data-k'), e = A().e; e[k] = e[k] === false; A().speichern(); auswahlZeichnen(); if (k === 'ansage' && e.ansage === false) B.still(); if (F.route) poisZeigen(F.route); if (/^(bahnhof|apotheke|arzt|flughafen|bus|stadt|hhnetz|bahnnetz|seewege|flugrouten|flugzeuge|ebike|parkenFrei|modellflug)$/.test(k)) ebeneNeu(k); if (F.stand && $('#wcweit')) $('#wcweit').textContent = (e.wc !== false && F.stand.wcIn >= 0) ? 'WC ' + G.km(F.stand.wcIn) : ''; };
   Tun['fahrt-info'] = function () { var f = $('#finfo'); f.hidden = !f.hidden; if (!f.hidden) $('#fuhr').textContent = G.uhr(); };
   Tun['fahrt-voll'] = function () { A().vollbild(!document.body.classList.contains('vollbild')); };
   Tun['fahrt-mitte'] = function () { F.zentrieren(); };
   Tun['fahrt-ueber'] = function () { F.uebersicht(); };
   Tun['fahrt-ende'] = function () { A().frage('Navigation beenden?', 'Ja', 'Nein').then(function (ja) { if (ja) fahrtBeenden(); }); };
+  FV.fahrtBeenden = function () { fahrtBeenden(); };   // Android Auto: „Beenden“ im Auto, ohne Rückfrage am Handy
   function fahrtBeenden() {
     var z = A().z;
     if (z.lauf && z.lauf.route && z.lauf.route.modus && z.lauf.route.modus !== 'auto') A().fahrtNeu();   // Fußweg/Radfahrt zählt nicht als Autofahrt
@@ -2159,6 +2208,21 @@
     var o = l.nachOrt || (l.punkte && l.punkte.length ? { lat: l.punkte[l.punkte.length - 1][1], lon: l.punkte[l.punkte.length - 1][0] } : null);
     return o ? { lat: o.lat, lon: o.lon, name: l.nach } : null;
   }
+  /** Länge eines Reise-Abschnitts in Metern (Route, sonst Linienzug, sonst Luftlinie) */
+  function legMeter(l, i, v) {
+    if (l.meter > 0) return l.meter;
+    var p = (l.punkte || []).filter(function (x) { return x && isFinite(x[0]) && isFinite(x[1]); }), m = 0, k;
+    if (p.length >= 2) { for (k = 1; k < p.length; k++) m += G.abstand({ lon: p[k - 1][0], lat: p[k - 1][1] }, { lon: p[k][0], lat: p[k][1] }); return m; }
+    var a = legStart(l), b = legEnde(l, i, v);
+    return a && b ? G.abstand(a, b) : 0;
+  }
+  /** Bei einer Reise: Meter aller Abschnitte nach dem laufenden bis zum Ziel */
+  FV.reiseRestDanach = function (n) {
+    if (!n || !n.reise || !n.reise.legs) return 0;
+    var v = { legs: n.reise.legs, nach: n.nach, ziel: n.ziel }, m = 0;
+    for (var i = (n.reise.i || 0) + 1; i < v.legs.length; i++) m += legMeter(v.legs[i], i, v);
+    return m;
+  };
   function legStart(l) { return l.vonOrt || (l.punkte && l.punkte.length ? { lat: l.punkte[0][1], lon: l.punkte[0][0] } : null); }
   function linienText(l) { var a = legArt(l); return a === 'flug' ? (l.linie || 'Flug') : a === 'faehre' ? (l.linie && l.linie !== 'Fähre' ? 'Fähre ' + l.linie : 'Fähre') : (l.linie || l.kurz || (FV.V.OEV[a] || {}).name || 'Zug'); }
   /** Strecke eines Abschnitts mit Bus, Bahn, Schiff oder Flugzeug als „Route“ für die Zielführung */
@@ -2515,7 +2579,7 @@
       '<div class="block"><h2>' + sym('ton') + 'Ansagen</h2>' + sch('ansage', 'ton', 'Sprachansage beim Fahren') + sch('wcAnsage', 'wc', 'Parkplatz mit WC ansagen', '3 Kilometer vorher') + sch('pieper', 'warnung', 'Warnpieper bei zu schnellem Fahren', 'kurzer Piepton ab 6 km/h über dem Tempolimit') + sch('vorlesen', 'chat', 'Nachrichten vom Lager vorlesen') + '<button class="schalter" data-tun="stimmen">' + sym('stimme') + '<span>Stimme auswählen<small>' + h(stimmeName(e.stimme)) + '</small></span>' + sym('rechts') + '</button></div>' +
       '<div class="block"><h2>' + sym('ampel') + 'Verkehr</h2>' + sch('verkehr', 'warnung', 'Verkehrsmeldungen', 'Stau, Unfall, Sperrung, Baustelle – mit Ansage') + sch('umleiten', 'umleitung', 'Automatisch umleiten', 'bei Sperrung, Unfall oder Stau die schnellste Umleitung') +
         '<p class="klein2" style="margin:6px 2px 0">Quellen: ' + h(FV.V.quellen()) + (FV.V.schluessel() ? ' – alle Straßen.' : ' – nur Autobahnen. Für Landstraßen und Orte trägt das Büro in der Verwaltung (Einstellungen → App) einen kostenlosen TomTom-Schlüssel ein.') + '</p></div>' +
-      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('parkenFrei', 'parken', 'Kostenlose Parkplätze', 'in jeder Stadt, ab naher Ansicht · antippen: Details und Hinfahren') + sch('ebike', 'ebike', 'E-Bike-Stationen', 'Laden und Verleih für E-Bikes · antippen: Details und Hinfahren') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + sch('bahnhof', 'zug', 'Bahnhöfe', 'antippen: Live-Abfahrten mit Gleis und Verspätung') + sch('stadt', 'tram', 'U- und S-Bahn-Stationen', 'antippen: Abfahrten live') + sch('bus', 'bus', 'Bushaltestellen', 'Namen ab naher Ansicht · antippen: Abfahrten live') + sch('hhnetz', 'zug', 'Hamburger S-/U-Bahn-Netz', 'Linien farbig, sobald Start oder Ziel bei Hamburg liegt') + sch('apotheke', 'apotheke', 'Apotheken', 'grün = hat gerade Notdienst') + sch('arzt', 'arzt', 'Ärzte', 'rot = Notaufnahme / Bereitschaftspraxis') + sch('flughafen', 'flug', 'Flughäfen', 'antippen: Starts und Landungen live') +
+      '<div class="block"><h2>' + sym('ebenen') + 'Auf der Karte anzeigen</h2>' + sch('wc', 'wc', 'Parkplätze mit WC') + sch('laden', 'laden', 'E-Ladesäulen') + sch('parkenFrei', 'parken', 'Kostenlose Parkplätze', 'in jeder Stadt, ab naher Ansicht · antippen: Details und Hinfahren') + sch('ebike', 'ebike', 'E-Bike-Stationen', 'Laden und Verleih für E-Bikes · antippen: Details und Hinfahren') + sch('modellflug', 'flug', 'Modellflugplätze', 'RC-Modellflug, ab mittlerer Ansicht · antippen: Details und Hinfahren') + sch('essen', 'kaffee', 'Bäcker und Café') + sch('tanken', 'tanken', 'Tankstellen (Diesel)') + sch('bahnhof', 'zug', 'Bahnhöfe', 'antippen: Live-Abfahrten mit Gleis und Verspätung') + sch('stadt', 'tram', 'U- und S-Bahn-Stationen', 'antippen: Abfahrten live') + sch('bus', 'bus', 'Bushaltestellen', 'Namen ab naher Ansicht · antippen: Abfahrten live') + sch('hhnetz', 'zug', 'Hamburger S-/U-Bahn-Netz', 'Linien farbig, sobald Start oder Ziel bei Hamburg liegt') + sch('apotheke', 'apotheke', 'Apotheken', 'grün = hat gerade Notdienst') + sch('arzt', 'arzt', 'Ärzte', 'rot = Notaufnahme / Bereitschaftspraxis') + sch('flughafen', 'flug', 'Flughäfen', 'antippen: Starts und Landungen live') +
         sch('bahnnetz', 'zug', 'Bahnstrecken', 'Gleise aller Bahnlinien auf der Karte') + sch('seewege', 'schiff', 'Schiffs- und Fährstrecken', 'Fähren und Schiffslinien auf See, Flüssen und Seen') +
         sch('flugrouten', 'route', 'Flugstrecken', 'echte Flüge ab dem gewählten Flughafen bzw. des angetippten Flugzeugs') + sch('flugzeuge', 'flug', 'Flugzeuge live', 'Flugzeuge in der Luft über dem Kartenausschnitt (ADS-B)') +
         '<button class="schalter" data-tun="parkfrei">' + sym('parken') + '<span>Kostenlose Parkplätze in der Nähe<small>Liste nach Entfernung</small></span>' + sym('rechts') + '</button>' +
@@ -2660,6 +2724,7 @@
     if (k === 'flugzeuge' && FV.FL) FV.FL.live();
     if (k === 'ebike' && FV.EB) FV.EB.neu();
     if (k === 'parkenFrei' && FV.PK) FV.PK.neu();
+    if (k === 'modellflug' && FV.MF) FV.MF.neu(e.modellflug === true);
   };
   Tun.design = function (el) {
     A().e.design = el.getAttribute('data-d'); A().speichern();

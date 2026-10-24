@@ -943,3 +943,9 @@ html.hell .kos-gruen { color: #1e8a47; } html.hell .kos-rot { color: #c0362c; }
 .sfoto-voll button .sym { width: 26px; height: 26px; }
 html.hell .sfoto-laedt, html.hell .sfoto-keins { border-color: #d9cba4; }
 .sfoto-reihe figure .sfoto-hinweis { position: absolute; top: 8px; left: 8px; right: 8px; width: fit-content; background: rgba(0,0,0,.65); color: #f3d98f; font-size: 11px; padding: 2px 8px; border-radius: 99px; }
+/* Modellflugplätze */
+.m-modell { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.m-modell i { width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%; background: #2e7d32; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; }
+.m-modell i svg { width: 15px; height: 15px; fill: #fff; }
+.m-modell span { display: none; background: rgba(255,255,255,.93); color: #1b5e20; font: 700 11.5px/1.2 var(--schmal); padding: 2px 6px; border-radius: 6px; border: 1.5px solid #2e7d32; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.mfnah .m-modell span { display: block; }

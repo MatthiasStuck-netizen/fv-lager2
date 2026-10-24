@@ -461,7 +461,7 @@
   EX.einstellungen = function (sch) {
     var e = A().e, k = konto(), zg = B.hatExtra() && zugriff(), r = B.hatExtra() ? B.extra('rechteStand', { liste: RECHTE_TEL }) : null;
     var tel = r ? (rechteFehlen(r).length ? 'noch nicht alles erlaubt' : 'Kontakte, Anrufliste und Anrufen erlaubt') : 'nur in der App';
-    var ais = FV.LIVE ? FV.LIVE.aisSchluessel() : '', vonServer = !!(A().z.verkehr && A().z.verkehr.aisstream);
+    var ais = FV.LIVE ? FV.LIVE.aisSchluessel() : '', vonServer = !!(A().z.verkehr && A().z.verkehr.aisstream), serpServer = !!(A().z.verkehr && A().z.verkehr.serpapi);
     return '<div class="block"><h2>' + sym('chat') + 'Telefon, Nachrichten, Musik</h2>' +
       '<button class="schalter" data-tun="telefon">' + sym('telefon') + '<span>Telefon<small>' + h(tel) + '</small></span>' + sym('rechts') + '</button>' +
       '<button class="schalter" data-tun="n-zugriff">' + sym('chat') + '<span>WhatsApp, Telegram, Signal, SMS einblenden<small>' + (B.hatExtra() ? (zg ? 'Zugriff erlaubt ✓' : 'Zugriff auf Benachrichtigungen erlauben') : 'nur in der App') + '</small></span>' + sym('rechts') + '</button>' +
@@ -475,8 +475,13 @@
       '<label class="feld">Schlüssel für aisstream.io' + (vonServer && !e.aisSchluessel ? ' <small>(kommt aus der Verwaltung)</small>' : '') + '<input class="eingabe" id="aiskey" value="' + h(e.aisSchluessel || '') + '" placeholder="' + (vonServer ? 'aus der Verwaltung' : 'leer = keine Schiffe') + '" autocapitalize="none" spellcheck="false"></label>' +
       '<button class="rand knopf breit" data-tun="ais-speichern">Speichern</button>' +
       '<p class="klein2" style="margin:8px 2px 0">Schiffe kommen per AIS von aisstream.io. Der Schlüssel ist kostenlos: auf aisstream.io mit einem GitHub-Konto anmelden → „API Keys“ → Schlüssel kopieren. Am besten trägt ihn das Büro in der Verwaltung (Einstellungen → App) ein, dann gilt er für alle Handys.' +
-      (ais ? '' : ' Zurzeit ist kein Schlüssel da – Fähren mit Fahrplan erscheinen trotzdem.') + '</p></div>';
+      (ais ? '' : ' Zurzeit ist kein Schlüssel da – Fähren mit Fahrplan erscheinen trotzdem.') + '</p></div>' +
+      '<div class="block"><h2>' + sym('flug') + 'Flugpreise</h2>' +
+      '<label class="feld">Schlüssel für SerpApi' + (serpServer && !e.serpSchluessel ? ' <small>(kommt aus der Verwaltung)</small>' : '') + '<input class="eingabe" id="serpkey" value="' + h(e.serpSchluessel || '') + '" placeholder="' + (serpServer ? 'aus der Verwaltung' : 'leer = Flugzeit nur geschätzt') + '" autocapitalize="none" spellcheck="false"></label>' +
+      '<button class="rand knopf breit" data-tun="serp-speichern">Speichern</button>' +
+      '<p class="klein2" style="margin:8px 2px 0">Mit dem Schlüssel sucht die Gesamtstrecke echte Flüge mit Uhrzeit und Preis (Google-Flugsuche). Der Schlüssel steht auf serpapi.com im Dashboard unter „Your Private API Key“. Kostenlos sind 250 Suchen im Monat, eine Gesamtstrecke mit Flug braucht meist eine Suche. Am besten trägt ihn das Büro in der Verwaltung (Einstellungen → App) ein, dann gilt er für alle Handys.</p></div>';
   };
+  Tun['serp-speichern'] = function () { A().e.serpSchluessel = $('#serpkey').value.trim(); A().speichern(); A().toast(A().e.serpSchluessel ? 'Gespeichert. Die Gesamtstrecke sucht jetzt echte Flüge mit Preis.' : (A().z.verkehr && A().z.verkehr.serpapi ? 'Gelöscht. Es gilt der Schlüssel aus der Verwaltung.' : 'Gelöscht.')); };
   Tun['ais-speichern'] = function () { A().e.aisSchluessel = $('#aiskey').value.trim(); A().speichern(); A().toast(A().e.aisSchluessel ? 'Gespeichert. Schiffe erscheinen auf der Karte.' : 'Gelöscht.'); if (FV.LIVE) FV.LIVE.neu(); };
   Tun['nachrichten-mail'] = function () { A().z.nTab = 'mail'; A().zeige('nachrichten'); };
 
@@ -488,7 +493,7 @@
     u.textContent = G.uhr(new Date());
     var ab = n && (n.abfahrt || (n.reise && n.reise.legs && n.reise.legs[0] && n.reise.legs[0].ab));
     $('#vzab').textContent = ab ? G.uhr(new Date(ab)) : '–';
-    if (s) { $('#vzan').textContent = s.ankunft ? G.uhr(s.ankunft) : '–'; $('#vzrest').textContent = s.restM != null ? kmZahl(s.restM) : '–'; }
+    if (s) { $('#vzan').textContent = s.ankunft ? G.uhr(s.ankunft) : '–'; $('#vzrest').textContent = s.restM != null ? kmZahl(s.restM + (FV.reiseRestDanach ? FV.reiseRestDanach(n) : 0)) : '–'; }
     var gm = (FV.B.zaehler() || {}).meter || 0, gf = $('#vzgef'); if (gf) gf.textContent = kmZahl(gm);
   };
   setInterval(function () { var u = $('#vzuhr'); if (u) u.textContent = G.uhr(new Date()); }, 10000);

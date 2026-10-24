@@ -1,5 +1,5 @@
-/* Suche (eigener Knopf in der Leiste unten): Ziel suchen, Favoriten, letzte Ziele und
- * Abfahrten/Ankünfte von Flughafen, Bahnhof, Bushaltestelle oder Schiffsanleger an jedem beliebigen Ort. */
+/* Suche (eigener Knopf in der Leiste unten): Ziel suchen, Veranstaltungskalender (Theater, Musical, Konzerte …),
+ * Favoriten und letzte Ziele. */
 (function () {
   'use strict';
   var B = FV.B, G = FV.G, S = FV.S, sym = FV.sym, Se = FV.Seiten, Tun = FV.Tun, X = FV.SX, h = X.h;
@@ -110,33 +110,49 @@
   Tun['letzte-leeren'] = function () { A().frage('Alle letzten Ziele löschen?', 'Löschen').then(function (ja) { if (!ja) return; B.schreiben('letzte', []); var b = $('#sletzte'); if (b) b.innerHTML = letzteHtml(); }); };
 
   /* ====================== Seite „Suche“ ====================== */
-  var ARTEN = [['flug', 'flug', 'Flughafen'], ['zug', 'zug', 'Bahnhof'], ['bus', 'bus', 'Bus'], ['schiff', 'schiff', 'Schiff']];
-  function zustand() { var z = A().z; return z.suche || (z.suche = { art: 'flug', ort: '', ergebnis: null, titel: '', ziel: '', treffer: null }); }
+  /* ====================== Veranstaltungen ======================
+   * Theater, Musical, Konzerte, Comedy, Familie, Feste & Märkte, Ausstellungen an einem beliebigen Ort.
+   * Quelle: Google-Veranstaltungssuche über SerpApi (derselbe Schlüssel wie für die Flugsuche, kommt aus der Verwaltung). */
+  var VARTEN = [['alles', 'kalender', 'Alles', 'Veranstaltungen'], ['theater', 'maske', 'Theater', 'Theater'], ['musical', 'stern', 'Musical', 'Musical'], ['konzert', 'musik', 'Konzerte', 'Konzerte'],
+    ['comedy', 'mikro', 'Comedy', 'Comedy Kabarett'], ['familie', 'leute', 'Familie', 'Kinder und Familie Veranstaltungen'], ['feste', 'event', 'Feste', 'Feste und Märkte'], ['ausstellung', 'museum', 'Museen', 'Ausstellungen']];
+  var ZEITEN = [['', 'Alle'], ['date:today', 'Heute'], ['date:weekend', 'Wochenende'], ['date:week', 'Woche'], ['date:month', 'Monat']];
+  function zustand() { var z = A().z; return z.suche || (z.suche = { vart: 'alles', vzeit: '', ort: '', ergebnis: null, titel: '', ziel: '', treffer: null }); }
   Se.suche = function () {
-    var s = zustand();
+    var s = zustand(); if (!s.vart) s.vart = 'alles'; if (s.vzeit == null) s.vzeit = '';
     X.seite(X.kopf('Suche', '', false) + '<div class="rollen" id="srollen">' +
       '<div class="block creme"><h2>' + sym('route') + '<span>Wohin?<br><small style="font-weight:400;font-size:13px">Adresse, Ort, Firma – auch im Ausland</small></span></h2>' +
         '<form data-form="such-ziel"><div class="suchfeld">' + sym('suche') + '<input id="szsuche" placeholder="z. B. Hauptstraße 12, Leer" autocomplete="off" enterkeyhint="search" value="' + h(s.ziel) + '"><button type="button" data-tun="such-leer" data-f="szsuche" aria-label="Leeren">' + sym('zu') + '</button></div>' +
         '<button class="gold knopf breit" style="margin-top:10px">' + sym('suche') + 'Ziel suchen</button></form><div id="sztreffer" style="margin-top:8px"></div></div>' +
-      '<h3 class="ueber">' + sym('uhr') + 'Abfahrten und Ankünfte</h3>' +
-      '<div class="block"><p class="klein2" style="margin:0 2px 8px">Flughafen, Bahnhof, Bushaltestelle oder Schiffsanleger an einem beliebigen Ort – mit Abfahrts- und Ankunftszeiten.</p>' +
-        '<div class="modi sarten" style="padding:0 0 10px">' + ARTEN.map(function (a) { return '<button data-tun="such-art" data-a="' + a[0] + '"' + (a[0] === s.art ? ' class="akt"' : '') + '>' + sym(a[1]) + '<span>' + a[2] + '</span></button>'; }).join('') + '</div>' +
-        '<form data-form="such-verkehr"><div class="suchfeld">' + sym('ort') + '<input id="sort" placeholder="' + h(platzhalter(s.art)) + '" autocomplete="off" enterkeyhint="search" value="' + h(s.ort) + '"><button type="button" data-tun="such-leer" data-f="sort" aria-label="Leeren">' + sym('zu') + '</button></div>' +
-        '<div class="zweier" style="margin-top:10px"><button type="button" class="rand knopf" data-tun="such-nah">' + sym('ort') + 'In der Nähe</button><button class="gold knopf">' + sym('suche') + 'Suchen</button></div></form>' +
-        '<div id="sverkehr" style="margin-top:6px"></div></div>' +
+      '<h3 class="ueber">' + sym('kalender') + 'Veranstaltungskalender</h3>' +
+      '<div class="block"><p class="klein2" style="margin:0 2px 8px">Theater, Musical, Konzerte und alles, was in der Freizeit läuft – an einem beliebigen Ort.</p>' +
+        '<div class="modi acht varten" style="padding:0 0 8px">' + VARTEN.map(function (a) { return '<button data-tun="ver-art" data-a="' + a[0] + '"' + (a[0] === s.vart ? ' class="akt"' : '') + '>' + sym(a[1]) + '<span>' + a[2] + '</span></button>'; }).join('') + '</div>' +
+        '<div class="wahl vzeiten" style="margin:0 0 10px">' + ZEITEN.map(function (z) { return '<button data-tun="ver-zeit" data-z="' + z[0] + '" style="font-size:13.5px;padding:8px 2px"' + (z[0] === s.vzeit ? ' class="akt"' : '') + '>' + z[1] + '</button>'; }).join('') + '</div>' +
+        '<form data-form="ver-suchen"><div class="suchfeld">' + sym('ort') + '<input id="vort" placeholder="Ort, z. B. Leer, Oldenburg, Hamburg" autocomplete="off" enterkeyhint="search" value="' + h(s.ort) + '"><button type="button" data-tun="such-leer" data-f="vort" aria-label="Leeren">' + sym('zu') + '</button></div>' +
+        '<div class="zweier" style="margin-top:10px"><button type="button" class="rand knopf" data-tun="ver-nah">' + sym('ort') + 'In der Nähe</button><button class="gold knopf">' + sym('suche') + 'Suchen</button></div></form>' +
+        '<div id="sver" style="margin-top:6px"></div></div>' +
       '<h3 class="ueber">' + sym('stern') + 'Favoriten</h3><div id="sfav">' + favHtml() + '</div>' +
       '<h3 class="ueber">' + sym('verlauf') + 'Letzte Ziele</h3><div id="sletzte">' + letzteHtml() + '</div><div style="height:10px"></div></div>');
-    if (s.ergebnis) verkehrZeigen(s.titel, s.ergebnis);
+    if (s.ergebnis) verZeigen();
     if (s.treffer) zielTrefferZeigen(s.treffer);
   };
-  function platzhalter(art) { return art === 'flug' ? 'Ort oder Kürzel, z. B. Mallorca, Bremen, PMI' : art === 'schiff' ? 'Ort, z. B. Norddeich, Emden, Cuxhaven' : art === 'bus' ? 'Ort oder Straße, z. B. Leer Bahnhof' : 'Ort, z. B. Hamburg, Oldenburg'; }
-  Tun['such-leer'] = function (el) { var i = $('#' + el.getAttribute('data-f')); if (!i) return; i.value = ''; i.focus(); var s = zustand(); if (i.id === 'sort') { s.ort = ''; } else { s.ziel = ''; s.treffer = null; var b = $('#sztreffer'); if (b) b.innerHTML = ''; } };
-  Tun['such-art'] = function (el) {
-    var s = zustand(); s.art = el.getAttribute('data-a'); s.ergebnis = null;
-    [].forEach.call(document.querySelectorAll('.sarten button'), function (b) { b.classList.toggle('akt', b === el); });
-    var i = $('#sort'); if (i) { i.placeholder = platzhalter(s.art); if (i.value.trim()) { Tun['such-verkehr'](); return; } }
-    var b = $('#sverkehr'); if (b) b.innerHTML = '';
+  Tun['such-leer'] = function (el) { var i = $('#' + el.getAttribute('data-f')); if (!i) return; i.value = ''; i.focus(); var s = zustand(); if (i.id === 'vort') { s.ort = ''; } else { s.ziel = ''; s.treffer = null; var b = $('#sztreffer'); if (b) b.innerHTML = ''; } };
+  Tun['ver-art'] = function (el) {
+    var s = zustand(); s.vart = el.getAttribute('data-a');
+    [].forEach.call(document.querySelectorAll('.varten button'), function (b) { b.classList.toggle('akt', b === el); });
+    nochmal();
   };
+  Tun['ver-zeit'] = function (el) {
+    var s = zustand(); s.vzeit = el.getAttribute('data-z');
+    [].forEach.call(document.querySelectorAll('.vzeiten button'), function (b) { b.classList.toggle('akt', b === el); });
+    nochmal();
+  };
+  /** Nach Wechsel von Art oder Zeitraum gleich neu suchen, wenn schon ein Ort da ist */
+  function nochmal() {
+    var s = zustand(), t = (($('#vort') || {}).value || '').trim();
+    if (t) { verSuchen(t, false); return; }
+    if (s.ergebnis && s.nah) { verSuchen('', true); return; }
+    s.ergebnis = null; var b = $('#sver'); if (b) b.innerHTML = '';
+  }
 
   /* ---------- Ziel suchen (weltweit) ---------- */
   Tun['such-ziel'] = function () {
@@ -159,71 +175,114 @@
   }
   Tun['such-treffer'] = function (el) { var x = (zustand().treffer || [])[+el.getAttribute('data-i')]; if (x) FAV.oeffnen({ typ: 'ziel', name: x.name, adresse: x.adresse, lat: x.lat, lon: x.lon }); };
 
-  /* ---------- Flughafen / Bahnhof / Bus / Schiff an einem Ort ---------- */
-  var suchLauf = 0;
+  /* ---------- Veranstaltungen suchen ---------- */
+  var suchLauf = 0, VER_FRISCH = 6 * 3600000;
+  function serpSchluessel() { var v = A().z.verkehr; return String(A().e.serpSchluessel || (v && v.serpapi) || '').trim(); }
   function ortFinden(text) {
     return G.suche(text, B.ort(), true).then(function (l) {
       if (!l.length) throw new Error('Der Ort „' + text + '“ wurde nicht gefunden.');
       return { lat: l[0].lat, lon: l[0].lon, name: l[0].name };
     }, function () { throw new Error('Der Ort „' + text + '“ wurde nicht gefunden (oder kein Internet).'); });
   }
-  Tun['such-nah'] = function () { verkehrSuchen('', true); };
-  Tun['such-verkehr'] = function () { var t = (($('#sort') || {}).value || '').trim(); if (!t) { verkehrSuchen('', true); return; } verkehrSuchen(t, false); };
-  function verkehrSuchen(text, nah) {
-    var s = zustand(), art = s.art, box = $('#sverkehr'), meins = ++suchLauf; if (!box) return;
-    s.ort = text; s.ergebnis = null;
-    var name = ARTEN.filter(function (a) { return a[0] === art; })[0][2];
-    box.innerHTML = X.laedt((art === 'flug' ? 'Flughäfen' : art === 'zug' ? 'Bahnhöfe' : art === 'bus' ? 'Haltestellen' : 'Schiffsanleger') + ' werden gesucht …');
-    // Flughäfen: erst direkt in der eingebauten Liste (Ort, Name, Kürzel) – das geht weltweit und ohne Internet
-    if (art === 'flug' && !nah) {
-      var direkt = FV.FL.suchen(text);
-      if (direkt.length) { fertig('Flughäfen zu „' + text + '“', direkt.map(function (f) { return Object.assign(f, { typ: 'flug', weit: weitVonMir(f) }); })); return; }
+  Tun['ver-nah'] = function () { verSuchen('', true); };
+  Tun['ver-suchen'] = function () { var t = (($('#vort') || {}).value || '').trim(); if (!t) { verSuchen('', true); return; } verSuchen(t, false); };
+  /** Eine Seite (10 Stück) Veranstaltungen von Google, 6 Stunden gemerkt */
+  function seiteHolen(ortName, art, zeit, start) {
+    var q = art[3] + ' in ' + ortName, key = [new Date().toDateString(), q, zeit, start].join('|');
+    return FV.V.merk('events', key, { frisch: VER_FRISCH, alt: 0, notfall: 24 * 3600000, max: 40 }, function () {
+      var p = { engine: 'google_events', q: q, hl: 'de', gl: 'de', api_key: serpSchluessel() };
+      if (zeit) p.htichips = zeit;
+      if (start) p.start = String(start);
+      return B.json({ url: 'https://serpapi.com/search.json?' + Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&'), zeit: 30000, auchFehler: true }).then(function (j) {
+        if (j && j.error) { if (/hasn't returned any results|no results/i.test(j.error)) return []; var e = new Error(j.error); e.serp = true; throw e; }
+        return ((j && j.events_results) || []).map(function (x) {
+          var d = x.date || {}, adr = Array.isArray(x.address) ? x.address : x.address ? [x.address] : [];
+          var tickets = (x.ticket_info || []).filter(function (t) { return t && t.link; }).slice(0, 6).map(function (t) { return { quelle: String(t.source || 'Webseite').slice(0, 60), link: t.link, art: t.link_type || '' }; });
+          return { titel: String(x.title || '').slice(0, 200), tag: String(d.start_date || '').slice(0, 40), wann: String(d.when || '').slice(0, 120), adresse: adr.map(String).slice(0, 3),
+            ort: x.venue && x.venue.name ? String(x.venue.name).slice(0, 120) : adr[0] ? String(adr[0]).slice(0, 120) : '', text: String(x.description || '').slice(0, 600),
+            link: x.link || '', tickets: tickets, bild: x.thumbnail || x.image || '' };
+        }).filter(function (x) { return x.titel; });
+      });
+    });
+  }
+  function verSuchen(text, nah) {
+    var s = zustand(), box = $('#sver'), meins = ++suchLauf; if (!box) return;
+    s.ort = text; s.nah = nah; s.ergebnis = null; s.mehr = false;
+    if (!serpSchluessel()) {
+      box.innerHTML = '<div class="fehler">Für den Veranstaltungskalender fehlt der SerpApi-Schlüssel (derselbe wie für die Flugsuche). Bitte in der Verwaltung (warenwirtschaft.php) eintragen.</div>'; return;
     }
-    var punkt = nah ? X.startpunkt().then(function (p) { p.name = 'Ihr Standort'; return p; }) : ortFinden(text);
-    punkt.then(function (p) {
+    box.innerHTML = X.laedt('Veranstaltungen werden gesucht …');
+    var wo = nah ? X.startpunkt().then(function (p) { return FV.V.plz(p).then(function (r) { if (!r.ort) throw 0; return { name: r.ort, nah: true }; }); })
+      .catch(function () { throw new Error('Der Ort, an dem Sie gerade sind, wurde nicht erkannt. Bitte einen Ort eintippen.'); })
+      : ortFinden(text).then(function (p) { return { name: text }; });
+    var art = VARTEN.filter(function (a) { return a[0] === s.vart; })[0] || VARTEN[0];
+    wo.then(function (o) {
       if (meins !== suchLauf) return;
-      var um = nah ? 'in der Nähe' : 'bei ' + (p.name || text);
-      if (art === 'flug') return fertig('Flughäfen ' + um, FV.FL.nahe(p, 200000).map(function (f) { return Object.assign(f, { typ: 'flug', abOrt: f.weit, weit: weitVonMir(f) }); }), p);
-      if (art === 'zug') return FV.V.bahnhoefe(p, 30000).then(function (l) { fertig('Bahnhöfe ' + um, l.slice(0, 25).map(function (b) { return Object.assign({}, b, { typ: 'zug', abOrt: b.weit, weit: weitVonMir(b) }); }), p); });
-      if (art === 'bus') return FV.V.haltestellen(p, 1500, 'bus').then(function (l) { fertig('Haltestellen ' + um, l.slice(0, 30).map(function (b) { return Object.assign({}, b, { typ: 'bus', abOrt: b.weit, weit: weitVonMir(b) }); }), p); });
-      return Promise.all([FV.V.haltestellen(p, 10000, 'schiff').catch(function () { return []; }), FV.V.faehren(p).catch(function () { return []; })]).then(function (t) {
-        var l = t[0].map(function (b) { return Object.assign({}, b, { typ: 'schiff' }); });
-        t[1].forEach(function (a) {   // Anleger aus OpenStreetMap, die die Bahn nicht kennt (oft mit Webseite der Reederei)
-          var gleich = l.filter(function (b) { return G.abstand(a, b) < 500; })[0];
-          if (gleich) { if (!gleich.web && a.web) gleich.web = a.web; if (!gleich.betreiber && a.betreiber) gleich.betreiber = a.betreiber; return; }
-          l.push(Object.assign({}, a, { typ: 'schiff', osm: true }));
-        });
-        l.forEach(function (b) { b.abOrt = Math.round(G.abstand(p, b)); b.weit = weitVonMir(b); });
-        l.sort(function (a, b) { return a.abOrt - b.abOrt; });
-        fertig('Schiffsanleger ' + um, l.slice(0, 30), p);
+      s.ortName = o.name;
+      return seiteHolen(o.name, art, s.vzeit, 0).then(function (l) {
+        if (meins !== suchLauf) return;
+        s.titel = art[2] === 'Alles' ? 'Veranstaltungen in ' + o.name : art[2] + ' in ' + o.name;
+        s.ergebnis = l; s.mehr = l.length >= 10; s.seite = 0;
+        verZeigen();
       });
     }).catch(function (e) {
-      if (meins !== suchLauf || !$('#sverkehr')) return;
-      $('#sverkehr').innerHTML = '<div class="fehler">' + h(e && e.message && !/^(leer|Keine Verbindung)$/.test(e.message) ? e.message : 'Die Suche hat gerade nicht geklappt. Bitte Internet prüfen.') + '</div>';
+      if (meins !== suchLauf || !$('#sver')) return;
+      $('#sver').innerHTML = '<div class="fehler">' + h(fehlerText(e)) + '</div>';
     });
-    function fertig(titel, liste) {
+  }
+  function fehlerText(e) {
+    var m = e && e.message || '';
+    if (e && e.serp) return /api key|api_key/i.test(m) ? 'Der SerpApi-Schlüssel wird nicht angenommen. Bitte in der Verwaltung prüfen.' : /run out|limit|credits|searches/i.test(m) ? 'Die Suchen bei SerpApi sind für diesen Monat aufgebraucht.' : 'SerpApi: ' + m;
+    return m && !/^(leer|Keine Verbindung|Zeitüberschreitung)$/.test(m) ? m : 'Die Suche hat gerade nicht geklappt. Bitte Internet prüfen.';
+  }
+  Tun['ver-mehr'] = function (el) {
+    var s = zustand(), art = VARTEN.filter(function (a) { return a[0] === s.vart; })[0] || VARTEN[0], meins = suchLauf; if (!s.ergebnis || !s.ortName) return;
+    el.disabled = true; el.innerHTML = '<i class="dreh"></i>Wird geladen …';
+    seiteHolen(s.ortName, art, s.vzeit, ((s.seite || 0) + 1) * 10).then(function (l) {
       if (meins !== suchLauf) return;
-      s.titel = titel; s.ergebnis = liste;
-      verkehrZeigen(titel, liste);
-    }
+      var schon = {}; s.ergebnis.forEach(function (x) { schon[x.titel + '|' + x.wann] = 1; });
+      l = l.filter(function (x) { return !schon[x.titel + '|' + x.wann]; });
+      s.ergebnis = s.ergebnis.concat(l); s.seite = (s.seite || 0) + 1; s.mehr = l.length >= 5 && s.seite < 9;
+      verZeigen();
+    }).catch(function (e) { if (meins !== suchLauf) return; el.disabled = false; el.innerHTML = sym('plus') + 'Mehr laden'; A().toast(fehlerText(e)); });
+  };
+  function verZeigen() {
+    var box = $('#sver'), s = zustand(), l = s.ergebnis || []; if (!box) return;
+    var art = VARTEN.filter(function (a) { return a[0] === s.vart; })[0] || VARTEN[0];
+    if (!l.length) { box.innerHTML = '<div class="fehler">Für ' + h(s.ortName || s.ort) + ' wurde ' + (s.vzeit ? 'in diesem Zeitraum ' : '') + 'nichts gefunden. Vielleicht eine größere Stadt in der Nähe versuchen.</div>'; return; }
+    var letzterTag = '';
+    box.innerHTML = '<h3 class="ueber" style="margin-top:6px">' + sym(art[1]) + h(s.titel) + '</h3>' + l.map(function (x, i) {
+      var kopf = '';
+      if (x.tag && x.tag !== letzterTag) { letzterTag = x.tag; kopf = '<div class="klein2" style="margin:10px 4px 4px;font-weight:700;color:var(--gold)">' + h(x.tag) + '</div>'; }
+      return kopf + '<div class="eintrag tippbar" data-tun="ver-oeffnen" data-i="' + i + '">' +
+        (x.bild ? '<img src="' + h(x.bild) + '" alt="" loading="lazy" referrerpolicy="no-referrer" style="width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none" onerror="this.style.display=\'none\'">' : sym(art[1])) +
+        '<div class="txt"><b>' + h(x.titel) + '</b><span>' + h([x.wann, x.ort].filter(Boolean).join(' · ')) + '</span></div><div class="ende">' + sym('rechts') + '</div></div>';
+    }).join('') + (s.mehr ? '<div style="height:6px"></div><button class="rand knopf breit" data-tun="ver-mehr">' + sym('plus') + 'Mehr laden</button>' : '') +
+      '<p class="klein2" style="text-align:center">Veranstaltungen: Google-Veranstaltungssuche (über SerpApi). Termine und Preise ohne Gewähr – bitte beim Veranstalter prüfen.</p>';
   }
-  function verkehrZeigen(titel, l) {
-    var box = $('#sverkehr'), s = zustand(); if (!box) return;
-    if (!l.length) { box.innerHTML = '<div class="fehler">Dort wurde ' + (s.art === 'flug' ? 'kein Flughafen (Umkreis 200 km)' : s.art === 'zug' ? 'kein Bahnhof (Umkreis 30 km)' : s.art === 'bus' ? 'keine Bushaltestelle (Umkreis 1,5 km)' : 'kein Schiffsanleger (Umkreis 40 km)') + ' gefunden.</div>'; return; }
-    box.innerHTML = '<h3 class="ueber" style="margin-top:6px">' + sym(s.art === 'stadt' ? 'tram' : s.art) + h(titel) + '</h3>' + l.map(function (x, i) {
-      var unter = [], fav;
-      if (x.typ === 'flug') { unter.push(FV.FL.ortText(x)); fav = { typ: 'flug', name: x.name, iata: x.iata, lat: x.lat, lon: x.lon }; }
-      else { var a = x.typ === 'zug' ? X.bfArt(x) : x.typ === 'schiff' ? (x.betreiber || (x.osm ? 'Fähranleger' : 'Fähre / Schiff')) : ''; if (a) unter.push(a); fav = { typ: x.typ, name: x.name, lat: x.lat, lon: x.lon, id: x.id || '', web: x.web || '', betreiber: x.betreiber || '' }; }
-      if (x.abOrt != null && x.abOrt > 300) unter.push(G.km(x.abOrt) + ' vom Ort');
-      if (x.weit != null) unter.push(G.km(x.weit) + ' von hier');
-      return '<div class="eintrag tippbar' + (x.typ === 'flug' ? ' flug' : '') + '" data-tun="such-oeffnen" data-i="' + i + '">' + sym(x.typ === 'stadt' ? 'tram' : x.typ) +
-        '<div class="txt"><b>' + h(x.name) + (x.iata ? ' <small class="iata">' + h(x.iata) + '</small>' : '') + (x.typ === 'bus' ? X.haltZeichen(x) : '') + '</b><span>' + h(unter.join(' · ')) + '</span></div>' +
-        '<div class="ende">' + FAV.knopf(fav, 'klein') + '<span class="wert" style="font-size:13px">' + (x.typ === 'flug' ? 'Flüge' : 'Abfahrten') + '</span>' + sym('rechts') + '</div></div>';
-    }).join('') + '<p class="klein2" style="text-align:center">' + (s.art === 'flug' ? 'Flughäfen: OurAirports · Flugtafel: AeroDataBox (über die Verwaltung).' : s.art === 'schiff' ? 'Anleger: Bahn und OpenStreetMap · Fahrplan: Bahn, sonst bei der Reederei.' : 'Abfahrten und Ankünfte live von der Deutschen Bahn.') + ' Ohne Gewähr.</p>';
-  }
-  Tun['such-oeffnen'] = function (el) {
-    var x = (zustand().ergebnis || [])[+el.getAttribute('data-i')]; if (!x) return;
-    if (x.typ === 'flug') { X.flugBlatt(x, false); return; }
-    X.tafelBlatt(x, false, x.typ);
+  Tun['ver-oeffnen'] = function (el) {
+    var s = zustand(), x = (s.ergebnis || [])[+el.getAttribute('data-i')]; if (!x) return;
+    A().z.verWahl = x;
+    var tk = x.tickets.filter(function (t) { return t.art === 'tickets'; }), info = x.tickets.filter(function (t) { return t.art !== 'tickets'; });
+    var such = 'https://www.google.com/search?q=' + encodeURIComponent(x.titel + ' ' + (x.ort || '') + ' ' + (x.tag || ''));
+    A().blatt('<h2>' + sym('kalender') + '<span>' + h(x.titel) + '<br><small style="font-weight:400;font-size:13px">' + h(x.wann || x.tag) + '</small></span><button data-tun="blatt-zu">' + sym('zu') + '</button></h2>' +
+      (x.bild ? '<img src="' + h(x.bild) + '" alt="" referrerpolicy="no-referrer" style="display:block;max-width:100%;max-height:200px;margin:0 auto 10px;border-radius:10px" onerror="this.style.display=\'none\'">' : '') +
+      (x.wann ? '<div class="detailzeile">' + sym('uhr') + '<div><small>Wann</small>' + h(x.wann) + '</div></div>' : '') +
+      (x.adresse.length || x.ort ? '<div class="detailzeile">' + sym('pin') + '<div><small>Wo</small>' + (x.adresse.length ? x.adresse.map(h).join('<br>') : h(x.ort)) + '</div></div>' : '') +
+      (x.text ? '<p class="klein2" style="margin:8px 2px">' + h(x.text) + '</p>' : '') +
+      tk.map(function (t, i) { return '<button class="' + (i ? 'rand' : 'gold') + ' knopf breit" data-tun="oeffnen" data-url="' + h(t.link) + '">' + sym('euro') + 'Tickets bei ' + h(t.quelle) + '</button><div style="height:8px"></div>'; }).join('') +
+      info.slice(0, 2).map(function (t) { return '<button class="rand knopf breit" data-tun="oeffnen" data-url="' + h(t.link) + '">' + sym('extern') + 'Infos bei ' + h(t.quelle) + '</button><div style="height:8px"></div>'; }).join('') +
+      (!x.tickets.length ? '<button class="rand knopf breit" data-tun="oeffnen" data-url="' + h(x.link || such) + '">' + sym('extern') + 'Mehr Infos im Internet</button><div style="height:8px"></div>' : '') +
+      ((x.adresse.length || x.ort) ? '<button class="rand knopf breit" data-tun="ver-hin">' + sym('auto') + 'Hinfahren</button>' : ''));
+  };
+  Tun['ver-hin'] = function (el) {
+    var x = A().z.verWahl; if (!x) return;
+    var t = x.adresse.length ? x.adresse.join(', ') : x.ort;
+    el.disabled = true; el.innerHTML = '<i class="dreh"></i>Adresse wird gesucht …';
+    var versuch = function (q) { return G.suche(q, B.ort(), true).then(function (l) { if (!l.length) throw new Error('leer'); return l[0]; }); };
+    versuch(t).catch(function () { return x.adresse.length > 1 ? versuch(x.adresse.slice(1).join(', ')) : Promise.reject(new Error('leer')); }).then(function (p) {
+      A().blattZu();
+      A().zeige('vorschau', { ziel: { name: x.ort || x.titel, adresse: t, lat: p.lat, lon: p.lon, art: 'frei' }, modus: 'auto' });
+    }).catch(function () { el.disabled = false; el.innerHTML = sym('auto') + 'Hinfahren'; A().toast('Die Adresse wurde nicht gefunden. Bitte oben unter „Wohin?“ eintippen.'); });
   };
 })();

@@ -6,6 +6,11 @@ gebaut wird deshalb, indem die Oberfläche in die vorhandene APK eingesetzt und 
 
 **Achtung:** Der Zweig `navi` enthält einen viel älteren Stand (3.1). Nicht von dort weiterbauen.
 
+## Neu in 4.8.7
+- Oberfläche `www` = Stand der installierten 4.8.6 (aus der APK, mit Android Auto und Modellflugplätzen) plus diese Änderung. Gebaut mit `bauen.py Fehnverleih-Navi-4.8.6.apk www … 4.8.7 487`.
+- Seite **Suche**: „Abfahrten und Ankünfte“ entfernt (gibt es unter Nahverkehr). Dafür **Veranstaltungskalender** (`suche.js`): Art (Alles, Theater, Musical, Konzerte, Comedy, Familie, Feste, Museen), Zeitraum (Alle/Heute/Wochenende/Woche/Monat), Ort oder „In der Nähe“ (Ortsname über `V.plz`). Quelle Google-Veranstaltungssuche über SerpApi (`engine=google_events`, Schlüssel wie Flugsuche aus der Verwaltung), je Seite 10, „Mehr laden“, 6 Std. gemerkt (`V.merk('events')`). Fenster mit Wann/Wo/Beschreibung, Tickets, Hinfahren (Adresse über Nominatim).
+- Neue Symbole `maske`, `mikro`, `museum`.
+
 ## Neu in 4.8.1
 - Offline-Karten **Großbritannien** (England, Schottland, Wales) und **Irland + Nordirland** (`grossbritannien-teil-NN`, `irland-teil-NN`, Releases `karte-grossbritannien`, `karte-irland`).
 
