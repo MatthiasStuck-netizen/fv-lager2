@@ -19,7 +19,7 @@ jobs:
           mkdir -p kl dexaus aus
           javac --release 8 -encoding UTF-8 -Xlint:-options -cp "$JAR" -d kl $(find src -name '*.java') 2>&1 | tee protokoll.txt
           $SDK/build-tools/34.0.0/d8 --release --min-api 24 --lib "$JAR" --output dexaus $(find kl -name '*.class') 2>&1 | tee -a protokoll.txt
-          cp dexaus/classes.dex aus/classes.dex; cp protokoll.txt aus/
+          cp dexaus/classes.dex aus/classes.dex
       - name: Ausgabe
         if: always()
         run: |
