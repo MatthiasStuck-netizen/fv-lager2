@@ -1,0 +1,53 @@
+name: Navi Android Auto (Klassen übersetzen)
+
+# Übersetzt die Android-Auto-Klassen aus nativ/ zu einer classes3.dex.
+# Die APK selbst (Manifest, Oberfläche, Unterschrift) wird außerhalb zusammengesetzt.
+on:
+  workflow_dispatch:
+  push:
+    branches: [navi-auto]
+
+permissions:
+  contents: write
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - name: SDK und Bibliotheken
+        run: |
+          SDK=${ANDROID_HOME:-/usr/local/lib/android/sdk}
+          echo "SDK=$SDK" >> $GITHUB_ENV
+          yes | $SDK/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0" > /dev/null || true
+          mkdir -p lib && cd lib
+          M=https://dl.google.com/dl/android/maven2
+          hol() { curl -sSfL -o "$2" "$M/$1"; }
+          hol androidx/car/app/app/1.4.0/app-1.4.0.aar car.aar
+          hol androidx/core/core/1.13.1/core-1.13.1.aar core.aar
+          hol androidx/webkit/webkit/1.11.0/webkit-1.11.0.aar webkit.aar
+          hol androidx/lifecycle/lifecycle-common/2.6.2/lifecycle-common-2.6.2.jar lifecycle-common.jar
+          hol androidx/lifecycle/lifecycle-runtime/2.6.2/lifecycle-runtime-2.6.2.aar lifecycle-runtime.aar
+          hol androidx/annotation/annotation-jvm/1.8.0/annotation-jvm-1.8.0.jar annotation.jar
+          for a in *.aar; do mkdir -p x_$a && unzip -q -o $a classes.jar -d x_$a && mv x_$a/classes.jar ${a%.aar}.jar; done
+          ls -l
+      - name: Übersetzen
+        run: |
+          JAR=$SDK/platforms/android-35/android.jar
+          CP="$JAR:$(ls lib/*.jar | tr '\n' ':')"
+          mkdir -p kl dexaus aus
+          javac --release 8 -encoding UTF-8 -Xlint:-options -cp "$CP" -d kl nativ/de/fehnverleih/navi/*.java 2>&1 | tee protokoll.txt
+          test ${PIPESTATUS[0]} -eq 0
+          $SDK/build-tools/35.0.0/d8 --release --min-api 26 --lib "$JAR" --classpath lib/car.jar --classpath lib/core.jar --classpath lib/webkit.jar --classpath lib/lifecycle-common.jar --classpath lib/lifecycle-runtime.jar --classpath lib/annotation.jar --output dexaus $(find kl -name '*.class') 2>&1 | tee -a protokoll.txt
+          cp dexaus/classes.dex aus/auto-classes.dex
+          ls -l aus
+      - name: Bereitstellen
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          touch protokoll.txt; mkdir -p aus; cp protokoll.txt aus/
+          gh release delete navi-auto -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create navi-auto aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Navi Android Auto: Klassen" --notes "Zwischenstand, nicht zum Installieren."
