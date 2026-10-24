@@ -31,6 +31,7 @@ jobs:
           hol androidx/lifecycle/lifecycle-common/2.6.2/lifecycle-common-2.6.2.jar lifecycle-common.jar
           hol androidx/lifecycle/lifecycle-runtime/2.6.2/lifecycle-runtime-2.6.2.aar lifecycle-runtime.aar
           hol androidx/annotation/annotation-jvm/1.8.0/annotation-jvm-1.8.0.jar annotation.jar
+          hol androidx/versionedparcelable/versionedparcelable/1.1.1/versionedparcelable-1.1.1.aar versionedparcelable.aar
           for a in *.aar; do mkdir -p x_$a && unzip -q -o $a classes.jar -d x_$a && mv x_$a/classes.jar ${a%.aar}.jar; done
           ls -l
       - name: Übersetzen
@@ -40,7 +41,7 @@ jobs:
           mkdir -p kl dexaus aus
           javac --release 8 -encoding UTF-8 -Xlint:-options -cp "$CP" -d kl nativ/de/fehnverleih/navi/*.java 2>&1 | tee protokoll.txt
           test ${PIPESTATUS[0]} -eq 0
-          $SDK/build-tools/35.0.0/d8 --release --min-api 26 --lib "$JAR" --classpath lib/car.jar --classpath lib/core.jar --classpath lib/webkit.jar --classpath lib/lifecycle-common.jar --classpath lib/lifecycle-runtime.jar --classpath lib/annotation.jar --output dexaus $(find kl -name '*.class') 2>&1 | tee -a protokoll.txt
+          $SDK/build-tools/35.0.0/d8 --release --min-api 26 --lib "$JAR" --classpath lib/car.jar --classpath lib/core.jar --classpath lib/webkit.jar --classpath lib/lifecycle-common.jar --classpath lib/lifecycle-runtime.jar --classpath lib/annotation.jar --classpath lib/versionedparcelable.jar --output dexaus $(find kl -name '*.class') 2>&1 | tee -a protokoll.txt
           cp dexaus/classes.dex aus/auto-classes.dex
           ls -l aus
       - name: Bereitstellen
