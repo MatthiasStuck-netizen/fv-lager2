@@ -25,9 +25,11 @@ jobs:
           cp dexaus/classes.dex aus/apps-classes.dex
       - name: Bereitstellen
         if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p aus; touch protokoll.txt; cp protokoll.txt aus/
-          gh release delete lager-apps-dex -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create lager-apps-dex aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Lager-App: Apps-Knopf" --notes "Zwischenstand"
+          git config user.name "Bau"; git config user.email "bau@fehnverleih.invalid"
+          git checkout --orphan lager-apps-aus
+          git rm -rq --cached . || true
+          git add -f aus
+          git commit -qm "Ausgabe $GITHUB_SHA"
+          git push -f origin lager-apps-aus
