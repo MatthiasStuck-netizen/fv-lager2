@@ -12,6 +12,12 @@ adb logcat -c || true
 adb shell am start -n de.fehnverleih.navi/.MainActivity >> geraet/protokoll.txt 2>&1 || true
 sleep 30
 adb exec-out screencap -p > geraet/start.png 2>/dev/null || true
+adb shell input tap 540 1712 || true
+sleep 15
+adb exec-out screencap -p > geraet/demo.png 2>/dev/null || true
+adb shell input tap 75 1990 || true
+sleep 10
+adb exec-out screencap -p > geraet/karte.png 2>/dev/null || true
 echo "--- Absturz-Puffer" >> geraet/protokoll.txt
 adb logcat -d -b crash >> geraet/protokoll.txt 2>&1 || true
 echo "--- laeuft?" >> geraet/protokoll.txt
