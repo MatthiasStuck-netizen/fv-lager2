@@ -25,7 +25,7 @@ public class MainActivity extends Activity {
         "(function(){var T='Version " + VERSION + "';" +
         "function setzen(){if(document.getElementById('fv-version'))return;" +
         "var l=document.body?document.body.getElementsByTagName('*'):[],z=null;" +
-        "for(var i=0;i<l.length;i++){var e=l[i];if(e.children.length===0&&/\u00a9\s*fehnverleih\.de/i.test(e.textContent||'')){z=e;}}" +
+        "for(var i=0;i<l.length;i++){var e=l[i],t=e.textContent||'';if(e.id!=='fv-version'&&/©\\s*fehnverleih\\.de/i.test(t)&&(!z||t.length<=z.textContent.length))z=e;}" +
         "if(!z)return;var d=document.createElement('div');d.id='fv-version';d.textContent=T;" +
         "var c=getComputedStyle(z);d.style.cssText='text-align:center;margin-top:4px;font-size:'+c.fontSize+';color:'+c.color+';font-family:'+c.fontFamily;" +
         "z.parentNode.insertBefore(d,z.nextSibling);}" +
