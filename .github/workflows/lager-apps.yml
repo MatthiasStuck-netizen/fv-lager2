@@ -29,5 +29,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p aus; touch protokoll.txt; cp protokoll.txt aus/
-          gh release delete lager-apps -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
-          gh release create lager-apps aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Lager-App: Apps-Knopf" --notes "Zwischenstand"
+          gh release delete lager-apps-dex -y --cleanup-tag -R "$GITHUB_REPOSITORY" || true
+          gh release create lager-apps-dex aus/* -R "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Lager-App: Apps-Knopf" --notes "Zwischenstand"
